@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Finwise — emerald finance theme (light) */
+    --background:     210 40% 98%;   /* slate-50 */
+    --foreground:     222 47% 11%;   /* slate-900 */
+    --card:             0  0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover:          0  0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary:        161 93% 30%;   /* emerald-600 */
+    --primary-foreground: 0 0% 100%;
+    --secondary:      210 40% 96%;   /* slate-100 */
+    --secondary-foreground: 215 16% 47%;
+    --muted:          210 40% 96%;
+    --muted-foreground: 215 16% 47%; /* slate-500 */
+    --accent:         152 76% 94%;   /* emerald-50 */
+    --accent-foreground: 161 93% 25%;
+    --destructive:      0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border:         214 32% 91%;   /* slate-200 */
+    --input:          214 32% 91%;
+    --ring:           161 93% 30%;
+    --radius:         0.625rem;
+  }
+
+  .dark {
+    /* Finwise — emerald finance theme (dark) */
+    --background:     222 47%  7%;   /* deep slate */
+    --foreground:     210 40% 96%;   /* slate-100 */
+    --card:           217 33% 11%;   /* slate-850 */
+    --card-foreground: 210 40% 96%;
+    --popover:        217 33% 11%;
+    --popover-foreground: 210 40% 96%;
+    --primary:        160 84% 50%;   /* emerald-400 — brighter on dark */
+    --primary-foreground: 0 0% 100%;
+    --secondary:      217 33% 17%;   /* slate-800 */
+    --secondary-foreground: 210 40% 90%;
+    --muted:          217 33% 17%;
+    --muted-foreground: 215 20% 58%; /* slate-400 */
+    --accent:         160 40% 16%;   /* dark emerald tint */
+    --accent-foreground: 160 84% 70%;
+    --destructive:      0 62% 40%;
+    --destructive-foreground: 0 0% 98%;
+    --border:         217 33% 22%;   /* slate-700 */
+    --input:          217 33% 22%;
+    --ring:           160 84% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+/* Subtle page-top glow in light mode */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 240px;
+  background: radial-gradient(ellipse 80% 120px at 50% -20px, hsl(161 93% 30% / 0.07) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+.dark body::before {
+  background: radial-gradient(ellipse 80% 120px at 50% -20px, hsl(160 84% 50% / 0.08) 0%, transparent 100%);
+}

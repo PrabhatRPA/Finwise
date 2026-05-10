@@ -1,0 +1,61 @@
+(trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "/Users/raos/Custom Code/personal-finance-platform/backend/venv/lib/python3.13/site-packages/passlib/handlers/bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+Initializing database at: sqlite:///./database/finance.db
+Creating database tables...
+Database initialized successfully!
+Database location: /Users/raos/Custom Code/personal-finance-platform/backend/database/finance.db
+Traceback (most recent call last):
+  File "/Users/raos/Custom Code/personal-finance-platform/scripts/init_db.py", line 65, in <module>
+    seed_database()
+    ~~~~~~~~~~~~~^^
+  File "/Users/raos/Custom Code/personal-finance-platform/scripts/init_db.py", line 49, in seed_database
+    password_hash=get_password_hash("password123"),
+                  ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/Users/raos/Custom Code/personal-finance-platform/backend/app/core/security.py", line 28, in get_password_hash
+    return pwd_context.hash(password)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/Users/raos/Custom Code/personal-finance-platform/backend/venv/lib/python3.13/site-packages/passlib/context.py", line 2258, in hash
+    return record.hash(secret, **kwds)
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Users/raos/Custom Code/personal-finance-platform/backend/venv/lib/python3.13/site-packages/passlib/utils/handlers.py", line 779, in hash
+    self.checksum = self._calc_checksum(secret)
+                    ~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/raos/Custom Code/personal-finance-platform/backend/venv/lib/python3.13/site-packages/passlib/handlers/bcrypt.py", line 591, in _calc_checksum
+    self._stub_requires_backend()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/raos/Custom Code/personal-finance-platform/backend/venv/lib/python3.13/site-packages/passlib/utils/handlers.py", line 2254, in _stub_requires_backend
+    cls.set_backend()
+    ~~~~~~~~~~~~~~~^^
+  File "/Users/raos/Custom Code/personal-finance-platform/backend/venv/lib/python3.13/site-packages/passlib/utils/handlers.py", line 2156, in set_backend
+    return owner.set_backend(name, dryrun=dryrun)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/raos/Custom Code/personal-finance-platform/backend/venv/lib/python3.13/site-packages/passlib/utils/handlers.py", line 2163, in set_backend
+    return cls.set_backend(name, dryrun=dryrun)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/raos/Custom Code/personal-finance-platform/backend/venv/lib/python3.13/site-packages/passlib/utils/handlers.py", line 2188, in set_backend
+    cls._set_backend(name, dryrun)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Users/raos/Custom Code/personal-finance-platform/backend/venv/lib/python3.13/site-packages/passlib/utils/handlers.py", line 2311, in _set_backend
+    super(SubclassBackendMixin, cls)._set_backend(name, dryrun)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Users/raos/Custom Code/personal-finance-platform/backend/venv/lib/python3.13/site-packages/passlib/utils/handlers.py", line 2224, in _set_backend
+    ok = loader(**kwds)
+  File "/Users/raos/Custom Code/personal-finance-platform/backend/venv/lib/python3.13/site-packages/passlib/handlers/bcrypt.py", line 626, in _load_backend_mixin
+    return mixin_cls._finalize_backend_mixin(name, dryrun)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Users/raos/Custom Code/personal-finance-platform/backend/venv/lib/python3.13/site-packages/passlib/handlers/bcrypt.py", line 421, in _finalize_backend_mixin
+    if detect_wrap_bug(IDENT_2A):
+       ~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/Users/raos/Custom Code/personal-finance-platform/backend/venv/lib/python3.13/site-packages/passlib/handlers/bcrypt.py", line 380, in detect_wrap_bug
+    if verify(secret, bug_hash):
+       ~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/Users/raos/Custom Code/personal-finance-platform/backend/venv/lib/python3.13/site-packages/passlib/utils/handlers.py", line 792, in verify
+    return consteq(self._calc_checksum(secret), chk)
+                   ~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "/Users/raos/Custom Code/personal-finance-platform/backend/venv/lib/python3.13/site-packages/passlib/handlers/bcrypt.py", line 655, in _calc_checksum
+    hash = _bcrypt.hashpw(secret, config)
+ValueError: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])

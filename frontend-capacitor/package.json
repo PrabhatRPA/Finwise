@@ -1,0 +1,18 @@
+{
+  "name": "personal-finance-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npx cap sync && npx cap run ios",
+    "ios": "npx cap run ios",
+    "android": "npx cap run android"
+  },
+  "dependencies": {
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
+    "@capacitor/http": "^6.0.0",
+    "@capacitor/cookies": "^6.0.0"
+  }
+}

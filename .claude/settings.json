@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:8000/api/v1/accounts)",
+      "Bash(*)",
+      "Bash(python3 -m json.tool)"
+    ]
+  }
+}

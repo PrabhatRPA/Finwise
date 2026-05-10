@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Default capabilities for the Personal Finance desktop app","local":true,"windows":["main"],"permissions":["core:default","shell:allow-execute","shell:allow-spawn","dialog:allow-message"]}}

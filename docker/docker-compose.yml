@@ -1,0 +1,42 @@
+# Personal Finance Platform - Docker Configuration
+
+# Removed obsolete version field
+
+services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: personal-finance-backend
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=sqlite:///app/database/finance.db
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - APP_ENV=production
+      - DEBUG=false
+      - CORS_ORIGINS=http://localhost:3001,http://localhost:8001
+    # volumes removed to avoid macOS permission issues; use internal container storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: personal-finance-frontend
+    ports:
+      - "3001:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8001/api/v1
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backend-data:
+  backend-db:

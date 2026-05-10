@@ -1,0 +1,342 @@
+{
+  "/Users/raos/Custom Code/personal-finance-platform/database/schema.sql": {
+    "mtime": 1774123631.9743738,
+    "hash": "3cbf9f2024692d7901ff61b9d8e37e0b"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/tailwind.config.js": {
+    "mtime": 1774124833.9630258,
+    "hash": "eb4f8ef9f5b1e2d9065b5a71fade0051"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/next.config.js": {
+    "mtime": 1778385988.3334672,
+    "hash": "d3e0c4cc83b7349375303e305ad2f3d4"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/next-env.d.ts": {
+    "mtime": 1774268725.808781,
+    "hash": "b5ed9dd8b4c5ba8e5ab8e6a379c15838"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/postcss.config.js": {
+    "mtime": 1774124845.2221556,
+    "hash": "854b38759e7a8b4b82306ae2d9a3a833"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/capacitor.config.ts": {
+    "mtime": 1774136371.6699767,
+    "hash": "33830d92706a0c75a05eb33d2abbb268"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/app/layout.tsx": {
+    "mtime": 1778387027.6434097,
+    "hash": "8278865167dbdb995b36054ec6cd0a69"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/app/page.tsx": {
+    "mtime": 1778387041.0286603,
+    "hash": "72439eb3c7a4b6de3ba22abb6ceffa6a"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/app/dashboard/charts.tsx": {
+    "mtime": 1774134627.8078926,
+    "hash": "7bbaa78e0d8b6d7767c419f39404c9b2"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/app/dashboard/ai-analysis.tsx": {
+    "mtime": 1778200974.8557663,
+    "hash": "9fdb72aab5e5e92d071078749aa84be4"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/app/dashboard/holdings-table.tsx": {
+    "mtime": 1774134662.7530131,
+    "hash": "1046a42c940d46563fa6f04f1122fdc6"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/app/dashboard/allocation-donut-chart.tsx": {
+    "mtime": 1774134647.3399043,
+    "hash": "7bbaa78e0d8b6d7767c419f39404c9b2"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/app/dashboard/net-worth-chart.tsx": {
+    "mtime": 1774134715.6375859,
+    "hash": "6f33549c68e3523d0b84d5b1d13fef58"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/app/dashboard/page.tsx": {
+    "mtime": 1778387080.4529145,
+    "hash": "5de12ab84d1d4552b96d67c8471a88f5"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/app/dashboard/summary.tsx": {
+    "mtime": 1774134606.9836235,
+    "hash": "834164b2e5abbae3263d56f46fc93b52"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/app/register/page.tsx": {
+    "mtime": 1778387022.4033968,
+    "hash": "338a13e59b75528b13e8b63bf5ed0514"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/app/lib/api.ts": {
+    "mtime": 1778244065.7600513,
+    "hash": "dbac2e96dae0139a04bfc640c0250260"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/app/lib/store.ts": {
+    "mtime": 1778195974.4642096,
+    "hash": "9e8e000d4ce3be31697b139c4fd93d9a"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/app/documents/page.tsx": {
+    "mtime": 1778387112.2406046,
+    "hash": "583f15c2ac082ee66bf502195fc476a7"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/app/login/page.tsx": {
+    "mtime": 1778387009.5013652,
+    "hash": "22302f5d9f48def5e895c5c94ccfdcda"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/components/ui/index.tsx": {
+    "mtime": 1774193184.9694638,
+    "hash": "461ca78aa89a69793073bf06dfd9fa23"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/components/ui/tabs.tsx": {
+    "mtime": 1778194785.4334126,
+    "hash": "871c380bb4c204732f217ea03149fcc8"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/components/ui/card.tsx": {
+    "mtime": 1774466628.4766102,
+    "hash": "7451437f9594ff4956a086cba2d6fa34"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/components/ui/badge.tsx": {
+    "mtime": 1778194732.8415859,
+    "hash": "6f2cd3551379e77488867bd53f9f971c"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/components/ui/table.tsx": {
+    "mtime": 1774269182.080632,
+    "hash": "00b62813a9e3199532af85ec41663e23"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/components/ui/index.ts": {
+    "mtime": 1774193130.0580914,
+    "hash": "461ca78aa89a69793073bf06dfd9fa23"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/components/ui/button.tsx": {
+    "mtime": 1778196129.5004308,
+    "hash": "f87b090b193ccd914449422e98797a94"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/components/ui/input.tsx": {
+    "mtime": 1778387159.5717323,
+    "hash": "5e64c18779bb74f9b18fb50720de75c6"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/components/dashboard/charts.tsx": {
+    "mtime": 1778194904.8482168,
+    "hash": "a2a1f0f67010b66a6ce6564a70350c52"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/components/dashboard/allocation-chart.tsx": {
+    "mtime": 1774269524.0182104,
+    "hash": "037d9dc7f0f568e4dc7a453276cc2f34"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/components/dashboard/performance-chart.tsx": {
+    "mtime": 1774269527.622708,
+    "hash": "b1c4ba0cbb060609666bc33e560b907b"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/components/dashboard/ai-analysis.tsx": {
+    "mtime": 1778246085.3085551,
+    "hash": "86d0d9262aae811e42ea6b17fa5cdabc"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/components/dashboard/holdings-table.tsx": {
+    "mtime": 1778384173.1680532,
+    "hash": "1c3bd6043a3a402eaa505f27b2d317e6"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/components/dashboard/debts-table.tsx": {
+    "mtime": 1778246654.262669,
+    "hash": "286eb6b2a92ec6af64a439b241228ae7"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/components/dashboard/allocation-donut-chart.tsx": {
+    "mtime": 1774269543.46168,
+    "hash": "2d0abaaeebd3d0bfc45f148e1eb8f652"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/components/dashboard/net-worth-chart.tsx": {
+    "mtime": 1778384125.9888537,
+    "hash": "5fb0e04cb76e929181736091e554b7f5"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/components/dashboard/summary.tsx": {
+    "mtime": 1774125166.1518798,
+    "hash": "834164b2e5abbae3263d56f46fc93b52"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/lib/auth.tsx": {
+    "mtime": 1778386995.1717536,
+    "hash": "aaf3a8eb723ae9694f7643d81499dbd5"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/lib/utils.ts": {
+    "mtime": 1778194610.644758,
+    "hash": "fe1e2b41cc3c64835f78569af8c09aa8"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/lib/api.ts": {
+    "mtime": 1778386985.813257,
+    "hash": "af38e2eb437e93fd4c529d014adb48e7"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend/lib/store.ts": {
+    "mtime": 1778201284.97202,
+    "hash": "5fa347dadcf16fc1be3dc117e951035e"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend-tauri/src-tauri/build.rs": {
+    "mtime": 1774136314.6919363,
+    "hash": "9e949d967099bcc42cfa6f8765a6c938"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend-tauri/src-tauri/src/lib.rs": {
+    "mtime": 1778386064.0278091,
+    "hash": "2efa4052dcf894ff480d2efedc0faccb"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend-tauri/src-tauri/src/main.rs": {
+    "mtime": 1778386077.8584847,
+    "hash": "e2af021cd3f61b3232693461c1a1f07b"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/frontend-capacitor/capacitor.config.ts": {
+    "mtime": 1774136385.919346,
+    "hash": "56930a24bd77563b0d3d26433f1f33e3"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/main_sidecar.py": {
+    "mtime": 1778385916.6586812,
+    "hash": "df25462248ae2566c033d769596f38ab"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/__init__.py": {
+    "mtime": 1774123647.741467,
+    "hash": "d53eafb171ef21d751964c289d265346"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/main.py": {
+    "mtime": 1778386954.1526837,
+    "hash": "49c08d1257fc76eda8ff40b40bf035f9"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/core/config.py": {
+    "mtime": 1778385969.4760144,
+    "hash": "7d23d97dda7c33bfc5e4aa938a978714"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/core/security.py": {
+    "mtime": 1778386609.5934672,
+    "hash": "00f08747bd8f5f8c8a7f212eca9d5408"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/core/auth_deps.py": {
+    "mtime": 1778386619.6572442,
+    "hash": "bc5409a545b3e6663904d5881a213cd5"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/agents/parsers/pdf_parser.py": {
+    "mtime": 1778198071.270225,
+    "hash": "8c28467680a54b22554394c9169ae6c7"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/agents/parsers/__init__.py": {
+    "mtime": 1774123807.8967915,
+    "hash": "d03d0b98a1f4f0c6aa6f8166205ecbd5"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/ai/ollama_client.py": {
+    "mtime": 1774123977.3327274,
+    "hash": "0520584391d4346de8724bb28b051a97"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/ai/__init__.py": {
+    "mtime": 1778243991.057146,
+    "hash": "6901d48e1651830ba75d12d0ca4e3b72"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/ai/agent.py": {
+    "mtime": 1778246051.004073,
+    "hash": "c1d1af635a6e18680b7a4b2253fffeee"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/ai/ai_client.py": {
+    "mtime": 1778244033.9115765,
+    "hash": "55209d367358ee5f19a2f852885b5719"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/ai/prompts/extraction_prompts.py": {
+    "mtime": 1774124049.754981,
+    "hash": "297cc52d3b8564038387deee66d58b88"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/ai/prompts/insights_prompts.py": {
+    "mtime": 1774124155.3695397,
+    "hash": "a766aafa568c6b9410baf92bf5146a20"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/ai/prompts/analysis_prompts.py": {
+    "mtime": 1778246027.7606206,
+    "hash": "6e3cad83416c7d457de01b8825106522"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/db/models.py": {
+    "mtime": 1778200737.2515738,
+    "hash": "e2c9a96df7dc8ded1181f5fb37024a30"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/db/__init__.py": {
+    "mtime": 1774467198.1066031,
+    "hash": "c5f8032d91fafd59fa22fdb36e12d02d"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/api/v1/auth.py": {
+    "mtime": 1778386634.1954277,
+    "hash": "a40ec131fb05f442b5cf2ec3bfa5f03b"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/api/v1/accounts.py": {
+    "mtime": 1778386751.6027422,
+    "hash": "0aae952b573ac5805cd5e788bea1320d"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/api/v1/market.py": {
+    "mtime": 1774124548.48473,
+    "hash": "c75b6cfcfe7ae495465554ae948ee8e4"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/api/v1/transactions.py": {
+    "mtime": 1778386884.7666938,
+    "hash": "b3c528ee446367263f19b00353135951"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/api/v1/documents.py": {
+    "mtime": 1778386946.4165506,
+    "hash": "6119d8d3e3413bbd23359f2139251a64"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/api/v1/ai.py": {
+    "mtime": 1778244057.675503,
+    "hash": "558e628213bd55f586fdb63d5394e13b"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/api/v1/__init__.py": {
+    "mtime": 1774124316.521712,
+    "hash": "7a8da1ac1e6970bb8538a478a68cccb0"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/api/v1/loans.py": {
+    "mtime": 1778386827.3167827,
+    "hash": "a7adf41f49c1859a07b125663a1364ae"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/api/v1/holdings.py": {
+    "mtime": 1778386696.0929701,
+    "hash": "a45deaf324a892729af7d89039c6804a"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/api/v1/net_worth.py": {
+    "mtime": 1778386792.2332838,
+    "hash": "699491db2714ead92da8c9b1f477cadb"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/services/__init__.py": {
+    "mtime": 1774124208.7967336,
+    "hash": "eeca745f646f68564def9d4a1ae460f7"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/services/portfolio_engine.py": {
+    "mtime": 1774124292.0646477,
+    "hash": "1e7f00312d260fa1bad88cb815702cc6"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/app/services/market_data.py": {
+    "mtime": 1778384067.816974,
+    "hash": "491e141bd46be14915588e01e5276662"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/scripts/seed_data.py": {
+    "mtime": 1774136472.6662607,
+    "hash": "9256da763e607558254923518c136826"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/scripts/init_db.py": {
+    "mtime": 1778196362.6010072,
+    "hash": "77045f0508a1edf9c07a8d95f601f219"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/README.md": {
+    "mtime": 1774136362.6313431,
+    "hash": "274e3ddae87ed5af4234a9ac3359fa74"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/CLAUDE.md": {
+    "mtime": 1778386229.829116,
+    "hash": "03e44276bec7547d87102c909a8e9722"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/docker/docker-compose.yml": {
+    "mtime": 1774466628.4760144,
+    "hash": "049f09237db626a75f47cd34177ffac2"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/requirements.txt": {
+    "mtime": 1778243992.0811338,
+    "hash": "4a75997d15c1a9759855544f70eeaf2a"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/docs/architecture.md": {
+    "mtime": 1774123513.5100965,
+    "hash": "acb6c8964fcbd89b8d28a2ddf6f4910a"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/data/uploads/85268df9-d383-43c7-b50e-7f94f74092d5.pdf": {
+    "mtime": 1778196767.5982943,
+    "hash": "53a9450d7df8ec0410bacedf063b6c86"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/data/uploads/251ae3ba-11e0-480b-8dd3-fd822313c265.pdf": {
+    "mtime": 1778195604.462554,
+    "hash": "53a9450d7df8ec0410bacedf063b6c86"
+  },
+  "/Users/raos/Custom Code/personal-finance-platform/backend/data/uploads/e7ef5f18-8a1e-4e43-bc9c-296ccde9d651.pdf": {
+    "mtime": 1774488571.1943204,
+    "hash": "53a9450d7df8ec0410bacedf063b6c86"
+  }
+}

@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+backend/venv/
+backend/.venv/
+*.spec.bak
+
+# PyInstaller output (platform-specific — not committed)
+backend/dist/
+backend/build/
+# Sidecar binaries (built by scripts/build.sh or build.bat — one per platform)
+frontend-tauri/src-tauri/binaries/backend-*
+!frontend-tauri/src-tauri/binaries/.gitkeep
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend-tauri/node_modules/
+
+# Rust / Tauri
+frontend-tauri/src-tauri/target/
+frontend-tauri/WixTools/
+
+# SQLite databases (live in user app-data, not in the repo)
+*.db
+*.db-shm
+*.db-wal
+backend/database/
+
+# Uploads
+backend/data/uploads/
+
+# Secrets
+.env
+backend/.env
+*.pem
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
