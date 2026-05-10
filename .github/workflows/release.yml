@@ -1,0 +1,163 @@
+name: Release
+
+# Triggers whenever you push a version tag like v1.0.0, v1.1.0, v2.0.0
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Needed so the workflow can create a GitHub Release and upload files
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build — ${{ matrix.platform }}
+    strategy:
+      fail-fast: false   # if Windows fails, macOS still finishes and vice-versa
+      matrix:
+        include:
+
+          # ── macOS (Apple Silicon — M1 / M2 / M3) ──────────────────────────
+          - platform: macos-latest
+            rust-target: aarch64-apple-darwin
+            python-version: '3.13'
+            bundle-subdir: dmg
+            bundle-glob: '*.dmg'
+
+          # ── Windows (64-bit) ───────────────────────────────────────────────
+          - platform: windows-latest
+            rust-target: x86_64-pc-windows-msvc
+            python-version: '3.11'
+            bundle-subdir: nsis
+            bundle-glob: '*-setup.exe'
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Language toolchains ─────────────────────────────────────────────
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Set up Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-target }}
+
+      # Cache compiled Rust crates — saves ~5 min on repeat builds
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: frontend-tauri/src-tauri -> target
+
+      # ── 3. Tauri CLI (pre-built npm binary — ~30 s vs ~8 min from source) ──
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli@^2
+
+      # ── 4. Build the Python FastAPI backend into a single binary ───────────
+      - name: Install Python dependencies
+        shell: bash
+        working-directory: backend
+        run: |
+          pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r requirements.txt
+
+      - name: PyInstaller — package backend
+        shell: bash
+        working-directory: backend
+        run: pyinstaller backend.spec --clean --noconfirm
+
+      - name: Place sidecar in Tauri binaries folder
+        shell: bash
+        run: |
+          DEST="frontend-tauri/src-tauri/binaries"
+          mkdir -p "$DEST"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            cp backend/dist/backend.exe "$DEST/backend-${{ matrix.rust-target }}.exe"
+          else
+            cp backend/dist/backend "$DEST/backend-${{ matrix.rust-target }}"
+          fi
+          echo "✓ Sidecar placed:"
+          ls -lh "$DEST"
+
+      # ── 5. Build Next.js into a static export (goes to frontend/out/) ──────
+      - name: Install frontend npm packages
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Next.js (static export)
+        shell: bash
+        working-directory: frontend
+        run: NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1 npm run build
+
+      # ── 6. Build the Tauri desktop app ─────────────────────────────────────
+      - name: Build Tauri app
+        shell: bash
+        working-directory: frontend-tauri/src-tauri
+        run: tauri build
+
+      # ── 7. Locate the installer produced by the bundler ────────────────────
+      - name: Locate installer artifact
+        id: installer
+        shell: bash
+        run: |
+          BUNDLE_DIR="frontend-tauri/src-tauri/target/release/bundle/${{ matrix.bundle-subdir }}"
+          FILE=$(find "$BUNDLE_DIR" -name "${{ matrix.bundle-glob }}" 2>/dev/null | head -1)
+
+          # Windows fallback: try MSI if NSIS wasn't produced
+          if [[ -z "$FILE" && "$RUNNER_OS" == "Windows" ]]; then
+            FILE=$(find "frontend-tauri/src-tauri/target/release/bundle/msi" -name "*.msi" 2>/dev/null | head -1)
+          fi
+
+          if [[ -z "$FILE" ]]; then
+            echo "ERROR: No installer found in $BUNDLE_DIR"
+            exit 1
+          fi
+
+          echo "path=$FILE" >> "$GITHUB_OUTPUT"
+          echo "✓ Installer: $FILE"
+
+      # ── 8. Publish a GitHub Release and attach the installer ───────────────
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Finwise ${{ github.ref_name }}
+          files: ${{ steps.installer.outputs.path }}
+          body: |
+            ## Finwise ${{ github.ref_name }}
+
+            | Platform | File to download | Requires |
+            |----------|-----------------|----------|
+            | **macOS** (Apple Silicon) | `Finwise_*_aarch64.dmg` | macOS 10.15 Catalina or later |
+            | **Windows** (64-bit) | `Finwise_*_x64-setup.exe` | Windows 10 / 11 (64-bit) |
+
+            ### Installing for the first time
+            - **macOS** — Open the `.dmg`, drag **Finwise** into your Applications folder. On first launch right-click the app → **Open** to bypass the "unidentified developer" warning (the app is not yet signed).
+            - **Windows** — Run the `-setup.exe` installer. If Windows SmartScreen appears, click **More info → Run anyway** (the app is not yet signed).
+
+            ### Upgrading from an older version
+            Install the new version on top of the old one — no need to uninstall first.
+            Your data lives in a separate OS folder and is **never** touched by the installer:
+            - macOS: `~/Library/Application Support/com.personalfinance.app/`
+            - Windows: `%APPDATA%\com.personalfinance.app\`
+
+            ---
+            *Automated build from tag `${{ github.ref_name }}`*
+          draft: false
+          prerelease: false
