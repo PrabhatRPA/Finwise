@@ -111,7 +111,34 @@ jobs:
       - name: Build Tauri app
         shell: bash
         working-directory: frontend-tauri/src-tauri
+        env:
+          # Ad-hoc sign on macOS so Gatekeeper shows "unidentified developer"
+          # (bypassable with right-click → Open) instead of "damaged" (not bypassable).
+          # On Windows this env var is ignored.
+          APPLE_SIGNING_IDENTITY: "-"
         run: tauri build
+
+      # ── 6b. Deep-sign the app bundle and DMG (macOS only) ─────────────────
+      # Belt-and-suspenders: Tauri signs the .app during build when
+      # APPLE_SIGNING_IDENTITY is set, but we also sign the outer DMG so
+      # the whole artifact is consistently ad-hoc signed.
+      - name: Ad-hoc sign app bundle and DMG (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          BUNDLE_DIR="frontend-tauri/src-tauri/target/release/bundle"
+          APP=$(find "$BUNDLE_DIR/macos" -name "*.app" -maxdepth 1 | head -1)
+          DMG=$(find "$BUNDLE_DIR/dmg"   -name "*.dmg" -maxdepth 1 | head -1)
+
+          if [ -n "$APP" ]; then
+            echo "Signing app bundle: $APP"
+            codesign --deep --force --sign - "$APP"
+          fi
+          if [ -n "$DMG" ]; then
+            echo "Signing DMG: $DMG"
+            codesign --sign - "$DMG"
+          fi
+          echo "✓ Ad-hoc signing complete"
 
       # ── 7. Locate the installer produced by the bundler ────────────────────
       - name: Locate installer artifact
