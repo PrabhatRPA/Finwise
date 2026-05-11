@@ -73,6 +73,7 @@ class StockAnalysisAgent(AIAgent):
         prompt = get_stock_analysis_prompt(
             ticker=ticker,
             company_name=company_name,
+            price_data=price_data,
         )
         response = self.generate_response(prompt, system_prompt=STOCK_ANALYSIS_SYSTEM_PROMPT)
         return {

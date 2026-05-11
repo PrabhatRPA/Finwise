@@ -31,12 +31,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false)
       return
     }
-    authApi.me()
-      .then((res) => setUser(res.data))
-      .catch(() => {
+
+    let cancelled = false
+    // The packaged desktop app spawns the backend sidecar on launch; it can
+    // take up to ~20 s to extract and start.  Retry on network errors rather
+    // than invalidating a perfectly good token just because the server isn't
+    // listening yet.
+    const tryAuth = async (attemptsLeft: number) => {
+      try {
+        const res = await authApi.me()
+        if (!cancelled) setUser(res.data)
+      } catch (err: any) {
+        if (cancelled) return
+        const isNetworkError = !err.response          // no HTTP response = server unreachable
+        if (isNetworkError && attemptsLeft > 0) {
+          await new Promise(r => setTimeout(r, 2000))
+          return tryAuth(attemptsLeft - 1)
+        }
+        // Actual auth failure (401/403) or retries exhausted → clear token
         localStorage.removeItem('token')
-      })
-      .finally(() => setIsLoading(false))
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    tryAuth(15)  // retry up to 15 × 2 s = 30 s before giving up
+    return () => { cancelled = true }
   }, [])
 
   const login = async (username: string, password: string) => {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { aiApi } from '@/lib/api'
@@ -11,8 +12,68 @@ interface AIAnalysisCardProps {
 
 function ResultBox({ text }: { text: string }) {
   return (
-    <div className="mt-4 p-4 bg-muted rounded-md text-sm whitespace-pre-wrap">
-      {text}
+    <div className="mt-4 p-4 bg-muted rounded-md text-sm overflow-auto max-h-[70vh]">
+      <ReactMarkdown
+        components={{
+          h1: ({ children }) => <h1 className="text-base font-bold mt-4 mb-1">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-sm font-bold mt-4 mb-1 text-primary">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-sm font-semibold mt-3 mb-1">{children}</h3>,
+          p: ({ children }) => <p className="mb-2 leading-relaxed">{children}</p>,
+          ul: ({ children }) => <ul className="list-disc pl-5 mb-2 space-y-0.5">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-5 mb-2 space-y-0.5">{children}</ol>,
+          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+          table: ({ children }) => (
+            <div className="overflow-x-auto my-3">
+              <table className="w-full text-xs border-collapse">{children}</table>
+            </div>
+          ),
+          thead: ({ children }) => <thead className="bg-muted-foreground/10">{children}</thead>,
+          th: ({ children }) => <th className="border border-border px-2 py-1 text-left font-semibold">{children}</th>,
+          td: ({ children }) => <td className="border border-border px-2 py-1">{children}</td>,
+          hr: () => <hr className="my-3 border-border" />,
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-2 border-primary pl-3 italic text-muted-foreground my-2">
+              {children}
+            </blockquote>
+          ),
+          code: ({ children }) => (
+            <code className="bg-background px-1 py-0.5 rounded text-xs font-mono">{children}</code>
+          ),
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    </div>
+  )
+}
+
+// Reusable styled input with full dark-mode support
+function Field({
+  label, type = 'text', value, onChange, placeholder, disabled, onKeyDown,
+}: {
+  label?: string
+  type?: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  disabled?: boolean
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
+}) {
+  return (
+    <div>
+      {label && <label className="text-sm font-medium block mb-1">{label}</label>}
+      <input
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onKeyDown={onKeyDown}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground
+                   placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2
+                   focus:ring-ring disabled:opacity-50"
+      />
     </div>
   )
 }
@@ -158,38 +219,27 @@ function AIProviderSettings() {
         {/* Credential fields */}
         <div className="grid gap-3 sm:grid-cols-2">
           {isCloud ? (
-            <div>
-              <label className="text-sm font-medium block mb-1">API Key</label>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={e => setApiKey(e.target.value)}
-                placeholder={keySet ? '••••••••  (already set)' : 'sk-…'}
-                className="w-full px-3 py-2 border rounded-md text-sm"
-              />
-            </div>
-          ) : (
-            <div>
-              <label className="text-sm font-medium block mb-1">Host URL</label>
-              <input
-                type="text"
-                value={host}
-                onChange={e => setHost(e.target.value)}
-                placeholder={selected === 'ollama' ? 'http://localhost:11434' : 'http://localhost:1234'}
-                className="w-full px-3 py-2 border rounded-md text-sm"
-              />
-            </div>
-          )}
-          <div>
-            <label className="text-sm font-medium block mb-1">Model</label>
-            <input
-              type="text"
-              value={model}
-              onChange={e => setModel(e.target.value)}
-              placeholder={meta.placeholder}
-              className="w-full px-3 py-2 border rounded-md text-sm"
+            <Field
+              label="API Key"
+              type="password"
+              value={apiKey}
+              onChange={setApiKey}
+              placeholder={keySet ? '••••••••  (already set)' : 'sk-…'}
             />
-          </div>
+          ) : (
+            <Field
+              label="Host URL"
+              value={host}
+              onChange={setHost}
+              placeholder={selected === 'ollama' ? 'http://localhost:11434' : 'http://localhost:1234'}
+            />
+          )}
+          <Field
+            label="Model"
+            value={model}
+            onChange={setModel}
+            placeholder={meta.placeholder}
+          />
         </div>
 
         {/* Actions */}
@@ -232,12 +282,19 @@ export function AIAnalysisCard({ holdings }: AIAnalysisCardProps) {
       // Send full holdings so the backend can build the detailed prompt
       const payload = holdings.map((h: any) => ({
         ticker: h.ticker,
+        security_name: h.security_name,
+        security_type: h.security_type,
         shares: h.shares,
         average_cost: h.average_cost,
         current_price: h.current_price,
         current_value: h.current_value,
         total_gain_loss: h.total_gain_loss,
+        total_gain_loss_percent: h.total_gain_loss_percent,
+        today_gain_loss: h.today_gain_loss,
+        today_gain_loss_percent: h.today_gain_loss_percent,
         sector: h.sector,
+        industry: h.industry,
+        dividend_yield: h.dividend_yield,
       }))
 
       const response = await aiApi.portfolioAnalysis(payload)
@@ -315,18 +372,14 @@ export function AIAnalysisCard({ holdings }: AIAnalysisCardProps) {
         <Card>
           <CardHeader><CardTitle>Stock Analysis</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <div>
-              <label className="text-sm font-medium">Enter Ticker Symbol</label>
-              <input
-                type="text"
-                value={stockTicker}
-                onChange={e => setStockTicker(e.target.value.toUpperCase())}
-                onKeyDown={e => e.key === 'Enter' && !stockLoading && stockTicker.trim() && analyzeStock()}
-                placeholder="e.g. AAPL, MSFT, VTI"
-                className="w-full px-3 py-2 border rounded-md mt-1 text-sm"
-                disabled={stockLoading}
-              />
-            </div>
+            <Field
+              label="Enter Ticker Symbol"
+              value={stockTicker}
+              onChange={v => setStockTicker(v.toUpperCase())}
+              onKeyDown={e => e.key === 'Enter' && !stockLoading && stockTicker.trim() && analyzeStock()}
+              placeholder="e.g. AAPL, MSFT, VTI"
+              disabled={stockLoading}
+            />
             <Button
               onClick={analyzeStock}
               disabled={stockLoading || !stockTicker.trim()}

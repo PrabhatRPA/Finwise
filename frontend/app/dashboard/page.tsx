@@ -47,7 +47,7 @@ export default function DashboardPage() {
     }
   }, [authLoading, isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fetchData = async (silent = false) => {
+  const fetchData = async (silent = false, _retries = 8) => {
     if (silent) {
       setIsRefreshing(true)
     } else {
@@ -68,7 +68,13 @@ export default function DashboardPage() {
       setNetWorthData(netWorthResp.data)
 
       netWorthApi.createRecord().catch(() => {})
-    } catch (error) {
+    } catch (error: any) {
+      // On desktop the sidecar backend may still be warming up — retry on
+      // network errors so the user never has to click Refresh manually.
+      if (!error.response && _retries > 0) {
+        setTimeout(() => fetchData(silent, _retries - 1), 2500)
+        return
+      }
       console.error('Error fetching data:', error)
     } finally {
       setIsLoading(false)

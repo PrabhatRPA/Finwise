@@ -324,38 +324,117 @@ Keep the analysis concise (300-500 words).
 """
 
 
-def get_stock_analysis_prompt(ticker: str, company_name: str = None) -> str:
-    """Return the stock analysis user prompt for the given ticker."""
-    return STOCK_ANALYSIS_USER_PROMPT.format(
+def get_stock_analysis_prompt(
+    ticker: str,
+    company_name: str = None,
+    price_data: dict = None,
+) -> str:
+    """Return the stock analysis user prompt for the given ticker, prepending live market data."""
+    name = company_name or (price_data.get("company_name") if price_data else None) or ticker
+
+    # Build a live-data preamble from whatever the market API returned
+    if price_data:
+        p = price_data
+        prev_close = p.get("previous_close") or 0
+        current = p.get("price") or 0
+        day_chg = current - prev_close if prev_close else 0
+        day_chg_pct = (day_chg / prev_close * 100) if prev_close else 0
+
+        live_lines = [
+            "## LIVE MARKET DATA (use these exact figures in Section 1 — do not invent or estimate them)",
+            f"- Ticker: {ticker}",
+            f"- Company: {name}",
+        ]
+        if p.get("sector"):
+            live_lines.append(f"- Sector: {p['sector']}")
+        if p.get("industry"):
+            live_lines.append(f"- Industry: {p['industry']}")
+        if current:
+            live_lines.append(f"- Current Price: ${current:.2f}")
+        if prev_close:
+            live_lines.append(
+                f"- Today's Change: {'+' if day_chg >= 0 else ''}${day_chg:.2f} "
+                f"({'+' if day_chg_pct >= 0 else ''}{day_chg_pct:.2f}%)"
+            )
+        if p.get("open"):
+            live_lines.append(f"- Open: ${p['open']:.2f}")
+        if p.get("high") and p.get("low"):
+            live_lines.append(f"- Today's High / Low: ${p['high']:.2f} / ${p['low']:.2f}")
+        if p.get("volume"):
+            live_lines.append(f"- Volume: {int(p['volume']):,}")
+        if p.get("market_cap"):
+            mc = p["market_cap"]
+            mc_str = f"${mc/1e12:.2f}T" if mc >= 1e12 else f"${mc/1e9:.2f}B"
+            live_lines.append(f"- Market Cap: {mc_str}")
+        if p.get("pe_ratio"):
+            live_lines.append(f"- P/E Ratio: {p['pe_ratio']:.2f}")
+        if p.get("dividend_yield"):
+            live_lines.append(f"- Dividend Yield: {p['dividend_yield']:.2f}%")
+        if p.get("fifty_two_week_high") and p.get("fifty_two_week_low"):
+            live_lines.append(
+                f"- 52-Week High / Low: ${p['fifty_two_week_high']:.2f} / ${p['fifty_two_week_low']:.2f}"
+            )
+
+        preamble = "\n".join(live_lines) + "\n\n"
+    else:
+        preamble = ""
+
+    return preamble + STOCK_ANALYSIS_USER_PROMPT.format(
         ticker=ticker,
-        company_name=company_name or ticker,
+        company_name=name,
     )
 
 
 def get_portfolio_analysis_prompt(holdings: list) -> str:
     """
-    Format holdings into the portfolio analysis user prompt.
-    Each holding dict should have: ticker, shares, average_cost, current_price, current_value.
+    Format holdings into the portfolio analysis user prompt with full detail.
     """
+    total_value = sum(h.get("current_value") or 0 for h in holdings)
+    total_cost  = sum((h.get("shares") or 0) * (h.get("average_cost") or 0) for h in holdings)
+    total_gain  = total_value - total_cost
+
     lines = []
     for h in holdings:
-        ticker = h.get("ticker", "?")
-        shares = h.get("shares", 0)
-        avg_cost = h.get("average_cost") or h.get("avg_cost")
-        current_price = h.get("current_price")
-        current_value = h.get("current_value")
+        ticker        = h.get("ticker", "?")
+        shares        = h.get("shares") or 0
+        avg_cost      = h.get("average_cost") or h.get("avg_cost") or 0
+        current_price = h.get("current_price") or 0
+        current_value = h.get("current_value") or 0
+        cost_basis    = shares * avg_cost
+        gain          = current_value - cost_basis
+        gain_pct      = (gain / cost_basis * 100) if cost_basis else 0
+        alloc_pct     = (current_value / total_value * 100) if total_value else 0
+        today_gain    = h.get("today_gain_loss") or 0
+        today_pct     = h.get("today_gain_loss_percent") or 0
+        sector        = h.get("sector") or "Unknown"
+        industry      = h.get("industry") or ""
+        sec_type      = h.get("security_type") or "stock"
+        div_yield     = h.get("dividend_yield") or 0
+        company       = h.get("security_name") or h.get("company_name") or ticker
 
-        line = f"{ticker} - {shares} shares"
-        if avg_cost:
-            line += f" - ${avg_cost:.2f} avg cost"
-        if current_price:
-            line += f" (current: ${current_price:.2f}"
-            if current_value:
-                line += f", value: ${current_value:,.2f}"
-            line += ")"
-        lines.append(line)
+        parts = [
+            f"**{ticker}** ({company})",
+            f"  Type: {sec_type.upper()}",
+            f"  Sector: {sector}" + (f" / {industry}" if industry else ""),
+            f"  Shares: {shares:g}  |  Avg Cost: ${avg_cost:.2f}  |  Current Price: ${current_price:.2f}",
+            f"  Market Value: ${current_value:,.2f}  |  Portfolio Weight: {alloc_pct:.1f}%",
+            f"  Unrealized G/L: {'+'if gain>=0 else ''}${gain:,.2f} ({'+' if gain_pct>=0 else ''}{gain_pct:.1f}%)",
+            f"  Today's G/L: {'+'if today_gain>=0 else ''}${today_gain:,.2f} ({'+' if today_pct>=0 else ''}{today_pct:.2f}%)",
+        ]
+        if div_yield:
+            parts.append(f"  Dividend Yield: {div_yield:.2f}%")
+        lines.append("\n".join(parts))
 
-    holdings_text = "\n".join(lines) if lines else "No holdings provided."
+    summary = (
+        f"**Portfolio Summary**\n"
+        f"  Total Market Value: ${total_value:,.2f}\n"
+        f"  Total Cost Basis:   ${total_cost:,.2f}\n"
+        f"  Total Unrealized G/L: {'+'if total_gain>=0 else ''}${total_gain:,.2f} "
+        f"({'+' if total_gain/total_cost*100>=0 else ''}{total_gain/total_cost*100:.1f}% overall)\n"
+        f"  Number of Positions: {len(holdings)}\n"
+    ) if total_cost else ""
+
+    holdings_text = summary + "\n---\n\n" + "\n\n".join(lines) if lines else "No holdings provided."
     return PORTFOLIO_ANALYSIS_USER_PROMPT.format(portfolio_holdings=holdings_text)
 
 
