@@ -73,14 +73,14 @@ jobs:
         shell: bash
         working-directory: backend
         run: |
-          pip install --upgrade pip
-          pip install pyinstaller
-          pip install -r requirements.txt
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller
+          python -m pip install -r requirements.txt
 
       - name: PyInstaller — package backend
         shell: bash
         working-directory: backend
-        run: pyinstaller backend.spec --clean --noconfirm
+        run: python -m PyInstaller backend.spec --clean --noconfirm
 
       - name: Place sidecar in Tauri binaries folder
         shell: bash
@@ -103,7 +103,9 @@ jobs:
       - name: Build Next.js (static export)
         shell: bash
         working-directory: frontend
-        run: NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1 npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+        run: npm run build
 
       # ── 6. Build the Tauri desktop app ─────────────────────────────────────
       - name: Build Tauri app
