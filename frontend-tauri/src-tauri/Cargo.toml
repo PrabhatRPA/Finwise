@@ -1,6 +1,6 @@
 [package]
 name = "finwise"
-version = "1.0.0"
+version = "1.1.0"
 description = "Finwise — Privacy-first personal finance dashboard"
 authors = ["Personal Finance Team"]
 license = "MIT"

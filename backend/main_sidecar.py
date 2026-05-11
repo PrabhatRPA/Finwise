@@ -37,6 +37,17 @@ def main() -> None:
         if bundle_dir not in sys.path:
             sys.path.insert(0, bundle_dir)
 
+        # Fix SSL certificate lookup — requests/yfinance need the CA bundle.
+        # PyInstaller strips the path that certifi normally resolves at runtime,
+        # so we point SSL_CERT_FILE at the copy we bundled in the spec.
+        try:
+            import certifi
+            cert_file = certifi.where()
+            os.environ.setdefault("SSL_CERT_FILE", cert_file)
+            os.environ.setdefault("REQUESTS_CA_BUNDLE", cert_file)
+        except Exception:
+            pass
+
     import uvicorn
     from app.main import app as fastapi_app  # noqa: PLC0415  (deferred import intentional)
 

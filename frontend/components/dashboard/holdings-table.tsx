@@ -5,14 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { formatCurrency } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 import { holdingsApi } from '@/lib/api'
 import { usePortfolioStore } from '@/lib/store'
 
 interface HoldingsTableProps {
   holdings: any[]
   onHoldingAdded?: () => void
+  searchQuery?: string
 }
 
 const SECURITY_TYPES = ['stock', 'etf', 'bond', 'crypto', 'reit', 'mutual_fund']
@@ -27,10 +27,10 @@ const EMPTY_FORM = {
 
 type FormState = typeof EMPTY_FORM
 
-export function HoldingsTable({ holdings, onHoldingAdded }: HoldingsTableProps) {
+export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: HoldingsTableProps) {
   const { accounts, totalValue } = usePortfolioStore()
 
-  type SortField = 'ticker' | 'type' | 'shares' | 'avg_cost' | 'price' | 'value' | 'gain' | 'allocation'
+  type SortField = 'ticker' | 'type' | 'shares' | 'avg_cost' | 'price' | 'value' | 'today_gain' | 'gain' | 'allocation'
   const [sortBy, setSortBy] = useState<SortField>('ticker')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
@@ -42,8 +42,18 @@ export function HoldingsTable({ holdings, onHoldingAdded }: HoldingsTableProps) 
   const [error, setError] = useState('')
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
 
+  // ── Filter by search query ───────────────────────────────────
+  const q = searchQuery.trim().toLowerCase()
+  const filtered = q
+    ? holdings.filter(h =>
+        (h.ticker || '').toLowerCase().includes(q) ||
+        (h.company_name || '').toLowerCase().includes(q) ||
+        (h.security_type || '').toLowerCase().includes(q)
+      )
+    : holdings
+
   // ── Sorting ─────────────────────────────────────────────────
-  const sorted = [...holdings].sort((a, b) => {
+  const sorted = [...filtered].sort((a, b) => {
     let va: any, vb: any
     switch (sortBy) {
       case 'ticker':   va = a.ticker || '';                      vb = b.ticker || ''; break
@@ -52,6 +62,7 @@ export function HoldingsTable({ holdings, onHoldingAdded }: HoldingsTableProps) 
       case 'avg_cost': va = a.average_cost ?? 0;                 vb = b.average_cost ?? 0; break
       case 'price':    va = a.current_price ?? 0;                vb = b.current_price ?? 0; break
       case 'value':    va = a.current_value ?? 0;                vb = b.current_value ?? 0; break
+      case 'today_gain': va = a.today_gain_loss_percent ?? 0;                             vb = b.today_gain_loss_percent ?? 0; break
       case 'gain':       va = a.total_gain_loss_percent ?? 0;                              vb = b.total_gain_loss_percent ?? 0; break
       case 'allocation': va = totalValue > 0 ? (a.current_value ?? 0) / totalValue : 0; vb = totalValue > 0 ? (b.current_value ?? 0) / totalValue : 0; break
     }
@@ -68,10 +79,19 @@ export function HoldingsTable({ holdings, onHoldingAdded }: HoldingsTableProps) 
   const sortIcon = (field: SortField) =>
     sortBy === field ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''
 
-  const gainBadge = (pct: number) => {
-    if (pct > 0) return <Badge variant="outline" className="text-green-600 border-green-600">+{pct.toFixed(2)}%</Badge>
-    if (pct < 0) return <Badge variant="outline" className="text-red-600 border-red-600">{pct.toFixed(2)}%</Badge>
-    return <Badge variant="outline">0%</Badge>
+  const gainCell = (pct: number, dollar: number) => {
+    const colorClass = pct > 0
+      ? 'text-emerald-600 dark:text-emerald-400'
+      : pct < 0
+        ? 'text-red-600 dark:text-red-400'
+        : 'text-muted-foreground'
+    const sign = pct > 0 ? '+' : ''
+    return (
+      <div className={`text-right ${colorClass}`}>
+        <div className="text-sm font-medium">{sign}{pct.toFixed(2)}%</div>
+        <div className="text-xs opacity-75">{sign}{formatCurrency(dollar)}</div>
+      </div>
+    )
   }
 
   // ── Modal open/close ─────────────────────────────────────────
@@ -160,6 +180,12 @@ export function HoldingsTable({ holdings, onHoldingAdded }: HoldingsTableProps) 
     }
   }
 
+  // ── Today's portfolio P&L summary (computed from all holdings) ──────────
+  const todayGainTotal = holdings.reduce((sum, h) => sum + (h.today_gain_loss ?? 0), 0)
+  const prevPortfolioValue = holdings.reduce((sum, h) => sum + Math.max(0, (h.current_value ?? 0) - (h.today_gain_loss ?? 0)), 0)
+  const todayGainPct = prevPortfolioValue > 0 ? (todayGainTotal / prevPortfolioValue) * 100 : 0
+  const hasTodayData = holdings.some(h => (h.today_gain_loss_percent ?? 0) !== 0)
+
   // ── Render ────────────────────────────────────────────────
   return (
     <>
@@ -167,10 +193,10 @@ export function HoldingsTable({ holdings, onHoldingAdded }: HoldingsTableProps) 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={closeModal} />
-          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+          <div className="relative bg-card text-card-foreground border border-border rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xl font-bold">{editingId ? 'Edit Holding' : 'Add Holding'}</h2>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 text-2xl leading-none" aria-label="Close">×</button>
+              <button onClick={closeModal} className="text-muted-foreground hover:text-foreground text-2xl leading-none" aria-label="Close">×</button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -218,7 +244,7 @@ export function HoldingsTable({ holdings, onHoldingAdded }: HoldingsTableProps) 
                 <select
                   value={form.security_type}
                   onChange={setField('security_type')}
-                  className="border rounded-md p-2 w-full text-sm"
+                  className="border border-input rounded-md p-2 w-full text-sm bg-background text-foreground"
                 >
                   {SECURITY_TYPES.map(t => (
                     <option key={t} value={t}>{t.replace('_', ' ').toUpperCase()}</option>
@@ -231,7 +257,7 @@ export function HoldingsTable({ holdings, onHoldingAdded }: HoldingsTableProps) 
                 <select
                   value={form.account_id}
                   onChange={setField('account_id')}
-                  className="border rounded-md p-2 w-full text-sm"
+                  className="border border-input rounded-md p-2 w-full text-sm bg-background text-foreground"
                 >
                   <option value="">N/A — no account</option>
                   {accounts.map(a => (
@@ -241,7 +267,7 @@ export function HoldingsTable({ holdings, onHoldingAdded }: HoldingsTableProps) 
               </div>
 
               {form.shares && form.average_cost && (
-                <div className="text-sm text-muted-foreground bg-gray-50 rounded-md p-3">
+                <div className="text-sm text-muted-foreground bg-muted rounded-md p-3">
                   Cost basis:{' '}
                   <span className="font-semibold text-foreground">
                     {formatCurrency(Number(form.shares) * Number(form.average_cost))}
@@ -270,6 +296,34 @@ export function HoldingsTable({ holdings, onHoldingAdded }: HoldingsTableProps) 
           <CardTitle>Holdings</CardTitle>
           <Button onClick={openAdd} size="sm">+ Add Holding</Button>
         </CardHeader>
+
+        {/* ── Today's total P&L banner ── */}
+        {hasTodayData && (
+          <div className="px-6 pb-3">
+            <div className={cn(
+              'flex items-center gap-3 px-4 py-2.5 rounded-lg border text-sm',
+              todayGainTotal >= 0
+                ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'
+                : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
+            )}>
+              <span className="text-muted-foreground font-medium">Today&apos;s Portfolio P&amp;L</span>
+              <span className={cn(
+                'text-base font-bold',
+                todayGainTotal >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+              )}>
+                {todayGainTotal >= 0 ? '+' : ''}{formatCurrency(todayGainTotal)}
+              </span>
+              <span className={cn(
+                'font-medium',
+                todayGainTotal >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+              )}>
+                ({todayGainTotal >= 0 ? '+' : ''}{todayGainPct.toFixed(2)}%)
+              </span>
+              <span className="text-xs text-muted-foreground ml-auto">vs. yesterday&apos;s close</span>
+            </div>
+          </div>
+        )}
+
         <CardContent>
           <div className="rounded-md border">
             <Table>
@@ -293,8 +347,11 @@ export function HoldingsTable({ holdings, onHoldingAdded }: HoldingsTableProps) 
                   <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('value')}>
                     Value{sortIcon('value')}
                   </TableHead>
+                  <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('today_gain')}>
+                    Today{sortIcon('today_gain')}
+                  </TableHead>
                   <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('gain')}>
-                    Gain/Loss{sortIcon('gain')}
+                    Total Gain/Loss{sortIcon('gain')}
                   </TableHead>
                   <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('allocation')}>
                     Allocation{sortIcon('allocation')}
@@ -305,11 +362,14 @@ export function HoldingsTable({ holdings, onHoldingAdded }: HoldingsTableProps) 
               <TableBody>
                 {sorted.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
-                      No holdings yet.{' '}
-                      <button onClick={openAdd} className="underline text-primary hover:text-primary/80">
-                        Add your first holding
-                      </button>
+                    <TableCell colSpan={10} className="text-center py-10 text-muted-foreground">
+                      {q ? `No holdings match "${searchQuery}".` : (
+                        <>No holdings yet.{' '}
+                          <button onClick={openAdd} className="underline text-primary hover:text-primary/80">
+                            Add your first holding
+                          </button>
+                        </>
+                      )}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -317,17 +377,30 @@ export function HoldingsTable({ holdings, onHoldingAdded }: HoldingsTableProps) 
                     <TableRow key={h.id ?? h.ticker}>
                       <TableCell className="font-medium">{h.ticker}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="capitalize">{h.security_type || 'stock'}</Badge>
+                        <span className="capitalize text-xs border border-border rounded-full px-2 py-0.5 text-muted-foreground">
+                          {h.security_type || 'stock'}
+                        </span>
                       </TableCell>
                       <TableCell className="text-right">{h.shares ?? 0}</TableCell>
                       <TableCell className="text-right">{formatCurrency(h.average_cost ?? 0)}</TableCell>
                       <TableCell className="text-right">
-                        {h.current_price > 0
-                          ? formatCurrency(h.current_price)
-                          : <span className="text-muted-foreground text-xs">fetching…</span>}
+                        {h.current_price > 0 ? (
+                          <span className={
+                            (h.total_gain_loss_percent ?? 0) > 0
+                              ? 'text-emerald-600 dark:text-emerald-400 font-medium'
+                              : (h.total_gain_loss_percent ?? 0) < 0
+                                ? 'text-red-600 dark:text-red-400 font-medium'
+                                : ''
+                          }>
+                            {formatCurrency(h.current_price)}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">fetching…</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right font-medium">{formatCurrency(h.current_value ?? 0)}</TableCell>
-                      <TableCell className="text-right">{gainBadge(h.total_gain_loss_percent ?? 0)}</TableCell>
+                      <TableCell className="text-right">{gainCell(h.today_gain_loss_percent ?? 0, h.today_gain_loss ?? 0)}</TableCell>
+                      <TableCell className="text-right">{gainCell(h.total_gain_loss_percent ?? 0, h.total_gain_loss ?? 0)}</TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">
                         {totalValue > 0 ? ((h.current_value ?? 0) / totalValue * 100).toFixed(1) + '%' : '—'}
                       </TableCell>
@@ -342,7 +415,7 @@ export function HoldingsTable({ holdings, onHoldingAdded }: HoldingsTableProps) 
                           <button
                             onClick={() => handleDelete(h)}
                             disabled={deletingId === h.id}
-                            className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40 text-lg leading-none px-1"
+                            className="text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-40 text-lg leading-none px-1"
                             aria-label={`Delete ${h.ticker}`}
                           >
                             {deletingId === h.id ? '…' : '×'}

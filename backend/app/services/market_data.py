@@ -6,7 +6,7 @@ Fetches and caches stock market data using free APIs
 import os
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time as _time
 from typing import Optional, Dict, List, Any
 from pathlib import Path
 
@@ -22,6 +22,27 @@ from app.core.config import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _us_market_open() -> bool:
+    """Returns True if the US stock market is currently open (9:30–16:00 ET, Mon–Fri)."""
+    try:
+        from zoneinfo import ZoneInfo
+        now_et = datetime.now(ZoneInfo("America/New_York"))
+    except ImportError:
+        # Python < 3.9 fallback: approximate ET as UTC-4 (EDT)
+        now_et = datetime.utcnow() - timedelta(hours=4)
+
+    if now_et.weekday() >= 5:  # Saturday=5, Sunday=6
+        return False
+
+    market_open = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+    market_close = now_et.replace(hour=16, minute=0, second=0, microsecond=0)
+    # Strip tzinfo for comparison if fallback path used naive datetime
+    t = now_et.replace(tzinfo=None) if now_et.tzinfo is None else now_et
+    o = market_open.replace(tzinfo=None) if market_open.tzinfo is None else market_open
+    c = market_close.replace(tzinfo=None) if market_close.tzinfo is None else market_close
+    return o <= t <= c
 
 
 class MarketDataService:
@@ -55,14 +76,15 @@ class MarketDataService:
             else:
                 del self._price_cache[ticker]  # evict bad/zero-price entries
 
-        # Check file cache
+        # Check file cache — short TTL during US market hours, longer otherwise
         cache_file = self.cache_dir / f"{ticker}.json"
         if cache_file.exists():
             try:
                 with open(cache_file, "r") as f:
                     cached = json.load(f)
                     cache_time = datetime.fromisoformat(cached.get("timestamp", "1970-01-01"))
-                    if datetime.now() - cache_time < timedelta(hours=1):
+                    ttl = timedelta(minutes=5) if _us_market_open() else timedelta(hours=4)
+                    if datetime.now() - cache_time < ttl:
                         logger.info(f"Using cached price for {ticker}")
                         self._price_cache[ticker] = cached
                         return cached

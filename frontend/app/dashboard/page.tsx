@@ -23,13 +23,18 @@ import { PropertiesTable } from '@/components/dashboard/properties-table'
 export default function DashboardPage() {
   const router = useRouter()
   const { isAuthenticated, isLoading: authLoading } = useAuth()
-  const [isLoading, setIsLoading] = useState(true)
+  const { holdings, accounts, totalValue, setHoldings, calculatePortfolio } = usePortfolioStore()
+
+  // Only block the page on the very first load (store is empty).
+  // On subsequent visits (e.g. returning from /documents) the store has data,
+  // so we show it immediately and refresh prices silently in the background.
+  const [isLoading, setIsLoading] = useState(holdings.length === 0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [netWorthData, setNetWorthData] = useState<any>(null)
   const [showBalanceModal, setShowBalanceModal] = useState(false)
   const [balanceEdits, setBalanceEdits] = useState<Record<number, string>>({})
   const [savingBalances, setSavingBalances] = useState(false)
-  const { holdings, accounts, totalValue, setHoldings, calculatePortfolio } = usePortfolioStore()
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -37,12 +42,17 @@ export default function DashboardPage() {
       return
     }
     if (!authLoading && isAuthenticated) {
-      fetchData()
+      // silent=true → don't show full-page spinner when store already has data
+      fetchData(holdings.length > 0)
     }
   }, [authLoading, isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fetchData = async () => {
-    setIsLoading(true)
+  const fetchData = async (silent = false) => {
+    if (silent) {
+      setIsRefreshing(true)
+    } else {
+      setIsLoading(true)
+    }
     try {
       const holdingsResp = await holdingsApi.getAll()
       setHoldings(holdingsResp.data.holdings ?? [])
@@ -62,6 +72,7 @@ export default function DashboardPage() {
       console.error('Error fetching data:', error)
     } finally {
       setIsLoading(false)
+      setIsRefreshing(false)
     }
   }
 
@@ -167,7 +178,14 @@ export default function DashboardPage() {
           <Button variant="outline" size="sm" onClick={() => router.push('/documents')}>
             Upload Documents
           </Button>
-          <Button size="sm" onClick={fetchData}>Refresh</Button>
+          <Button size="sm" onClick={() => fetchData(false)} disabled={isRefreshing}>
+            {isRefreshing ? (
+              <span className="flex items-center gap-1.5">
+                <span className="animate-spin h-3 w-3 border border-current border-t-transparent rounded-full inline-block" />
+                Updating…
+              </span>
+            ) : 'Refresh'}
+          </Button>
         </div>
       </header>
 
@@ -276,7 +294,7 @@ export default function DashboardPage() {
         </TabsList>
 
         <TabsContent value="holdings" className="space-y-4">
-          <HoldingsTable holdings={holdings} onHoldingAdded={fetchData} />
+          <HoldingsTable holdings={holdings} onHoldingAdded={fetchData} searchQuery={searchQuery} />
         </TabsContent>
 
         <TabsContent value="watchlist" className="space-y-4">

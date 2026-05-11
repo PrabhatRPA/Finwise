@@ -77,6 +77,8 @@ def holding_to_dict(holding: models.Holding) -> dict:
         "current_value": float(holding.current_value) if holding.current_value else 0,
         "total_gain_loss": float(holding.total_gain_loss) if holding.total_gain_loss else 0,
         "total_gain_loss_percent": float(holding.total_gain_loss_percent) if holding.total_gain_loss_percent else 0,
+        "today_gain_loss": 0.0,
+        "today_gain_loss_percent": 0.0,
         "dividend_yield": float(holding.dividend_yield) if holding.dividend_yield else 0,
         "sector": holding.sector,
         "industry": holding.industry,
@@ -114,15 +116,28 @@ async def get_holdings(
             price = prices[h.ticker]
             if price:
                 current_price = price.get("price", 0)
+                prev_close = price.get("previous_close", 0) or 0
+                shares = data["shares"]
+                avg_cost = data["average_cost"]
+
                 data["current_price"] = current_price
-                data["current_value"] = round(data["shares"] * current_price, 2)
+                data["current_value"] = round(shares * current_price, 2)
                 data["total_gain_loss"] = round(
-                    data["current_value"] - (data["shares"] * data["average_cost"]), 2
+                    data["current_value"] - (shares * avg_cost), 2
                 )
-                if data["average_cost"]:
+                if avg_cost:
                     data["total_gain_loss_percent"] = round(
-                        (data["total_gain_loss"] / (data["shares"] * data["average_cost"])) * 100, 2
+                        (data["total_gain_loss"] / (shares * avg_cost)) * 100, 2
                     )
+
+                # Today's gain/loss (vs. previous close)
+                if prev_close > 0:
+                    today_price_change = current_price - prev_close
+                    data["today_gain_loss"] = round(today_price_change * shares, 2)
+                    data["today_gain_loss_percent"] = round(
+                        (today_price_change / prev_close) * 100, 2
+                    )
+
                 # Update database with latest price
                 h.current_price = current_price
                 h.current_value = data["current_value"]

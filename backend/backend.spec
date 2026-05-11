@@ -6,6 +6,8 @@
 #
 # Output: dist/backend  (dist/backend.exe on Windows)
 
+import certifi as _certifi
+
 a = Analysis(
     ["main_sidecar.py"],
     pathex=["."],
@@ -13,6 +15,8 @@ a = Analysis(
     datas=[
         # Bundle the entire app package so all modules are available
         ("app", "app"),
+        # Bundle CA certificates so requests/yfinance can verify HTTPS in the frozen binary
+        (_certifi.where(), "certifi"),
     ],
     hiddenimports=[
         # uvicorn internals that are loaded dynamically
@@ -72,6 +76,9 @@ a = Analysis(
         "anyio",
         "anyio._backends._asyncio",
         "anyio._backends._trio",
+        # SSL / timezone
+        "certifi",
+        "zoneinfo",
         # Misc
         "dotenv",
         "email.mime.text",
