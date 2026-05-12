@@ -6,7 +6,6 @@
   "permissions": [
     "core:default",
     "shell:allow-execute",
-    "shell:allow-spawn",
-    "dialog:allow-message"
+    "shell:allow-spawn"
   ]
 }
