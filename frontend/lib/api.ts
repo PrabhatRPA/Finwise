@@ -238,6 +238,10 @@ export const netWorthApi = {
   getAllocations: () => api.get('/net-worth/allocations'),
 }
 
+export const systemApi = {
+  forceRefreshPrices: () => api.post('/refresh-prices'),
+}
+
 export interface Holding {
   id: number
   account_id: number

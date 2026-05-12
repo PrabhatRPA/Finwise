@@ -67,23 +67,24 @@ class MarketDataService:
             Dictionary with price data or None if not found
         """
         ticker = ticker.upper()
+        ttl = timedelta(minutes=5) if _us_market_open() else timedelta(hours=4)
 
-        # Check in-memory cache first (skip cached entries with no price)
+        # Check in-memory cache — enforce same TTL as file cache
         if ticker in self._price_cache:
             cached = self._price_cache[ticker]
             if cached and cached.get("price", 0) > 0:
-                return cached
-            else:
-                del self._price_cache[ticker]  # evict bad/zero-price entries
+                cache_time = datetime.fromisoformat(cached.get("timestamp", "1970-01-01"))
+                if datetime.now() - cache_time < ttl:
+                    return cached
+            del self._price_cache[ticker]  # expired or zero-price
 
-        # Check file cache — short TTL during US market hours, longer otherwise
+        # Check file cache
         cache_file = self.cache_dir / f"{ticker}.json"
         if cache_file.exists():
             try:
                 with open(cache_file, "r") as f:
                     cached = json.load(f)
                     cache_time = datetime.fromisoformat(cached.get("timestamp", "1970-01-01"))
-                    ttl = timedelta(minutes=5) if _us_market_open() else timedelta(hours=4)
                     if datetime.now() - cache_time < ttl:
                         logger.info(f"Using cached price for {ticker}")
                         self._price_cache[ticker] = cached
@@ -142,14 +143,17 @@ class MarketDataService:
         if cache_key in self._history_cache:
             return self._history_cache[cache_key]
 
-        # Check file cache
+        # Check file cache — re-fetch after 4 h during market hours, 20 h otherwise
         cache_file = self.cache_dir / f"{cache_key}.csv"
         if cache_file.exists():
             try:
-                df = pd.read_csv(cache_file, index_col=0, parse_dates=True)
-                logger.info(f"Using cached history for {ticker}")
-                self._history_cache[cache_key] = df
-                return df
+                hist_ttl = timedelta(hours=4) if _us_market_open() else timedelta(hours=20)
+                mtime = datetime.fromtimestamp(cache_file.stat().st_mtime)
+                if datetime.now() - mtime < hist_ttl:
+                    df = pd.read_csv(cache_file, index_col=0, parse_dates=True)
+                    logger.info(f"Using cached history for {ticker}")
+                    self._history_cache[cache_key] = df
+                    return df
             except Exception as e:
                 logger.error(f"Error reading history cache for {ticker}: {e}")
 
@@ -340,6 +344,19 @@ class MarketDataService:
             logger.error(f"Error fetching Stooq data for {ticker}: {e}")
 
         return None
+
+    def invalidate_cache(self, ticker: str | None = None) -> None:
+        """Force-expire cached prices so the next call fetches fresh data."""
+        if ticker:
+            t = ticker.upper()
+            self._price_cache.pop(t, None)
+            cache_file = self.cache_dir / f"{t}.json"
+            if cache_file.exists():
+                cache_file.unlink(missing_ok=True)
+        else:
+            self._price_cache.clear()
+            for f in self.cache_dir.glob("*.json"):
+                f.unlink(missing_ok=True)
 
     def batch_get_prices(self, tickers: List[str]) -> Dict[str, Optional[Dict]]:
         """

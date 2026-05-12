@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatCurrency } from '@/lib/utils'
 import { usePortfolioStore } from '@/lib/store'
-import { holdingsApi, accountsApi, netWorthApi } from '@/lib/api'
+import { holdingsApi, accountsApi, netWorthApi, systemApi } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { HoldingsTable } from '@/components/dashboard/holdings-table'
 import { AssetAllocationChart } from '@/components/dashboard/allocation-chart'
@@ -184,7 +184,7 @@ export default function DashboardPage() {
           <Button variant="outline" size="sm" onClick={() => router.push('/documents')}>
             Upload Documents
           </Button>
-          <Button size="sm" onClick={() => fetchData(false)} disabled={isRefreshing}>
+          <Button size="sm" onClick={async () => { await systemApi.forceRefreshPrices().catch(() => {}); fetchData(false) }} disabled={isRefreshing}>
             {isRefreshing ? (
               <span className="flex items-center gap-1.5">
                 <span className="animate-spin h-3 w-3 border border-current border-t-transparent rounded-full inline-block" />
