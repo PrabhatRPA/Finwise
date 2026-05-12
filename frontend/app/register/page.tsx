@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState, useEffect } from 'react'
+import { Suspense, useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
@@ -8,6 +8,39 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { APP_NAME, APP_VERSION } from '@/lib/constants'
+
+// Username and password rules (kept in sync with backend/app/api/v1/auth.py)
+const USERNAME_MIN   = 3
+const USERNAME_MAX   = 30
+const USERNAME_REGEX = /^[a-z0-9_-]+$/
+const PASSWORD_MIN   = 6
+
+function validate(field: 'username' | 'password', value: string): string {
+  if (field === 'username') {
+    if (value.length === 0) return ''
+    if (value.length < USERNAME_MIN) return `At least ${USERNAME_MIN} characters`
+    if (value.length > USERNAME_MAX) return `Max ${USERNAME_MAX} characters`
+    if (!USERNAME_REGEX.test(value.toLowerCase()))
+      return 'Only letters, numbers, hyphens and underscores'
+    return 'ok'
+  }
+  if (field === 'password') {
+    if (value.length === 0) return ''
+    if (value.length < PASSWORD_MIN) return `At least ${PASSWORD_MIN} characters`
+    return 'ok'
+  }
+  return ''
+}
+
+function HintRow({ status, msg }: { status: string; msg: string }) {
+  if (!status) return null
+  const ok = status === 'ok'
+  return (
+    <p className={`text-xs mt-1 flex items-center gap-1 ${ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+      {ok ? '✓' : '⚠'} {ok ? 'Looks good' : msg}
+    </p>
+  )
+}
 
 function AppMark() {
   return (
@@ -28,27 +61,69 @@ function RegisterForm() {
   const searchParams = useSearchParams()
   const isSetup = searchParams.get('setup') === 'true'
 
-  const [username, setUsername] = useState('')
-  const [fullName, setFullName] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
-  const [error, setError] = useState('')
+  const [username, setUsername]   = useState('')
+  const [fullName, setFullName]   = useState('')
+  const [password, setPassword]   = useState('')
+  const [confirm, setConfirm]     = useState('')
+  const [error, setError]         = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // Backend readiness — poll health until the sidecar is up
+  const [backendReady, setBackendReady] = useState(false)
+  const cancelRef = useRef(false)
+
+  useEffect(() => {
+    cancelRef.current = false
+    const check = async () => {
+      try {
+        await fetch('http://localhost:8000/health', { signal: AbortSignal.timeout(2000) })
+        if (!cancelRef.current) setBackendReady(true)
+      } catch {
+        if (!cancelRef.current) setTimeout(check, 2000)
+      }
+    }
+    check()
+    return () => { cancelRef.current = true }
+  }, [])
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) router.replace('/dashboard')
   }, [isAuthenticated, isLoading, router])
 
+  const userStatus = validate('username', username)
+  const passStatus = validate('password', password)
+  const confirmOk  = confirm.length > 0 && password === confirm
+  const canSubmit  = backendReady && !submitting
+    && userStatus === 'ok'
+    && passStatus === 'ok'
+    && confirmOk
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    if (password !== confirm) { setError('Passwords do not match'); return }
+    if (password !== confirm) { setError('Passwords do not match.'); return }
     setSubmitting(true)
     try {
-      await register(username, password, fullName || undefined)
+      await register(username.toLowerCase(), password, fullName || undefined)
       router.replace('/dashboard')
     } catch (err: any) {
-      setError(err?.response?.data?.detail ?? 'Registration failed. Please try again.')
+      const detail = err?.response?.data?.detail
+      if (!err.response) {
+        // Network error — backend still warming up, retry once after 3 s
+        setError('Backend is still starting. Retrying in 3 seconds…')
+        setTimeout(async () => {
+          try {
+            await register(username.toLowerCase(), password, fullName || undefined)
+            router.replace('/dashboard')
+          } catch (err2: any) {
+            setError(err2?.response?.data?.detail ?? 'Registration failed. Please try again.')
+          } finally {
+            setSubmitting(false)
+          }
+        }, 3000)
+        return
+      }
+      setError(typeof detail === 'string' ? detail : 'Registration failed. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -80,9 +155,21 @@ function RegisterForm() {
             <h2 className="text-base font-semibold mb-4 text-center">
               {isSetup ? 'Welcome! Create your account' : 'Create account'}
             </h2>
+
+            {/* Backend warming up notice */}
+            {!backendReady && (
+              <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground bg-muted rounded-md px-3 py-2">
+                <span className="animate-spin">⏳</span>
+                Starting up… the form will unlock in a moment.
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-3">
+              {/* Full name */}
               <div>
-                <label className="text-sm font-medium block mb-1">Full name <span className="text-muted-foreground font-normal">(optional)</span></label>
+                <label className="text-sm font-medium block mb-1">
+                  Full name <span className="text-muted-foreground font-normal">(optional)</span>
+                </label>
                 <Input
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
@@ -90,29 +177,59 @@ function RegisterForm() {
                   autoComplete="name"
                 />
               </div>
+
+              {/* Username */}
               <div>
-                <label className="text-sm font-medium block mb-1">Username <span className="text-destructive">*</span></label>
+                <label className="text-sm font-medium block mb-1">
+                  Username <span className="text-destructive">*</span>
+                </label>
                 <Input
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="choose-a-username"
+                  onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                  placeholder="e.g. john_doe"
                   autoComplete="username"
-                  required minLength={3}
+                  required
                 />
+                <HintRow status={userStatus} msg={
+                  username.length > 0 && username.length < USERNAME_MIN
+                    ? `At least ${USERNAME_MIN} characters (${username.length}/${USERNAME_MIN})`
+                    : username.length > USERNAME_MAX
+                    ? `Too long — max ${USERNAME_MAX} characters`
+                    : 'Only letters, numbers, hyphens ( - ) and underscores ( _ )'
+                } />
+                {!username && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {USERNAME_MIN}–{USERNAME_MAX} chars · letters, numbers, - and _ only · lowercase
+                  </p>
+                )}
               </div>
+
+              {/* Password */}
               <div>
-                <label className="text-sm font-medium block mb-1">Password <span className="text-destructive">*</span></label>
+                <label className="text-sm font-medium block mb-1">
+                  Password <span className="text-destructive">*</span>
+                </label>
                 <Input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   autoComplete="new-password"
-                  required minLength={6}
+                  required
                 />
+                <HintRow status={passStatus} msg={`At least ${PASSWORD_MIN} characters (${password.length}/${PASSWORD_MIN})`} />
+                {!password && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Minimum {PASSWORD_MIN} characters
+                  </p>
+                )}
               </div>
+
+              {/* Confirm password */}
               <div>
-                <label className="text-sm font-medium block mb-1">Confirm password <span className="text-destructive">*</span></label>
+                <label className="text-sm font-medium block mb-1">
+                  Confirm password <span className="text-destructive">*</span>
+                </label>
                 <Input
                   type="password"
                   value={confirm}
@@ -121,16 +238,24 @@ function RegisterForm() {
                   autoComplete="new-password"
                   required
                 />
+                {confirm.length > 0 && (
+                  <p className={`text-xs mt-1 flex items-center gap-1 ${confirmOk ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                    {confirmOk ? '✓ Passwords match' : '⚠ Passwords do not match'}
+                  </p>
+                )}
               </div>
+
               {error && (
                 <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
                   {error}
                 </p>
               )}
-              <Button type="submit" className="w-full mt-1" disabled={submitting}>
-                {submitting ? 'Creating account…' : 'Create account'}
+
+              <Button type="submit" className="w-full mt-1" disabled={!canSubmit}>
+                {submitting ? 'Creating account…' : !backendReady ? 'Starting up…' : 'Create account'}
               </Button>
             </form>
+
             {!isSetup && (
               <p className="text-center text-xs text-muted-foreground mt-4">
                 Already have an account?{' '}
