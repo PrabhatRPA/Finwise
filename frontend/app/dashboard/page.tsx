@@ -16,6 +16,8 @@ import { PortfolioPerformanceChart } from '@/components/dashboard/performance-ch
 import { NetWorthTrendChart } from '@/components/dashboard/net-worth-chart'
 import { AIAnalysisCard } from '@/components/dashboard/ai-analysis'
 import { AssetAllocationDonutChart } from '@/components/dashboard/allocation-donut-chart'
+import { TopHoldingsChart, CostBasisChart, ConcentrationChart } from '@/components/dashboard/allocation-extra-charts'
+import { BenchmarkChart } from '@/components/dashboard/benchmark-chart'
 import { DebtsTable } from '@/components/dashboard/debts-table'
 import { WatchlistTable } from '@/components/dashboard/watchlist-table'
 import { PropertiesTable } from '@/components/dashboard/properties-table'
@@ -326,12 +328,42 @@ export default function DashboardPage() {
               <CardContent><AssetAllocationChart holdings={holdings} /></CardContent>
             </Card>
           </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Top 10 Holdings</CardTitle>
+                <p className="text-sm text-muted-foreground">Largest positions by market value</p>
+              </CardHeader>
+              <CardContent><TopHoldingsChart holdings={holdings} /></CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Concentration Risk</CardTitle>
+                <p className="text-sm text-muted-foreground">Weight per holding — red = top contributors</p>
+              </CardHeader>
+              <CardContent><ConcentrationChart holdings={holdings} /></CardContent>
+            </Card>
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Cost Basis vs Current Value</CardTitle>
+              <p className="text-sm text-muted-foreground">Unrealized gain/loss by security type</p>
+            </CardHeader>
+            <CardContent><CostBasisChart holdings={holdings} /></CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="performance" className="space-y-4">
           <Card>
             <CardHeader><CardTitle>Holdings Gain / Loss</CardTitle></CardHeader>
             <CardContent><PortfolioPerformanceChart holdings={holdings} /></CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Portfolio vs Market Benchmarks</CardTitle>
+              <p className="text-sm text-muted-foreground">% return comparison — your portfolio vs S&P 500, US market, international stocks, and NASDAQ 100</p>
+            </CardHeader>
+            <CardContent><BenchmarkChart /></CardContent>
           </Card>
           <Card>
             <CardHeader>

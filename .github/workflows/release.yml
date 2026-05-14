@@ -46,10 +46,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Set up Node.js 18
+      - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -119,9 +119,6 @@ jobs:
         run: tauri build
 
       # ── 6b. Deep-sign the app bundle and DMG (macOS only) ─────────────────
-      # Belt-and-suspenders: Tauri signs the .app during build when
-      # APPLE_SIGNING_IDENTITY is set, but we also sign the outer DMG so
-      # the whole artifact is consistently ad-hoc signed.
       - name: Ad-hoc sign app bundle and DMG (macOS)
         if: runner.os == 'macOS'
         shell: bash
@@ -171,20 +168,27 @@ jobs:
           body: |
             ## Finwise ${{ github.ref_name }}
 
+            **Developed by Prabhat Kumar — Rao Tech LLC**
+
             | Platform | File to download | Requires |
             |----------|-----------------|----------|
             | **macOS** (Apple Silicon) | `Finwise_*_aarch64.dmg` | macOS 10.15 Catalina or later |
             | **Windows** (64-bit) | `Finwise_*_x64-setup.exe` | Windows 10 / 11 (64-bit) |
 
             ### Installing for the first time
-            - **macOS** — Open the `.dmg`, drag **Finwise** into your Applications folder. On first launch right-click the app → **Open** to bypass the "unidentified developer" warning (the app is not yet signed).
-            - **Windows** — Run the `-setup.exe` installer. If Windows SmartScreen appears, click **More info → Run anyway** (the app is not yet signed).
+            - **macOS** — Open the `.dmg`, drag **Finwise** into your Applications folder. On first launch right-click → **Open** to bypass the Gatekeeper warning (app is ad-hoc signed, not Apple-notarised yet).
+            - **Windows** — Run the `-setup.exe` installer. If Windows SmartScreen appears, click **More info → Run anyway**. When prompted, choose **Install for me only** (no admin rights needed) or **Install for all users** (requires admin).
 
             ### Upgrading from an older version
             Install the new version on top of the old one — no need to uninstall first.
             Your data lives in a separate OS folder and is **never** touched by the installer:
-            - macOS: `~/Library/Application Support/com.personalfinance.app/`
-            - Windows: `%APPDATA%\com.personalfinance.app\`
+            - macOS: `~/Library/Application Support/com.raotechllc.finwise/`
+            - Windows: `%APPDATA%\com.raotechllc.finwise\`
+
+            ### Troubleshooting startup issues
+            If the app shows a "backend stopped" error, check the log at:
+            - macOS: `~/Library/Application Support/com.raotechllc.finwise/sidecar.log`
+            - Windows: `%APPDATA%\com.raotechllc.finwise\sidecar.log`
 
             ---
             *Automated build from tag `${{ github.ref_name }}`*

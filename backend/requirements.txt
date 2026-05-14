@@ -33,6 +33,10 @@ pydantic-settings>=2.3.0
 
 # Security
 python-jose[cryptography]>=3.3.0
+passlib>=1.7.4
+# bcrypt is optional: only needed to verify passwords hashed before v1.3.0
+# It requires Visual C++ on Windows, so we keep it out of the packaged binary.
+# Remove this line if you never need to migrate old bcrypt passwords:
 bcrypt>=4.0.0
 
 # Utilities

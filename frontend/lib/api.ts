@@ -181,6 +181,8 @@ export const dataApi = {
   exportHoldings: () => _authDownload('/export/holdings', 'holdings.csv'),
   exportWatchlist: () => _authDownload('/export/watchlist', 'watchlist.csv'),
   exportDebts: () => _authDownload('/export/debts', 'debts.csv'),
+  exportTrends: () => _authDownload('/export/trends', 'net_worth_trends.csv'),
+  exportFullData: () => _authDownload('/export/full-data', 'finwise_full_export.json'),
   exportFullBackup: () => _authDownload('/export/full-backup', 'portfolio_backup.zip'),
 
   // Import
@@ -195,6 +197,10 @@ export const dataApi = {
   importDebts: (file: File) => {
     const fd = new FormData(); fd.append('file', file)
     return api.post('/import/debts', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
+  importFullData: (file: File) => {
+    const fd = new FormData(); fd.append('file', file)
+    return api.post('/import/full-data', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
   },
 
   // Backups

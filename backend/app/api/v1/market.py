@@ -4,6 +4,7 @@ Endpoints for market data and price lookups
 """
 
 import os
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
@@ -52,13 +53,14 @@ async def get_market_history(
     }
 
     for timestamp, row in df.iterrows():
+        ts = timestamp.isoformat() if hasattr(timestamp, 'isoformat') else str(timestamp)
         data["data"].append({
-            "timestamp": timestamp.isoformat(),
-            "open": float(row["Open"]) if not row["Open"].isna() else None,
-            "high": float(row["High"]) if not row["High"].isna() else None,
-            "low": float(row["Low"]) if not row["Low"].isna() else None,
-            "close": float(row["Close"]) if not row["Close"].isna() else None,
-            "volume": int(row["Volume"]) if not row["Volume"].isna() else 0,
+            "timestamp": ts,
+            "open":   float(row["Open"])   if not pd.isna(row["Open"])   else None,
+            "high":   float(row["High"])   if not pd.isna(row["High"])   else None,
+            "low":    float(row["Low"])    if not pd.isna(row["Low"])    else None,
+            "close":  float(row["Close"])  if not pd.isna(row["Close"])  else None,
+            "volume": int(row["Volume"])   if not pd.isna(row["Volume"]) else 0,
         })
 
     return data

@@ -2,56 +2,249 @@
 
 import { useEffect, useState } from 'react'
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line,
+  AreaChart, Area,
+  BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
-import { netWorthApi } from '@/lib/api'
+import { netWorthApi, dataApi } from '@/lib/api'
+
+type ChartType = 'line' | 'area' | 'bar'
+type TimeRange = 7 | 30 | 90 | 365
 
 const fmt = (v: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v)
+
+const fmtK = (v: number) => {
+  const abs = Math.abs(v)
+  if (abs >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`
+  if (abs >= 1_000) return `$${(v / 1_000).toFixed(0)}K`
+  return fmt(v)
+}
 
 const fmtDate = (iso: string) => {
   const d = new Date(iso)
   return `${d.toLocaleString('default', { month: 'short' })} ${d.getDate()}`
 }
 
+const METRICS = {
+  net_worth:   { label: 'Net Worth',  color: '#6366f1' },
+  investments: { label: 'Portfolio',  color: '#22c55e' },
+  liabilities: { label: 'Total Debt', color: '#ef4444' },
+} as const
+
+type MetricKey = keyof typeof METRICS
+
+const COMBINED: MetricKey[] = ['net_worth', 'investments', 'liabilities']
+
+function PillBtn({
+  active, onClick, children,
+}: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
+        active
+          ? 'bg-primary text-primary-foreground'
+          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function MiniChart({
+  data, keys, type, height = 160,
+}: {
+  data: any[]
+  keys: MetricKey[]
+  type: ChartType
+  height?: number
+}) {
+  const single = keys.length === 1
+  const yDomain: [any, any] = single ? ['auto', 'auto'] : [0, 'auto']
+
+  const shared = {
+    data,
+    margin: { top: 4, right: 8, left: 0, bottom: 0 },
+  }
+
+  const axes = (
+    <>
+      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.25} />
+      <XAxis dataKey="date" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
+      <YAxis tickFormatter={fmtK} tick={{ fontSize: 9 }} width={62} domain={yDomain} />
+      <Tooltip
+        formatter={(v: any, name: string) => [fmt(v as number), name]}
+        contentStyle={{ fontSize: 11 }}
+      />
+      {!single && <Legend wrapperStyle={{ fontSize: 10 }} />}
+    </>
+  )
+
+  if (type === 'area') {
+    return (
+      <ResponsiveContainer width="100%" height={height}>
+        <AreaChart {...shared}>
+          {axes}
+          {keys.map(k => (
+            <Area
+              key={k}
+              type="monotone"
+              dataKey={k}
+              name={METRICS[k].label}
+              stroke={METRICS[k].color}
+              fill={METRICS[k].color}
+              fillOpacity={0.12}
+              strokeWidth={2}
+              dot={false}
+            />
+          ))}
+        </AreaChart>
+      </ResponsiveContainer>
+    )
+  }
+
+  if (type === 'bar') {
+    return (
+      <ResponsiveContainer width="100%" height={height}>
+        <BarChart {...shared}>
+          <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.25} />
+          <XAxis dataKey="date" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
+          <YAxis tickFormatter={fmtK} tick={{ fontSize: 9 }} width={62} domain={[0, 'auto']} />
+          <Tooltip
+            formatter={(v: any, name: string) => [fmt(v as number), name]}
+            contentStyle={{ fontSize: 11 }}
+          />
+          {!single && <Legend wrapperStyle={{ fontSize: 10 }} />}
+          {keys.map(k => (
+            <Bar key={k} dataKey={k} name={METRICS[k].label} fill={METRICS[k].color} />
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+    )
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <LineChart {...shared}>
+        {axes}
+        {keys.map(k => (
+          <Line
+            key={k}
+            type="monotone"
+            dataKey={k}
+            name={METRICS[k].label}
+            stroke={METRICS[k].color}
+            strokeWidth={2}
+            dot={false}
+          />
+        ))}
+      </LineChart>
+    </ResponsiveContainer>
+  )
+}
+
 export function NetWorthTrendChart() {
-  const [points, setPoints] = useState<any[]>([])
+  const [allPoints, setAllPoints] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [chartType, setChartType] = useState<ChartType>('line')
+  const [days, setDays] = useState<TimeRange>(90)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     netWorthApi.getTrends(365)
       .then(r => {
-        const data = r.data?.points ?? []
-        setPoints(data.map((p: any) => ({ ...p, date: fmtDate(p.date) })))
+        const raw = r.data?.points ?? []
+        setAllPoints(raw.map((p: any) => ({ ...p, date: fmtDate(p.date) })))
       })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
+  const points = allPoints.slice(-days)
+
+  const doExport = async () => {
+    setExporting(true)
+    try { await dataApi.exportTrends() } finally { setExporting(false) }
+  }
+
   if (loading) return <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>
 
-  if (points.length === 0) {
+  if (allPoints.length === 0) {
     return (
       <div className="text-center py-10 text-muted-foreground text-sm">
         <p>No trend data yet.</p>
-        <p className="mt-1">Snapshots are recorded automatically each time you refresh the dashboard.</p>
+        <p className="mt-1">Snapshots are recorded each time you load the dashboard.</p>
       </div>
     )
   }
 
+  const TIME_RANGES: { id: TimeRange; label: string }[] = [
+    { id: 7, label: '7D' },
+    { id: 30, label: '1M' },
+    { id: 90, label: '3M' },
+    { id: 365, label: '1Y' },
+  ]
+
+  const CHART_TYPES: { id: ChartType; label: string }[] = [
+    { id: 'line', label: 'Line' },
+    { id: 'area', label: 'Area' },
+    { id: 'bar', label: 'Bar' },
+  ]
+
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={points}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-        <YAxis tickFormatter={fmt} tick={{ fontSize: 11 }} width={80} />
-        <Tooltip formatter={(v) => fmt(v as number)} />
-        <Legend />
-        <Line type="monotone" dataKey="net_worth" name="Net Worth" stroke="#6366f1" strokeWidth={2} dot={false} />
-        <Line type="monotone" dataKey="investments" name="Portfolio" stroke="#22c55e" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
-        <Line type="monotone" dataKey="liabilities" name="Total Debt" stroke="#ef4444" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
-      </LineChart>
-    </ResponsiveContainer>
+    <div className="space-y-5">
+      {/* Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1">
+          {TIME_RANGES.map(r => (
+            <PillBtn key={r.id} active={days === r.id} onClick={() => setDays(r.id)}>
+              {r.label}
+            </PillBtn>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
+            {CHART_TYPES.map(t => (
+              <PillBtn key={t.id} active={chartType === t.id} onClick={() => setChartType(t.id)}>
+                {t.label}
+              </PillBtn>
+            ))}
+          </div>
+          <button
+            onClick={doExport}
+            disabled={exporting}
+            className="ml-1 px-2.5 py-1 text-xs rounded font-medium border border-border bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            {exporting ? 'Exporting…' : '↓ Export CSV'}
+          </button>
+        </div>
+      </div>
+
+      {/* Combined chart */}
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+          Combined Overview
+        </p>
+        <MiniChart data={points} keys={COMBINED} type={chartType} height={230} />
+      </div>
+
+      {/* Individual zoomed charts */}
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+          Individual Trends — auto-scaled to show daily changes
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {(Object.entries(METRICS) as [MetricKey, typeof METRICS[MetricKey]][]).map(([key, cfg]) => (
+            <div key={key} className="rounded-lg border border-border/50 p-3 space-y-1">
+              <p className="text-xs font-semibold" style={{ color: cfg.color }}>{cfg.label}</p>
+              <MiniChart data={points} keys={[key]} type={chartType} height={155} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }

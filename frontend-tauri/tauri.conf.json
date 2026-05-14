@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Personal Finance",
-  "version": "0.1.0",
-  "identifier": "com.personalfinance.app",
+  "productName": "Finwise",
+  "version": "1.3.0",
+  "identifier": "com.raotechllc.finwise",
   "build": {
     "beforeDevCommand": "cd ../frontend && npm run dev",
     "beforeBuildCommand": "",
@@ -28,13 +28,16 @@
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
-      "timestampUrl": ""
+      "timestampUrl": "",
+      "nsis": {
+        "installMode": "both"
+      }
     }
   },
   "app": {
     "windows": [
       {
-        "title": "Personal Finance",
+        "title": "Finwise",
         "width": 1280,
         "height": 900,
         "minWidth": 900,

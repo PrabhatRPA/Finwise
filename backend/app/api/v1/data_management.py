@@ -115,6 +115,10 @@ DEBTS_FIELDS = [
     "interest_rate", "monthly_payment", "lender_name", "status",
     "start_date", "end_date", "due_day",
 ]
+TRENDS_FIELDS = [
+    "date", "net_worth", "investments", "liabilities", "assets", "cash",
+    "retirement", "bank_accounts", "stocks", "bonds", "other_investments",
+]
 
 
 @router.get("/export/holdings")
@@ -150,6 +154,38 @@ def export_debts(
     return _csv_response(data, f"debts_{ts}.csv")
 
 
+def _trends_rows(db: Session, user_id: int) -> list[dict]:
+    rows = []
+    for h in db.query(models.PortfolioHistory).filter(
+        models.PortfolioHistory.user_id == user_id
+    ).order_by(models.PortfolioHistory.history_date).all():
+        rows.append({
+            "date": h.history_date.isoformat() if h.history_date else "",
+            "net_worth": float(h.total_net_worth or 0),
+            "investments": float(h.total_investments or 0),
+            "liabilities": float(h.total_liabilities or 0),
+            "assets": float(h.total_assets or 0),
+            "cash": float(h.total_cash or 0),
+            "retirement": float(h.total_retirement or 0),
+            "bank_accounts": float(h.total_bank_accounts or 0),
+            "stocks": float(h.total_stock_value or 0),
+            "bonds": float(h.total_bond_value or 0),
+            "other_investments": float(h.total_other_value or 0),
+        })
+    return rows
+
+
+@router.get("/export/trends")
+def export_trends(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    rows = _trends_rows(db, current_user.id)
+    data = _dict_to_csv_bytes(rows, TRENDS_FIELDS)
+    ts = datetime.now().strftime("%Y%m%d")
+    return _csv_response(data, f"net_worth_trends_{ts}.csv")
+
+
 @router.get("/export/full-backup")
 def export_full_backup(
     db: Session = Depends(get_db),
@@ -165,6 +201,8 @@ def export_full_backup(
                     _dict_to_csv_bytes(_watchlist_rows(db, current_user.id), WATCHLIST_FIELDS).decode())
         zf.writestr(f"debts_{ts}.csv",
                     _dict_to_csv_bytes(_debts_rows(db, current_user.id), DEBTS_FIELDS).decode())
+        zf.writestr(f"net_worth_trends_{ts}.csv",
+                    _dict_to_csv_bytes(_trends_rows(db, current_user.id), TRENDS_FIELDS).decode())
     zip_buf.seek(0)
     return StreamingResponse(
         zip_buf,
@@ -186,6 +224,8 @@ def _write_backup(db: Session, user_id: int) -> Path:
                     _dict_to_csv_bytes(_watchlist_rows(db, user_id), WATCHLIST_FIELDS).decode())
         zf.writestr(f"debts_{ts}.csv",
                     _dict_to_csv_bytes(_debts_rows(db, user_id), DEBTS_FIELDS).decode())
+        zf.writestr(f"net_worth_trends_{ts}.csv",
+                    _dict_to_csv_bytes(_trends_rows(db, user_id), TRENDS_FIELDS).decode())
     # Keep only the 10 most recent backup files
     existing = sorted(_backup_dir(user_id).glob("backup_*.zip"))
     for old in existing[:-10]:
@@ -530,4 +570,418 @@ async def import_debts_csv(
         "created": created,
         "errors": errors,
         "message": f"Imported {len(created)} debt(s). {len(errors)} error(s).",
+    }
+
+
+# ─── Full user-data JSON export ───────────────────────────────────────────────
+
+EXPORT_SCHEMA_VERSION = "1"
+
+
+def _full_export_dict(db: Session, user_id: int) -> dict:
+    """Collect all user data into a single serialisable dict."""
+
+    def _safe(v):
+        if isinstance(v, (datetime, date)):
+            return v.isoformat()
+        return v
+
+    def _row(obj, fields: list[str]) -> dict:
+        return {f: _safe(getattr(obj, f, None)) for f in fields}
+
+    accounts = db.query(models.Account).filter(models.Account.user_id == user_id).all()
+    holdings = db.query(models.Holding).filter(models.Holding.user_id == user_id).all()
+    transactions = db.query(models.Transaction).filter(models.Transaction.user_id == user_id).all()
+    watchlist = db.query(models.Watchlist).filter(models.Watchlist.user_id == user_id).all()
+    loans = db.query(models.Loan).filter(models.Loan.user_id == user_id).all()
+    properties = db.query(models.Property).filter(models.Property.user_id == user_id).all()
+    history = db.query(models.PortfolioHistory).filter(
+        models.PortfolioHistory.user_id == user_id
+    ).order_by(models.PortfolioHistory.history_date).all()
+
+    return {
+        "_finwise_export": True,
+        "version": EXPORT_SCHEMA_VERSION,
+        "exported_at": datetime.utcnow().isoformat(),
+        "accounts": [_row(a, [
+            "id", "account_name", "account_type", "account_number", "institution_name",
+            "institution_type", "balance", "balance_date", "currency", "is_active", "created_at",
+        ]) for a in accounts],
+        "holdings": [_row(h, [
+            "id", "account_id", "ticker", "security_name", "security_type", "shares",
+            "average_cost", "purchase_date", "current_price", "current_value",
+            "total_gain_loss", "total_gain_loss_percent", "dividend_yield",
+            "sector", "industry", "is_active", "created_at",
+        ]) for h in holdings],
+        "transactions": [_row(t, [
+            "id", "account_id", "holding_id", "transaction_type", "transaction_date",
+            "settlement_date", "ticker", "shares", "price_per_share", "total_amount",
+            "commission", "fees", "description", "reference_number", "is_reconciled", "created_at",
+        ]) for t in transactions],
+        "watchlist": [_row(w, [
+            "id", "ticker", "company_name", "target_price", "target_direction",
+            "notification_method", "notes", "alert_triggered", "created_at",
+        ]) for w in watchlist],
+        "loans": [_row(l, [
+            "id", "loan_name", "loan_type", "original_balance", "current_balance",
+            "interest_rate", "monthly_payment", "lender_name", "status",
+            "start_date", "end_date", "due_day", "created_at",
+        ]) for l in loans],
+        "properties": [_row(p, [
+            "id", "property_type", "nickname", "address", "city", "state", "zip_code",
+            "country", "manual_value", "purchase_price", "purchase_date", "notes",
+            "is_active", "created_at",
+        ]) for p in properties],
+        "portfolio_history": [_row(h, [
+            "history_date", "total_assets", "total_liabilities", "total_net_worth",
+            "total_investments", "total_cash", "total_retirement", "total_bank_accounts",
+            "total_stock_value", "total_bond_value", "total_other_value",
+            "total_ira_value", "total_401k_value", "total_mortgage",
+            "total_loan_value", "total_credit_card", "created_at",
+        ]) for h in history],
+    }
+
+
+@router.get("/export/full-data")
+def export_full_data(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Export all user data as a single JSON file (holdings, accounts, transactions, history, etc.)."""
+    payload = _full_export_dict(db, current_user.id)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    data = json.dumps(payload, indent=2, default=str).encode()
+    return StreamingResponse(
+        io.BytesIO(data),
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="finwise_full_export_{ts}.json"'},
+    )
+
+
+# ─── Smart full-data JSON import ─────────────────────────────────────────────
+
+def _parse_date(v: str | None) -> date | None:
+    if not v:
+        return None
+    try:
+        return date.fromisoformat(str(v)[:10])
+    except (ValueError, TypeError):
+        return None
+
+
+def _parse_float(v) -> float | None:
+    try:
+        return float(v) if v is not None and str(v).strip() else None
+    except (ValueError, TypeError):
+        return None
+
+
+def _parse_int(v) -> int | None:
+    try:
+        return int(v) if v is not None and str(v).strip() else None
+    except (ValueError, TypeError):
+        return None
+
+
+@router.post("/import/full-data")
+async def import_full_data(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """
+    Import all user data from a Finwise JSON export file.
+    - Unknown keys are silently ignored (forward-compatible).
+    - Each section is imported independently; one section failing doesn't block others.
+    - Accounts are matched by account_name; holdings by ticker+account; loans by loan_name;
+      watchlist by ticker; properties by nickname+type; history by date (upsert).
+    - Original IDs from the export are used only to resolve cross-references within the file,
+      not as database IDs.
+    """
+    if not file.filename or not file.filename.lower().endswith(".json"):
+        raise HTTPException(status_code=400, detail="File must be a .json exported by Finwise.")
+    content = await file.read()
+    try:
+        payload = json.loads(content)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON file.")
+
+    if not payload.get("_finwise_export"):
+        raise HTTPException(
+            status_code=400,
+            detail="This does not look like a Finwise export. Missing _finwise_export marker.",
+        )
+
+    uid = current_user.id
+    summary: dict[str, dict] = {}
+
+    # ── Accounts ──────────────────────────────────────────────────────────────
+    # Build a mapping: export_id → real db id (needed to remap holding.account_id etc.)
+    account_id_map: dict[int, int] = {}
+    acc_created = acc_skipped = 0
+    VALID_ACCT_TYPES = {
+        "brokerage", "traditional_ira", "roth_ira", "401k",
+        "savings", "checking", "cash_management", "hsa", "pension", "other",
+    }
+    for row in payload.get("accounts", []):
+        name = str(row.get("account_name") or "").strip()
+        if not name:
+            continue
+        acct_type = str(row.get("account_type") or "other").strip().lower()
+        if acct_type not in VALID_ACCT_TYPES:
+            acct_type = "other"
+        existing = db.query(models.Account).filter(
+            models.Account.user_id == uid,
+            models.Account.account_name == name,
+        ).first()
+        if existing:
+            account_id_map[row.get("id", -1)] = existing.id
+            acc_skipped += 1
+        else:
+            a = models.Account(
+                user_id=uid,
+                account_name=name,
+                account_type=acct_type,
+                account_number=row.get("account_number") or None,
+                institution_name=row.get("institution_name") or None,
+                institution_type=row.get("institution_type") or None,
+                balance=_parse_float(row.get("balance")) or 0.0,
+                balance_date=_parse_date(row.get("balance_date")),
+                currency=str(row.get("currency") or "USD"),
+                is_active=bool(row.get("is_active", True)),
+            )
+            db.add(a)
+            db.flush()
+            account_id_map[row.get("id", -1)] = a.id
+            acc_created += 1
+    db.commit()
+    summary["accounts"] = {"created": acc_created, "skipped": acc_skipped}
+
+    # ── Holdings ──────────────────────────────────────────────────────────────
+    VALID_SEC_TYPES = {
+        "stock", "etf", "mutual_fund", "bond", "option",
+        "cash", "crypto", "reit", "other",
+    }
+    holding_id_map: dict[int, int] = {}
+    h_created = h_skipped = 0
+    for row in payload.get("holdings", []):
+        ticker = str(row.get("ticker") or "").strip().upper()
+        if not ticker:
+            continue
+        real_acct_id = account_id_map.get(row.get("account_id", -1))
+        existing = db.query(models.Holding).filter(
+            models.Holding.user_id == uid,
+            models.Holding.ticker == ticker,
+            models.Holding.account_id == real_acct_id,
+        ).first()
+        if existing:
+            holding_id_map[row.get("id", -1)] = existing.id
+            h_skipped += 1
+            continue
+        sec_type = str(row.get("security_type") or "stock").strip().lower()
+        if sec_type not in VALID_SEC_TYPES:
+            sec_type = "stock"
+        shares = _parse_float(row.get("shares")) or 0.0
+        avg_cost = _parse_float(row.get("average_cost")) or 0.0
+        h = models.Holding(
+            user_id=uid,
+            account_id=real_acct_id,
+            ticker=ticker,
+            security_name=row.get("security_name") or None,
+            security_type=sec_type,
+            shares=shares,
+            average_cost=avg_cost,
+            purchase_date=_parse_date(row.get("purchase_date")),
+            current_price=_parse_float(row.get("current_price")),
+            current_value=_parse_float(row.get("current_value")) or shares * avg_cost,
+            total_gain_loss=_parse_float(row.get("total_gain_loss")),
+            total_gain_loss_percent=_parse_float(row.get("total_gain_loss_percent")),
+            dividend_yield=_parse_float(row.get("dividend_yield")),
+            sector=row.get("sector") or None,
+            industry=row.get("industry") or None,
+            is_active=bool(row.get("is_active", True)),
+        )
+        db.add(h)
+        db.flush()
+        holding_id_map[row.get("id", -1)] = h.id
+        h_created += 1
+    db.commit()
+    summary["holdings"] = {"created": h_created, "skipped": h_skipped}
+
+    # ── Transactions ─────────────────────────────────────────────────────────
+    VALID_TXN_TYPES = {
+        "buy", "sell", "deposit", "withdrawal", "dividend", "interest",
+        "transfer_in", "transfer_out", "split", "spin_off",
+    }
+    t_created = t_skipped = 0
+    for row in payload.get("transactions", []):
+        txn_type = str(row.get("transaction_type") or "").strip().lower()
+        txn_date = _parse_date(row.get("transaction_date"))
+        if txn_type not in VALID_TXN_TYPES or txn_date is None:
+            t_skipped += 1
+            continue
+        real_acct_id = account_id_map.get(row.get("account_id", -1))
+        if real_acct_id is None:
+            t_skipped += 1
+            continue
+        real_holding_id = holding_id_map.get(row.get("holding_id", -1))
+        txn = models.Transaction(
+            user_id=uid,
+            account_id=real_acct_id,
+            holding_id=real_holding_id,
+            transaction_type=txn_type,
+            transaction_date=txn_date,
+            settlement_date=_parse_date(row.get("settlement_date")),
+            ticker=str(row.get("ticker") or "").strip().upper() or None,
+            shares=_parse_float(row.get("shares")),
+            price_per_share=_parse_float(row.get("price_per_share")),
+            total_amount=_parse_float(row.get("total_amount")),
+            commission=_parse_float(row.get("commission")) or 0.0,
+            fees=_parse_float(row.get("fees")) or 0.0,
+            description=row.get("description") or None,
+            reference_number=row.get("reference_number") or None,
+        )
+        db.add(txn)
+        t_created += 1
+    db.commit()
+    summary["transactions"] = {"created": t_created, "skipped": t_skipped}
+
+    # ── Watchlist ─────────────────────────────────────────────────────────────
+    w_created = w_skipped = 0
+    for row in payload.get("watchlist", []):
+        ticker = str(row.get("ticker") or "").strip().upper()
+        if not ticker:
+            continue
+        existing = db.query(models.Watchlist).filter(
+            models.Watchlist.user_id == uid,
+            models.Watchlist.ticker == ticker,
+        ).first()
+        if existing:
+            w_skipped += 1
+            continue
+        direction = str(row.get("target_direction") or "").strip().lower()
+        if direction not in {"above", "below"}:
+            direction = None  # type: ignore[assignment]
+        notify = str(row.get("notification_method") or "in_app").strip()
+        if notify not in {"in_app", "browser", "both"}:
+            notify = "in_app"
+        db.add(models.Watchlist(
+            user_id=uid, ticker=ticker,
+            company_name=row.get("company_name") or ticker,
+            target_price=_parse_float(row.get("target_price")),
+            target_direction=direction,
+            notification_method=notify,
+            notes=row.get("notes") or None,
+            alert_triggered=bool(row.get("alert_triggered", False)),
+        ))
+        w_created += 1
+    db.commit()
+    summary["watchlist"] = {"created": w_created, "skipped": w_skipped}
+
+    # ── Loans ─────────────────────────────────────────────────────────────────
+    VALID_LOAN_TYPES = {
+        "mortgage", "auto", "student", "credit_card",
+        "personal", "business", "home_equity", "line_of_credit", "other",
+    }
+    l_created = l_skipped = 0
+    for row in payload.get("loans", []):
+        name = str(row.get("loan_name") or "").strip()
+        if not name:
+            continue
+        existing = db.query(models.Loan).filter(
+            models.Loan.user_id == uid,
+            models.Loan.loan_name == name,
+        ).first()
+        if existing:
+            l_skipped += 1
+            continue
+        loan_type = str(row.get("loan_type") or "other").strip().lower()
+        if loan_type not in VALID_LOAN_TYPES:
+            loan_type = "other"
+        status = str(row.get("status") or "active").strip()
+        if status not in {"active", "paid_off", "closed", "charged_off"}:
+            status = "active"
+        db.add(models.Loan(
+            user_id=uid,
+            loan_name=name,
+            loan_type=loan_type,
+            original_balance=_parse_float(row.get("original_balance")) or 0.0,
+            current_balance=_parse_float(row.get("current_balance")) or 0.0,
+            interest_rate=_parse_float(row.get("interest_rate")),
+            monthly_payment=_parse_float(row.get("monthly_payment")),
+            lender_name=row.get("lender_name") or None,
+            status=status,
+            start_date=_parse_date(row.get("start_date")),
+            end_date=_parse_date(row.get("end_date")),
+            due_day=_parse_int(row.get("due_day")),
+        ))
+        l_created += 1
+    db.commit()
+    summary["loans"] = {"created": l_created, "skipped": l_skipped}
+
+    # ── Properties ────────────────────────────────────────────────────────────
+    p_created = p_skipped = 0
+    for row in payload.get("properties", []):
+        prop_type = str(row.get("property_type") or "other").strip()
+        nickname = str(row.get("nickname") or "").strip() or None
+        existing = db.query(models.Property).filter(
+            models.Property.user_id == uid,
+            models.Property.property_type == prop_type,
+            models.Property.nickname == nickname,
+        ).first()
+        if existing:
+            p_skipped += 1
+            continue
+        db.add(models.Property(
+            user_id=uid,
+            property_type=prop_type,
+            nickname=nickname,
+            address=row.get("address") or None,
+            city=row.get("city") or None,
+            state=row.get("state") or None,
+            zip_code=row.get("zip_code") or None,
+            country=str(row.get("country") or "US"),
+            manual_value=_parse_float(row.get("manual_value")),
+            purchase_price=_parse_float(row.get("purchase_price")),
+            purchase_date=_parse_date(row.get("purchase_date")),
+            notes=row.get("notes") or None,
+            is_active=bool(row.get("is_active", True)),
+        ))
+        p_created += 1
+    db.commit()
+    summary["properties"] = {"created": p_created, "skipped": p_skipped}
+
+    # ── Portfolio history (upsert by date) ────────────────────────────────────
+    ph_created = ph_updated = 0
+    for row in payload.get("portfolio_history", []):
+        h_date = _parse_date(row.get("history_date"))
+        if h_date is None:
+            continue
+        existing = db.query(models.PortfolioHistory).filter(
+            models.PortfolioHistory.user_id == uid,
+            models.PortfolioHistory.history_date == h_date,
+        ).first()
+        if existing is None:
+            existing = models.PortfolioHistory(user_id=uid, history_date=h_date)
+            db.add(existing)
+            ph_created += 1
+        else:
+            ph_updated += 1
+        for col in [
+            "total_assets", "total_liabilities", "total_net_worth", "total_investments",
+            "total_cash", "total_retirement", "total_bank_accounts", "total_stock_value",
+            "total_bond_value", "total_other_value", "total_ira_value", "total_401k_value",
+            "total_mortgage", "total_loan_value", "total_credit_card",
+        ]:
+            v = _parse_float(row.get(col))
+            if v is not None:
+                setattr(existing, col, v)
+    db.commit()
+    summary["portfolio_history"] = {"created": ph_created, "updated": ph_updated}
+
+    total_imported = sum(v.get("created", 0) for v in summary.values())
+    return {
+        "ok": True,
+        "summary": summary,
+        "message": f"Import complete — {total_imported} records created across all sections.",
     }

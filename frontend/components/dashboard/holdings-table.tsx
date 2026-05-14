@@ -6,8 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn, formatCurrency } from '@/lib/utils'
-import { holdingsApi } from '@/lib/api'
+import { holdingsApi, accountsApi } from '@/lib/api'
 import { usePortfolioStore } from '@/lib/store'
+
+const BROKER_SUGGESTIONS = [
+  'Robinhood', 'Fidelity', 'Schwab', 'TD Ameritrade', 'E*TRADE', 'Vanguard',
+  'Interactive Brokers', 'Webull', 'M1 Finance', 'Merrill Edge', 'Ally Invest',
+  'Coinbase', 'Kraken', 'Gemini', 'Binance', 'SoFi', 'Public', 'Stash',
+]
 
 interface HoldingsTableProps {
   holdings: any[]
@@ -21,7 +27,7 @@ const EMPTY_FORM = {
   ticker: '',
   shares: '',
   average_cost: '',
-  account_id: '',
+  account_name: '',
   security_type: 'stock',
 }
 
@@ -104,11 +110,12 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
 
   function openEdit(h: any) {
     setEditingId(h.id)
+    const acct = accounts.find(a => a.id === h.account_id)
     setForm({
       ticker: h.ticker || '',
       shares: String(h.shares || ''),
       average_cost: String(h.average_cost || ''),
-      account_id: h.account_id ? String(h.account_id) : '',
+      account_name: acct?.account_name ?? acct?.institution_name ?? '',
       security_type: h.security_type || 'stock',
     })
     setError('')
@@ -129,7 +136,6 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
     const ticker = form.ticker.trim().toUpperCase()
     const shares = Number(form.shares)
     const avgCost = Number(form.average_cost)
-    const accountId = form.account_id ? Number(form.account_id) : null
 
     if (!ticker) return setError('Ticker symbol is required.')
     if (!/^[A-Z0-9.\-]{1,10}$/.test(ticker)) return setError('Enter a valid ticker (e.g. AAPL, BTC-USD).')
@@ -138,11 +144,33 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
 
     setIsSubmitting(true)
     try {
+      // Resolve broker name → account_id (look up existing or auto-create)
+      let resolvedAccountId: number | undefined = undefined
+      const brokerName = form.account_name.trim()
+      if (brokerName) {
+        const existing = accounts.find(a =>
+          a.account_name?.toLowerCase() === brokerName.toLowerCase() ||
+          (a.institution_name && a.institution_name.toLowerCase() === brokerName.toLowerCase())
+        )
+        if (existing) {
+          resolvedAccountId = existing.id
+        } else {
+          try {
+            const res = await accountsApi.create({
+              account_name: brokerName,
+              account_type: 'brokerage',
+              institution_name: brokerName,
+            } as any)
+            resolvedAccountId = res.data.id
+          } catch { /* submit without account on error */ }
+        }
+      }
+
       const payload = {
         ticker,
         shares,
         average_cost: avgCost,
-        account_id: accountId ?? undefined,
+        account_id: resolvedAccountId,
         security_type: form.security_type,
       }
 
@@ -253,17 +281,22 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Account</label>
-                <select
-                  value={form.account_id}
-                  onChange={setField('account_id')}
-                  className="border border-input rounded-md p-2 w-full text-sm bg-background text-foreground"
-                >
-                  <option value="">N/A — no account</option>
-                  {accounts.map(a => (
-                    <option key={a.id} value={a.id}>{a.account_name} ({a.account_type})</option>
+                <label className="block text-sm font-medium mb-1">Broker / Account</label>
+                <input
+                  list="broker-suggestions"
+                  placeholder="e.g. Robinhood, Fidelity, Schwab"
+                  value={form.account_name}
+                  onChange={setField('account_name')}
+                  className="border border-input rounded-md px-3 py-2 w-full text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <datalist id="broker-suggestions">
+                  {[...BROKER_SUGGESTIONS, ...accounts.map(a => a.account_name)].map(n => (
+                    <option key={n} value={n} />
                   ))}
-                </select>
+                </datalist>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Type a broker name — a new account is created automatically if it doesn&apos;t exist yet.
+                </p>
               </div>
 
               {form.shares && form.average_cost && (

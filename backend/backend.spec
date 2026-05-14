@@ -51,9 +51,10 @@ a = Analysis(
         "multipart",
         "python_multipart",
         "aiofiles",
-        # Auth utilities
-        "passlib.handlers.bcrypt",
+        # Auth utilities — pbkdf2_sha256 is pure Python, no C extension needed
+        "passlib",
         "passlib.handlers.pbkdf2",
+        "passlib.utils.pbkdf2",
         "jose",
         "jose.jwt",
         # Market data

@@ -63,7 +63,7 @@ function ImportRow({
           onClick={() => inputRef.current?.click()}
           className="text-xs"
         >
-          {loading ? 'Importing…' : 'Choose CSV…'}
+          {loading ? 'Importing…' : `Choose ${accept.replace('.', '').toUpperCase()}…`}
         </Button>
       </div>
       {result && (
@@ -155,12 +155,14 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
           <p className="text-sm text-muted-foreground">Download your data as CSV files or a full ZIP backup.</p>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
+              { label: 'All Data JSON', fn: dataApi.exportFullData },
+              { label: 'Full Backup ZIP', fn: dataApi.exportFullBackup },
               { label: 'Holdings CSV', fn: dataApi.exportHoldings },
               { label: 'Watchlist CSV', fn: dataApi.exportWatchlist },
               { label: 'Debts CSV', fn: dataApi.exportDebts },
-              { label: 'Full Backup ZIP', fn: dataApi.exportFullBackup },
+              { label: 'Trends CSV', fn: dataApi.exportTrends },
             ].map(({ label, fn }) => (
               <Button
                 key={label}
@@ -190,10 +192,32 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
         <CardHeader>
           <CardTitle className="text-base">Import Data</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Upload a CSV exported from this app. Duplicate tickers/items are skipped automatically.
+            Restore from a full JSON export or upload individual CSV files. Duplicates are skipped automatically.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+            <p className="text-xs font-semibold text-primary">Full Restore (recommended)</p>
+            <ImportRow
+              label="All Data JSON"
+              accept=".json"
+              onImport={async f => {
+                const res = await dataApi.importFullData(f)
+                onDataChanged?.()
+                const s = res.data.summary ?? {}
+                const lines = Object.entries(s).map(([k, v]: [string, any]) =>
+                  `${k}: +${v.created ?? 0}${v.skipped ? ` / ${v.skipped} skipped` : ''}${v.updated ? ` / ${v.updated} updated` : ''}`
+                )
+                return { message: res.data.message, errors: lines }
+              }}
+            />
+            <p className="text-xs text-muted-foreground">
+              Import a <strong>finwise_full_export.json</strong> to restore all holdings, accounts, transactions, loans, properties, and trend history in one step.
+              New fields added in future app versions are handled gracefully.
+            </p>
+          </div>
+
+          <p className="text-xs font-semibold text-muted-foreground pt-1">Individual CSV import</p>
           <ImportRow
             label="Holdings"
             onImport={f => handleImport(dataApi.importHoldings, f)}

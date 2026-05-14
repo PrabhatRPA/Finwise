@@ -16,6 +16,7 @@ interface Account {
   id: number
   account_name: string
   account_type: string
+  institution_name?: string
   balance: number
 }
 
