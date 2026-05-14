@@ -82,65 +82,6 @@ jobs:
           python -m pip install pyinstaller
           python -m pip install -r requirements.txt
 
-      # macOS: strip python.org code signature from the Python shared library
-      # before PyInstaller packages it.  PyInstaller embeds the dylib in the
-      # one-file binary; at runtime it extracts it to /tmp and dlopen()s it.
-      # macOS refuses to load a signed dylib whose Team ID differs from the
-      # loading process.  An unsigned dylib has no Team ID → loads freely.
-      # NOTE: sudo is required — the dylib lives in /Library/Frameworks which
-      # is owned by root on the GitHub Actions macOS runner.
-      - name: Strip Python dylib signature (macOS only)
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          set -uo pipefail
-          PYTHON_EXE="$(which python3)"
-          PYVER="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
-          echo "Python ${PYVER} at ${PYTHON_EXE}"
-
-          # Collect candidate dylib paths from every possible source
-          CANDIDATES=()
-
-          # 1. What the Python executable actually links against (otool is authoritative)
-          while IFS= read -r lib; do
-            CANDIDATES+=("$lib")
-            real="$(realpath "$lib" 2>/dev/null || true)"
-            [ -n "$real" ] && CANDIDATES+=("$real")
-          done < <(otool -L "$PYTHON_EXE" 2>/dev/null \
-                   | awk '{print $1}' \
-                   | grep -Ei 'python|Python')
-
-          # 2. System Python.framework (python.org macOS installer, needs sudo to modify)
-          CANDIDATES+=("/Library/Frameworks/Python.framework/Versions/${PYVER}/Python")
-
-          # 3. sysconfig LIBDIR / LDLIBRARY
-          LIBDIR="$(python3 -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR') or '')")"
-          LDLIB="$(python3  -c "import sysconfig; print(sysconfig.get_config_var('LDLIBRARY') or '')")"
-          [ -n "$LIBDIR" ] && [ -n "$LDLIB" ] && CANDIDATES+=("${LIBDIR}/${LDLIB}")
-
-          # 4. Brute-force scan of the GitHub Actions hostedtoolcache
-          while IFS= read -r f; do CANDIDATES+=("$f"); done < <(
-            find /Users/runner/hostedtoolcache/Python \
-                 -type f \( -name "libpython*.dylib" -o -name "Python" \) 2>/dev/null
-          )
-
-          # Deduplicate and process
-          declare -A SEEN
-          FOUND=0
-          for LIB in "${CANDIDATES[@]}"; do
-            [ -f "$LIB" ] || continue
-            [ -n "${SEEN[$LIB]+x}" ] && continue
-            SEEN[$LIB]=1
-            FOUND=1
-            echo "--- ${LIB}"
-            codesign -dv "$LIB" 2>&1 | grep -E 'TeamIdentifier|Identifier' \
-              || echo "  (no existing signature)"
-            sudo codesign --remove-signature "$LIB" \
-              && echo "  ✓ signature stripped" \
-              || echo "  – already unsigned (nothing to strip)"
-          done
-          [ "$FOUND" -eq 0 ] && echo "WARNING: no Python dylib found to strip"
-
       - name: PyInstaller — package backend
         shell: bash
         working-directory: backend
@@ -151,7 +92,10 @@ jobs:
         run: |
           DEST="frontend-tauri/src-tauri/binaries"
           mkdir -p "$DEST"
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            # onedir: launcher binary is dist/backend/backend
+            cp backend/dist/backend/backend "$DEST/backend-${{ matrix.rust-target }}"
+          elif [[ "$RUNNER_OS" == "Windows" ]]; then
             cp backend/dist/backend.exe "$DEST/backend-${{ matrix.rust-target }}.exe"
           else
             cp backend/dist/backend "$DEST/backend-${{ matrix.rust-target }}"
@@ -182,74 +126,69 @@ jobs:
           APPLE_SIGNING_IDENTITY: "-"
         run: tauri build
 
-      # ── 6b. Sign the app bundle and DMG (macOS only) ──────────────────────
-      # Sign the sidecar first WITH the disable-library-validation entitlement
-      # (belt-and-suspenders alongside the dylib signature strip above), then
-      # sign the full bundle and DMG.  We avoid --deep on the bundle because
-      # it would overwrite the sidecar's entitlements with a plain ad-hoc sign.
-      - name: Ad-hoc sign app bundle and DMG (macOS)
+      # ── 6b. macOS post-build: inject _internal/, strip Python dylib, sign, DMG ─
+      # With PyInstaller onedir, the Python.framework dylib is a plain file in
+      # dist/backend/_internal/.  We copy it into Contents/MacOS/ next to the
+      # sidecar, strip its code signature (no sudo needed — we own the file),
+      # then re-sign the bundle and create the DMG.  An unsigned dylib has no
+      # Team ID, so macOS loads it without any Team ID matching check.
+      - name: Bundle _internal/, strip Python dylib, sign and create DMG (macOS)
         if: runner.os == 'macOS'
         shell: bash
         run: |
           BUNDLE_DIR="frontend-tauri/src-tauri/target/release/bundle"
           APP=$(find "$BUNDLE_DIR/macos" -name "*.app" -maxdepth 1 | head -1)
-          DMG=$(find "$BUNDLE_DIR/dmg"   -name "*.dmg" -maxdepth 1 | head -1)
+          echo "App bundle: $APP"
+          ls -lh "$APP/Contents/MacOS/"
 
-          # Write entitlements that allow loading unsigned/differently-signed dylibs
-          cat > /tmp/sidecar.entitlements.plist << 'ENTEOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>com.apple.security.cs.disable-library-validation</key>
-              <true/>
-              <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-              <true/>
-          </dict>
-          </plist>
-          ENTEOF
+          # Copy _internal/ next to the sidecar inside the bundle
+          INTERNAL_SRC="backend/dist/backend/_internal"
+          [ -d "$INTERNAL_SRC" ] || INTERNAL_SRC="backend/dist/backend"
+          echo "Copying $(basename "$INTERNAL_SRC")/ into Contents/MacOS/ ..."
+          cp -r "$INTERNAL_SRC" "$APP/Contents/MacOS/_internal"
 
-          if [ -n "$APP" ]; then
-            # Tauri strips the target triple when copying the sidecar into the
-            # bundle, so inside Contents/MacOS the binary is just "backend"
-            # (not "backend-aarch64-apple-darwin").  Search for both forms.
-            SIDECAR=$(find "$APP/Contents/MacOS" -maxdepth 1 -type f \
-                           \( -name "backend" -o -name "backend-*" \) | head -1)
-            echo "Contents/MacOS files:"
-            ls -lh "$APP/Contents/MacOS/" || true
-            if [ -n "$SIDECAR" ]; then
-              echo "Signing sidecar with entitlements: $SIDECAR"
-              codesign --force --options runtime \
-                        --entitlements /tmp/sidecar.entitlements.plist \
-                        --sign - "$SIDECAR"
-              echo "Sidecar entitlements:"
-              codesign -d --entitlements - "$SIDECAR" 2>&1 || true
-            else
-              echo "ERROR: sidecar binary not found inside $APP/Contents/MacOS"
-              exit 1
-            fi
+          # Strip code signature from the Python dylib — it's a regular file
+          # we own, so no sudo required.
+          echo "Stripping Python dylib signatures..."
+          find "$APP/Contents/MacOS/_internal" \
+               -type f \( -name "Python" -o -name "Python3" -o -name "libpython*.dylib" \) \
+          | while IFS= read -r dylib; do
+              codesign --remove-signature "$dylib" 2>/dev/null \
+                && echo "  ✓ stripped: $(basename "$dylib")" \
+                || echo "  – already unsigned: $(basename "$dylib")"
+          done
 
-            # Sign all other nested executables/dylibs inside the bundle
-            find "$APP/Contents" -type f \( -name "*.dylib" -o -name "*.so" \) | while read -r lib; do
-              codesign --force --sign - "$lib" 2>/dev/null || true
-            done
-
-            # Sign the main app binary
-            MAIN_BIN="$APP/Contents/MacOS/Finwise"
-            if [ -f "$MAIN_BIN" ]; then
-              codesign --force --sign - "$MAIN_BIN"
-            fi
-
-            # Sign the app bundle itself (without --deep to preserve inner entitlements)
-            echo "Signing app bundle: $APP"
-            codesign --force --sign - "$APP"
+          # Sign the sidecar launcher with disable-library-validation (belt-and-suspenders)
+          SIDECAR=$(find "$APP/Contents/MacOS" -maxdepth 1 -type f \
+                         \( -name "backend" -o -name "backend-*" \) | head -1)
+          if [ -z "$SIDECAR" ]; then
+            echo "ERROR: sidecar not found in $APP/Contents/MacOS"; exit 1
           fi
+          {
+            echo '<?xml version="1.0" encoding="UTF-8"?>'
+            echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">'
+            echo '<plist version="1.0"><dict>'
+            echo '  <key>com.apple.security.cs.disable-library-validation</key><true/>'
+            echo '  <key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>'
+            echo '</dict></plist>'
+          } > /tmp/sidecar.entitlements.plist
+          echo "Signing sidecar: $SIDECAR"
+          codesign --force --options runtime \
+                   --entitlements /tmp/sidecar.entitlements.plist \
+                   --sign - "$SIDECAR"
 
-          if [ -n "$DMG" ]; then
-            echo "Signing DMG: $DMG"
-            codesign --sign - "$DMG"
-          fi
-          echo "✓ Ad-hoc signing complete"
+          # Re-sign the bundle to cover the newly added _internal/ files
+          codesign --force --sign - "$APP"
+          echo "✓ App bundle signed"
+
+          # Build the DMG from the modified app bundle
+          VERSION=$(python3 -c "import json; print(json.load(open('frontend/package.json'))['version'])")
+          DMG_DIR="$BUNDLE_DIR/dmg"
+          mkdir -p "$DMG_DIR"
+          DMG_PATH="$DMG_DIR/Finwise_${VERSION}_aarch64.dmg"
+          hdiutil create -volname "Finwise" -srcfolder "$APP" -ov -format UDZO "$DMG_PATH"
+          codesign --sign - "$DMG_PATH"
+          echo "✓ DMG: $DMG_PATH"
 
       # ── 7. Locate the installer produced by the bundler ────────────────────
       - name: Locate installer artifact

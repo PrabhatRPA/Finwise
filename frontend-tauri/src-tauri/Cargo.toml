@@ -1,6 +1,6 @@
 [package]
 name = "finwise"
-version = "1.3.4"
+version = "1.3.5"
 description = "Finwise — Privacy-first personal finance dashboard by Rao Tech LLC"
 authors = ["Prabhat Kumar <prabhat_kumar_p@hotmail.com>"]
 license = "MIT"

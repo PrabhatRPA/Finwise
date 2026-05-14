@@ -1,25 +1,30 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PyInstaller spec for the Personal Finance Platform backend sidecar.
 #
-# Run from the backend/ directory:
-#   pyinstaller backend.spec --clean
+# macOS  → --onedir  (dist/backend/backend + dist/backend/_internal/)
+#   The Python.framework dylib is a plain file we can strip the code signature
+#   from before bundling.  macOS refuses to dlopen a signed dylib whose Team ID
+#   differs from the loading process; an unsigned dylib has no Team ID → loads
+#   freely.  One-file mode embeds the signed dylib inside the binary making it
+#   impossible to strip before runtime extraction.
 #
-# Output: dist/backend  (dist/backend.exe on Windows)
+# Windows/Linux → --onefile  (dist/backend.exe / dist/backend)
+#   Windows does not enforce Team ID matching so one-file works fine there.
 
+import sys
 import certifi as _certifi
+
+_macos = sys.platform == 'darwin'
 
 a = Analysis(
     ["main_sidecar.py"],
     pathex=["."],
     binaries=[],
     datas=[
-        # Bundle the entire app package so all modules are available
         ("app", "app"),
-        # Bundle CA certificates so requests/yfinance can verify HTTPS in the frozen binary
         (_certifi.where(), "certifi"),
     ],
     hiddenimports=[
-        # uvicorn internals that are loaded dynamically
         "uvicorn.logging",
         "uvicorn.loops",
         "uvicorn.loops.auto",
@@ -36,51 +41,41 @@ a = Analysis(
         "uvicorn.middleware",
         "uvicorn.middleware.proxy_headers",
         "uvicorn._types",
-        # SQLAlchemy SQLite dialect
         "sqlalchemy.dialects.sqlite",
         "sqlalchemy.dialects.sqlite.pysqlite",
         "sqlalchemy.orm",
         "sqlalchemy.event",
         "sqlalchemy.pool",
-        # FastAPI / Starlette internals
         "starlette.routing",
         "starlette.middleware",
         "starlette.staticfiles",
         "starlette.templating",
-        # File uploads
         "multipart",
         "python_multipart",
         "aiofiles",
-        # Auth utilities — pbkdf2_sha256 is pure Python, no C extension needed
         "passlib",
         "passlib.handlers.pbkdf2",
         "passlib.utils.pbkdf2",
         "jose",
         "jose.jwt",
-        # Market data
         "yfinance",
         "pandas",
         "pandas._libs.tslibs.np_datetime",
         "numpy",
         "numpy.core._dtype_ctypes",
-        # AI providers
         "anthropic",
         "openai",
         "httpx",
         "httpx._transports",
         "httpx._transports.default",
-        # Pydantic
         "pydantic",
         "pydantic_core",
         "pydantic.deprecated",
-        # Async
         "anyio",
         "anyio._backends._asyncio",
         "anyio._backends._trio",
-        # SSL / timezone
         "certifi",
         "zoneinfo",
-        # Misc
         "dotenv",
         "email.mime.text",
         "email.mime.multipart",
@@ -89,7 +84,6 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    # Exclude heavy packages not needed at runtime
     excludes=["tkinter", "matplotlib", "scipy", "IPython", "jupyter"],
     noarchive=False,
     optimize=0,
@@ -100,18 +94,17 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
+    # macOS onedir: binaries/datas go into _internal/ via COLLECT below.
+    # Windows/Linux onefile: embed everything in the single executable.
+    [] if _macos else a.binaries,
+    [] if _macos else a.datas,
     [],
     name="backend",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    # UPX can corrupt some Python C-extensions — leave disabled
     upx=False,
     runtime_tmpdir=None,
-    # console=True keeps the process alive without a visible window on macOS/Linux;
-    # on Windows release builds Tauri hides the console via its own manifest.
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -119,3 +112,16 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+
+# macOS only: collect all support files into dist/backend/_internal/
+# The launcher (dist/backend/backend) and _internal/ sit side-by-side;
+# we copy both into Contents/MacOS/ of the app bundle after the Tauri build.
+if _macos:
+    coll = COLLECT(
+        exe,
+        a.binaries,
+        a.datas,
+        strip=False,
+        upx=False,
+        name="backend",
+    )
