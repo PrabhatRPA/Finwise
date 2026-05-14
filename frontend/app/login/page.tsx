@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { APP_NAME, APP_VERSION } from '@/lib/constants'
+import { authApi } from '@/lib/api'
 
 function AppMark() {
   return (
@@ -30,9 +31,41 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  // Backend startup state: null = unknown, true = ready, false = still starting
+  const [backendReady, setBackendReady] = useState<boolean | null>(null)
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   useEffect(() => {
     if (!isLoading && isAuthenticated) router.replace('/dashboard')
   }, [isAuthenticated, isLoading, router])
+
+  // Poll the backend health endpoint until it responds, then allow login.
+  useEffect(() => {
+    let attempts = 0
+    const MAX_ATTEMPTS = 60 // 60 × 1 s = 1 minute
+
+    const check = async () => {
+      try {
+        await authApi.checkSetup()
+        setBackendReady(true)
+        if (pollingRef.current) clearInterval(pollingRef.current)
+      } catch (err: any) {
+        attempts++
+        // A network error (no response) means backend not ready yet.
+        // An HTTP response (even 4xx) means the backend IS running.
+        if (err?.response || attempts >= MAX_ATTEMPTS) {
+          setBackendReady(true)
+          if (pollingRef.current) clearInterval(pollingRef.current)
+        } else {
+          setBackendReady(false)
+        }
+      }
+    }
+
+    check() // immediate first check
+    pollingRef.current = setInterval(check, 1000)
+    return () => { if (pollingRef.current) clearInterval(pollingRef.current) }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,7 +75,11 @@ export default function LoginPage() {
       await login(username, password)
       router.replace('/dashboard')
     } catch (err: any) {
-      setError(err?.response?.data?.detail ?? 'Login failed. Check your username and password.')
+      if (!err?.response) {
+        setError('Backend service is not responding. Please wait a moment and try again.')
+      } else {
+        setError(err?.response?.data?.detail ?? 'Login failed. Check your username and password.')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -68,6 +105,17 @@ export default function LoginPage() {
           </div>
         </div>
 
+        {/* Backend starting banner */}
+        {backendReady === false && (
+          <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3">
+            <span className="animate-spin h-4 w-4 border-2 border-amber-500 border-t-transparent rounded-full shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Starting services…</p>
+              <p className="text-xs text-amber-600/80 dark:text-amber-500/80">The backend is loading. Login will enable automatically.</p>
+            </div>
+          </div>
+        )}
+
         {/* Login card */}
         <Card className="shadow-md border-border/60">
           <CardContent className="pt-6">
@@ -81,6 +129,7 @@ export default function LoginPage() {
                   placeholder="your-username"
                   autoComplete="username"
                   required
+                  disabled={backendReady === false}
                 />
               </div>
               <div>
@@ -92,6 +141,7 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   autoComplete="current-password"
                   required
+                  disabled={backendReady === false}
                 />
               </div>
               {error && (
@@ -99,8 +149,16 @@ export default function LoginPage() {
                   {error}
                 </p>
               )}
-              <Button type="submit" className="w-full mt-1" disabled={submitting}>
-                {submitting ? 'Signing in…' : 'Sign in'}
+              <Button
+                type="submit"
+                className="w-full mt-1"
+                disabled={submitting || backendReady === false}
+              >
+                {backendReady === false
+                  ? 'Waiting for services…'
+                  : submitting
+                  ? 'Signing in…'
+                  : 'Sign in'}
               </Button>
             </form>
             <p className="text-center text-xs text-muted-foreground mt-4">
