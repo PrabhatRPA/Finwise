@@ -10,6 +10,14 @@ import { Input } from '@/components/ui/input'
 import { APP_NAME, APP_VERSION } from '@/lib/constants'
 import { authApi } from '@/lib/api'
 
+// Path shown in the "failed to start" error — matches what lib.rs writes.
+const LOG_PATHS = {
+  mac: '~/Library/Application Support/com.raotechllc.finwise/sidecar.log',
+  win: '%APPDATA%\\com.raotechllc.finwise\\sidecar.log',
+}
+
+type BackendState = 'checking' | 'ready' | 'failed'
+
 function AppMark() {
   return (
     <svg width="48" height="48" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -30,39 +38,53 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-
-  // Backend startup state: null = unknown, true = ready, false = still starting
-  const [backendReady, setBackendReady] = useState<boolean | null>(null)
+  const [backendState, setBackendState] = useState<BackendState>('checking')
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) router.replace('/dashboard')
   }, [isAuthenticated, isLoading, router])
 
-  // Poll the backend health endpoint until it responds, then allow login.
+  // Poll the backend health endpoint every second.
+  // Max 90 attempts = 90 seconds before giving up with a failure message.
   useEffect(() => {
     let attempts = 0
-    const MAX_ATTEMPTS = 60 // 60 × 1 s = 1 minute
+    const MAX_ATTEMPTS = 90
+
+    // Check if lib.rs already signalled a startup failure via a JS global.
+    if (typeof window !== 'undefined' && (window as any).__backendStartFailed) {
+      setBackendState('failed')
+      return
+    }
 
     const check = async () => {
+      // Also check the Rust-side failure flag on each poll.
+      if (typeof window !== 'undefined' && (window as any).__backendStartFailed) {
+        setBackendState('failed')
+        if (pollingRef.current) clearInterval(pollingRef.current)
+        return
+      }
+
       try {
         await authApi.checkSetup()
-        setBackendReady(true)
+        setBackendState('ready')
         if (pollingRef.current) clearInterval(pollingRef.current)
       } catch (err: any) {
         attempts++
-        // A network error (no response) means backend not ready yet.
-        // An HTTP response (even 4xx) means the backend IS running.
-        if (err?.response || attempts >= MAX_ATTEMPTS) {
-          setBackendReady(true)
+        if (err?.response) {
+          // Backend is up — it returned an HTTP error (e.g. 404, 200 etc.)
+          setBackendState('ready')
           if (pollingRef.current) clearInterval(pollingRef.current)
-        } else {
-          setBackendReady(false)
+        } else if (attempts >= MAX_ATTEMPTS) {
+          // Network error after 90 s — backend never started.
+          setBackendState('failed')
+          if (pollingRef.current) clearInterval(pollingRef.current)
         }
+        // Otherwise keep polling — state remains 'checking'.
       }
     }
 
-    check() // immediate first check
+    check()
     pollingRef.current = setInterval(check, 1000)
     return () => { if (pollingRef.current) clearInterval(pollingRef.current) }
   }, [])
@@ -76,7 +98,7 @@ export default function LoginPage() {
       router.replace('/dashboard')
     } catch (err: any) {
       if (!err?.response) {
-        setError('Backend service is not responding. Please wait a moment and try again.')
+        setError('Cannot reach the backend. Please restart the app.')
       } else {
         setError(err?.response?.data?.detail ?? 'Login failed. Check your username and password.')
       }
@@ -99,20 +121,36 @@ export default function LoginPage() {
           <AppMark />
           <div>
             <h1 className="text-2xl font-bold tracking-tight">{APP_NAME}</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Your private finance dashboard
-            </p>
+            <p className="text-sm text-muted-foreground mt-0.5">Your private finance dashboard</p>
           </div>
         </div>
 
-        {/* Backend starting banner */}
-        {backendReady === false && (
+        {/* Backend status banners — shown above the card */}
+        {backendState === 'checking' && (
           <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3">
             <span className="animate-spin h-4 w-4 border-2 border-amber-500 border-t-transparent rounded-full shrink-0" />
             <div>
               <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Starting services…</p>
-              <p className="text-xs text-amber-600/80 dark:text-amber-500/80">The backend is loading. Login will enable automatically.</p>
+              <p className="text-xs text-amber-600/70 dark:text-amber-500/70">
+                The backend is loading. Login will enable automatically.
+              </p>
             </div>
+          </div>
+        )}
+
+        {backendState === 'failed' && (
+          <div className="rounded-lg border border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/30 px-4 py-3 space-y-1.5">
+            <p className="text-sm font-semibold text-red-700 dark:text-red-400">Backend failed to start</p>
+            <p className="text-xs text-red-600/80 dark:text-red-400/80">
+              The Finwise service did not start. Try quitting and reopening the app.
+              If the problem persists, check the log file:
+            </p>
+            <p className="text-[11px] font-mono text-red-500 dark:text-red-400 break-all">
+              {LOG_PATHS.mac}
+            </p>
+            <p className="text-[11px] font-mono text-red-500 dark:text-red-400 break-all">
+              {LOG_PATHS.win}
+            </p>
           </div>
         )}
 
@@ -129,7 +167,7 @@ export default function LoginPage() {
                   placeholder="your-username"
                   autoComplete="username"
                   required
-                  disabled={backendReady === false}
+                  disabled={backendState !== 'ready'}
                 />
               </div>
               <div>
@@ -141,7 +179,7 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   autoComplete="current-password"
                   required
-                  disabled={backendReady === false}
+                  disabled={backendState !== 'ready'}
                 />
               </div>
               {error && (
@@ -152,10 +190,12 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 className="w-full mt-1"
-                disabled={submitting || backendReady === false}
+                disabled={submitting || backendState !== 'ready'}
               >
-                {backendReady === false
+                {backendState === 'checking'
                   ? 'Waiting for services…'
+                  : backendState === 'failed'
+                  ? 'Backend unavailable'
                   : submitting
                   ? 'Signing in…'
                   : 'Sign in'}

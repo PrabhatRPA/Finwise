@@ -9,28 +9,54 @@ use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 /// Holds the spawned backend process so we can kill it on window close.
 struct BackendChild(Mutex<Option<CommandChild>>);
 
-/// On macOS, macOS applies a quarantine xattr to everything that comes from
-/// the internet (including sidecar binaries inside a DMG-installed app).
-/// The user can bypass Gatekeeper for the main .app by right-clicking → Open,
-/// but child processes inside the bundle still carry the quarantine flag and
-/// are silently blocked when the app tries to spawn them.
+/// Strip the macOS quarantine xattr from the entire app bundle.
 ///
-/// This strips the quarantine from the entire .app bundle on first run so
-/// subsequent sidecar spawns succeed without any Gatekeeper prompt.
+/// macOS tags every file inside a DMG downloaded from the internet with
+/// `com.apple.quarantine`. When the user right-clicks → Open the main app
+/// binary that flag is cleared for THAT binary only. Every other file in
+/// the bundle (including the backend sidecar) keeps the flag and is silently
+/// killed by macOS at exec time when the app tries to spawn it.
+///
+/// We use the FULL PATH `/usr/bin/xattr` because GUI apps on macOS launch
+/// with a stripped PATH that may not include /usr/bin via the shell search.
 #[cfg(target_os = "macos")]
-fn strip_quarantine() {
-    if let Ok(exe) = std::env::current_exe() {
-        // exe = …/Finwise.app/Contents/MacOS/finwise
-        // go up 3 levels: MacOS → Contents → Finwise.app
-        if let Some(bundle) = exe
-            .parent()
+fn strip_quarantine_macos() {
+    // Walk up: finwise → MacOS → Contents → Finwise.app
+    let bundle = std::env::current_exe().ok()
+        .and_then(|exe| exe.parent()
             .and_then(|p| p.parent())
             .and_then(|p| p.parent())
-        {
-            let _ = std::process::Command::new("xattr")
-                .args(["-rd", "com.apple.quarantine", &bundle.to_string_lossy()])
-                .output();
+            .map(|p| p.to_path_buf()));
+
+    if let Some(bundle_path) = bundle {
+        // Recursively remove quarantine from the whole bundle.
+        // -r = recursive, -d = delete the named attribute.
+        let result = std::process::Command::new("/usr/bin/xattr")
+            .args(["-rd", "com.apple.quarantine", &bundle_path.to_string_lossy()])
+            .output();
+
+        match result {
+            Ok(out) if out.status.success() => {
+                eprintln!("[finwise] quarantine stripped from {:?}", bundle_path);
+            }
+            Ok(out) => {
+                eprintln!("[finwise] xattr warning: {}", String::from_utf8_lossy(&out.stderr));
+                // Fallback: strip just the MacOS directory (sidecar lives here)
+                let macos_dir = bundle_path.join("Contents").join("MacOS");
+                let _ = std::process::Command::new("/usr/bin/xattr")
+                    .args(["-rd", "com.apple.quarantine", &macos_dir.to_string_lossy()])
+                    .output();
+            }
+            Err(e) => {
+                eprintln!("[finwise] xattr not found: {e}");
+            }
         }
+
+        // Also explicitly remove the system policy that Gatekeeper adds for
+        // unsigned apps, so subsequent launches work without right-click → Open.
+        let _ = std::process::Command::new("/usr/sbin/spctl")
+            .args(["--add", &bundle_path.to_string_lossy()])
+            .output();
     }
 }
 
@@ -42,9 +68,7 @@ fn wait_for_backend(timeout: Duration) -> bool {
         if TcpStream::connect_timeout(
             &"127.0.0.1:8000".parse().unwrap(),
             Duration::from_millis(300),
-        )
-        .is_ok()
-        {
+        ).is_ok() {
             return true;
         }
         std::thread::sleep(Duration::from_millis(500));
@@ -58,13 +82,13 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .manage(BackendChild(Mutex::new(None)))
         .setup(|app| {
-            // ── 1. Strip macOS quarantine from the whole bundle ───────────────
-            // This must happen before we spawn the sidecar, otherwise macOS may
-            // silently kill the sidecar process at exec time.
+            // ── 1. Strip macOS quarantine BEFORE spawning the sidecar ─────────
+            // Must happen first — otherwise the sidecar binary is silently
+            // blocked by Gatekeeper at exec time.
             #[cfg(target_os = "macos")]
-            strip_quarantine();
+            strip_quarantine_macos();
 
-            // ── 2. Resolve the app-data directory ────────────────────────────
+            // ── 2. App-data directory ─────────────────────────────────────────
             let app_data_dir = app
                 .path()
                 .app_data_dir()
@@ -79,7 +103,6 @@ pub fn run() {
 
             // ── 3. Open sidecar log file ──────────────────────────────────────
             let log_path = app_data_dir.join("sidecar.log");
-            let _log_path_clone = log_path.clone();
 
             // ── 4. Spawn the Python FastAPI backend sidecar ───────────────────
             let (rx, child) = app
@@ -92,14 +115,13 @@ pub fn run() {
 
             *app.state::<BackendChild>().0.lock().unwrap() = Some(child);
 
-            // ── 5. Drain sidecar output → log file ───────────────────────────
-            let app_handle_log = app.handle().clone();
-            let log_path_log = log_path.clone();
+            // ── 5. Drain sidecar output → log and show crash dialog ───────────
+            let app_handle_rx = app.handle().clone();
+            let log_path_rx = log_path.clone();
             tauri::async_runtime::spawn(async move {
                 let mut log = std::fs::OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(&log_path_log)
+                    .create(true).append(true)
+                    .open(&log_path_rx)
                     .ok();
 
                 if let Some(ref mut f) = log {
@@ -120,18 +142,29 @@ pub fn run() {
                         }
                         CommandEvent::Terminated(payload) => {
                             let code = payload.code.unwrap_or(-1);
-                            let log_display = log_path_log.display();
-                            let msg = format!(
-                                "Finwise backend stopped unexpectedly (exit code {code}).\n\n\
-                                 Diagnosis log:\n{log_display}\n\n\
-                                 Try reinstalling the app or check that no other process \
-                                 is using port 8000."
-                            );
-                            if let Some(win) = app_handle_log.get_webview_window("main") {
+                            let log_str = log_path_rx.display().to_string();
+                            if let Some(ref mut f) = log {
+                                let _ = writeln!(f, "[terminated] exit code {code}");
+                            }
+
+                            // Show the window immediately so the user sees the error.
+                            if let Some(win) = app_handle_rx.get_webview_window("main") {
+                                let _ = win.show();
+                                let _ = win.set_focus();
+                                // Short delay for the webview to render before alert.
+                                tokio::time::sleep(Duration::from_millis(1500)).await;
+                                let msg = format!(
+                                    "Finwise backend failed to start (exit code {code}).\n\n\
+                                     This is usually caused by macOS security settings \
+                                     or another process already using port 8000.\n\n\
+                                     Diagnosis log:\n{log_str}\n\n\
+                                     Try: right-click Finwise.app → Open, or \
+                                     reinstall the app."
+                                );
                                 let js = format!(
                                     "alert({})",
                                     serde_json::to_string(&msg)
-                                        .unwrap_or_else(|_| "\"Backend crashed\"".into())
+                                        .unwrap_or_else(|_| "\"Backend failed to start\"".into())
                                 );
                                 let _ = win.eval(&js);
                             }
@@ -139,7 +172,7 @@ pub fn run() {
                         }
                         CommandEvent::Error(err) => {
                             if let Some(ref mut f) = log {
-                                let _ = writeln!(f, "[sidecar error] {err}");
+                                let _ = writeln!(f, "[error] {err}");
                             }
                         }
                         _ => {}
@@ -147,23 +180,24 @@ pub fn run() {
                 }
             });
 
-            // ── 6. Wait for backend → then show window ────────────────────────
-            // The window starts hidden (visible:false in tauri.conf.json).
-            // We poll port 8000 in a background OS thread so the UI thread is
-            // free, then reveal the window once the backend is accepting
-            // connections (or after a 60-second safety timeout).
+            // ── 6. Wait for backend, then reveal the window ───────────────────
+            // The window is hidden at startup (visible:false in tauri.conf.json).
+            // We poll port 8000 so the user never sees the login form before the
+            // backend is ready. If the backend crashes, step 5 shows the window
+            // early with an error. If it never starts within 60 s we show it
+            // anyway so the frontend timeout message is visible.
             let app_handle_show = app.handle().clone();
             std::thread::spawn(move || {
                 let ready = wait_for_backend(Duration::from_secs(60));
-
                 if let Some(win) = app_handle_show.get_webview_window("main") {
-                    if !ready {
-                        // Backend didn't respond — show the window anyway so the
-                        // user can see the error dialog that the async task will emit.
-                        let _ = win.eval("window.__backendTimedOut = true");
-                    }
+                    // Only show if not already shown by the crash handler above.
                     let _ = win.show();
                     let _ = win.set_focus();
+                    if !ready {
+                        // Tell the frontend the backend timed out rather than
+                        // silently enabling the login form.
+                        let _ = win.eval("window.__backendStartFailed = true");
+                    }
                 }
             });
 
