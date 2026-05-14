@@ -82,6 +82,64 @@ jobs:
           python -m pip install pyinstaller
           python -m pip install -r requirements.txt
 
+      # macOS: strip python.org code signature from the Python shared library
+      # before PyInstaller packages it.  PyInstaller embeds the dylib in the
+      # one-file binary; at runtime it extracts it to /tmp and dlopen()s it.
+      # macOS refuses to load a signed dylib whose Team ID differs from the
+      # loading process.  An unsigned dylib has no Team ID → loads freely.
+      - name: Strip Python dylib signature (macOS only)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          python3 << 'PYEOF'
+          import subprocess, sys, os, sysconfig, ctypes.util
+
+          candidates = set()
+
+          # Framework layout (python.org official installer)
+          fd = sysconfig.get_config_var('PYTHONFRAMEWORKDIR')
+          if fd:
+              ver = f'{sys.version_info.major}.{sys.version_info.minor}'
+              candidates.add(os.path.join(fd, 'Versions', ver, 'Python'))
+
+          # Unix-style layout (hostedtoolcache / homebrew)
+          libdir = sysconfig.get_config_var('LIBDIR')
+          ldlib  = sysconfig.get_config_var('LDLIBRARY')
+          if libdir and ldlib:
+              candidates.add(os.path.join(libdir, ldlib))
+              # Also resolve symlinks — the real dylib may be a versioned file
+              full = os.path.realpath(os.path.join(libdir, ldlib))
+              candidates.add(full)
+
+          # ctypes lookup as a fallback
+          for suffix in [f'{sys.version_info.major}.{sys.version_info.minor}',
+                         str(sys.version_info.major)]:
+              lib = ctypes.util.find_library(f'python{suffix}')
+              if lib and os.path.exists(lib):
+                  candidates.add(lib)
+                  candidates.add(os.path.realpath(lib))
+
+          found_any = False
+          for path in candidates:
+              if not os.path.exists(path):
+                  continue
+              found_any = True
+              r = subprocess.run(['codesign', '--remove-signature', path],
+                                 capture_output=True)
+              if r.returncode == 0:
+                  print(f'✓ stripped  {path}')
+              else:
+                  msg = r.stderr.decode().strip()
+                  # "no signature" is fine — nothing to strip
+                  if 'no signature' in msg.lower() or 'not signed' in msg.lower():
+                      print(f'– unsigned  {path}  (nothing to strip)')
+                  else:
+                      print(f'✗ failed    {path}: {msg}')
+
+          if not found_any:
+              print('WARNING: Python shared library not found — skipping signature strip')
+          PYEOF
+
       - name: PyInstaller — package backend
         shell: bash
         working-directory: backend
@@ -123,7 +181,11 @@ jobs:
           APPLE_SIGNING_IDENTITY: "-"
         run: tauri build
 
-      # ── 6b. Deep-sign the app bundle and DMG (macOS only) ─────────────────
+      # ── 6b. Sign the app bundle and DMG (macOS only) ──────────────────────
+      # Sign the sidecar first WITH the disable-library-validation entitlement
+      # (belt-and-suspenders alongside the dylib signature strip above), then
+      # sign the full bundle and DMG.  We avoid --deep on the bundle because
+      # it would overwrite the sidecar's entitlements with a plain ad-hoc sign.
       - name: Ad-hoc sign app bundle and DMG (macOS)
         if: runner.os == 'macOS'
         shell: bash
@@ -132,10 +194,46 @@ jobs:
           APP=$(find "$BUNDLE_DIR/macos" -name "*.app" -maxdepth 1 | head -1)
           DMG=$(find "$BUNDLE_DIR/dmg"   -name "*.dmg" -maxdepth 1 | head -1)
 
+          # Write entitlements that allow loading unsigned/differently-signed dylibs
+          cat > /tmp/sidecar.entitlements.plist << 'ENTEOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>com.apple.security.cs.disable-library-validation</key>
+              <true/>
+              <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+              <true/>
+          </dict>
+          </plist>
+          ENTEOF
+
           if [ -n "$APP" ]; then
+            # Sign the sidecar binary with Hardened Runtime + entitlements
+            SIDECAR=$(find "$APP" -name "backend-*" -type f | head -1)
+            if [ -n "$SIDECAR" ]; then
+              echo "Signing sidecar with entitlements: $SIDECAR"
+              codesign --force --options runtime \
+                        --entitlements /tmp/sidecar.entitlements.plist \
+                        --sign - "$SIDECAR"
+            fi
+
+            # Sign all other nested executables/dylibs inside the bundle
+            find "$APP/Contents" -type f \( -name "*.dylib" -o -name "*.so" \) | while read -r lib; do
+              codesign --force --sign - "$lib" 2>/dev/null || true
+            done
+
+            # Sign the main app binary
+            MAIN_BIN="$APP/Contents/MacOS/Finwise"
+            if [ -f "$MAIN_BIN" ]; then
+              codesign --force --sign - "$MAIN_BIN"
+            fi
+
+            # Sign the app bundle itself (without --deep to preserve inner entitlements)
             echo "Signing app bundle: $APP"
-            codesign --deep --force --sign - "$APP"
+            codesign --force --sign - "$APP"
           fi
+
           if [ -n "$DMG" ]; then
             echo "Signing DMG: $DMG"
             codesign --sign - "$DMG"
