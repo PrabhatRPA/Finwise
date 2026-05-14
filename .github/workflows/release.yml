@@ -87,58 +87,59 @@ jobs:
       # one-file binary; at runtime it extracts it to /tmp and dlopen()s it.
       # macOS refuses to load a signed dylib whose Team ID differs from the
       # loading process.  An unsigned dylib has no Team ID → loads freely.
+      # NOTE: sudo is required — the dylib lives in /Library/Frameworks which
+      # is owned by root on the GitHub Actions macOS runner.
       - name: Strip Python dylib signature (macOS only)
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          python3 << 'PYEOF'
-          import subprocess, sys, os, sysconfig, ctypes.util
+          set -uo pipefail
+          PYTHON_EXE="$(which python3)"
+          PYVER="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+          echo "Python ${PYVER} at ${PYTHON_EXE}"
 
-          candidates = set()
+          # Collect candidate dylib paths from every possible source
+          CANDIDATES=()
 
-          # Framework layout (python.org official installer)
-          fd = sysconfig.get_config_var('PYTHONFRAMEWORKDIR')
-          if fd:
-              ver = f'{sys.version_info.major}.{sys.version_info.minor}'
-              candidates.add(os.path.join(fd, 'Versions', ver, 'Python'))
+          # 1. What the Python executable actually links against (otool is authoritative)
+          while IFS= read -r lib; do
+            CANDIDATES+=("$lib")
+            real="$(realpath "$lib" 2>/dev/null || true)"
+            [ -n "$real" ] && CANDIDATES+=("$real")
+          done < <(otool -L "$PYTHON_EXE" 2>/dev/null \
+                   | awk '{print $1}' \
+                   | grep -Ei 'python|Python')
 
-          # Unix-style layout (hostedtoolcache / homebrew)
-          libdir = sysconfig.get_config_var('LIBDIR')
-          ldlib  = sysconfig.get_config_var('LDLIBRARY')
-          if libdir and ldlib:
-              candidates.add(os.path.join(libdir, ldlib))
-              # Also resolve symlinks — the real dylib may be a versioned file
-              full = os.path.realpath(os.path.join(libdir, ldlib))
-              candidates.add(full)
+          # 2. System Python.framework (python.org macOS installer, needs sudo to modify)
+          CANDIDATES+=("/Library/Frameworks/Python.framework/Versions/${PYVER}/Python")
 
-          # ctypes lookup as a fallback
-          for suffix in [f'{sys.version_info.major}.{sys.version_info.minor}',
-                         str(sys.version_info.major)]:
-              lib = ctypes.util.find_library(f'python{suffix}')
-              if lib and os.path.exists(lib):
-                  candidates.add(lib)
-                  candidates.add(os.path.realpath(lib))
+          # 3. sysconfig LIBDIR / LDLIBRARY
+          LIBDIR="$(python3 -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR') or '')")"
+          LDLIB="$(python3  -c "import sysconfig; print(sysconfig.get_config_var('LDLIBRARY') or '')")"
+          [ -n "$LIBDIR" ] && [ -n "$LDLIB" ] && CANDIDATES+=("${LIBDIR}/${LDLIB}")
 
-          found_any = False
-          for path in candidates:
-              if not os.path.exists(path):
-                  continue
-              found_any = True
-              r = subprocess.run(['codesign', '--remove-signature', path],
-                                 capture_output=True)
-              if r.returncode == 0:
-                  print(f'✓ stripped  {path}')
-              else:
-                  msg = r.stderr.decode().strip()
-                  # "no signature" is fine — nothing to strip
-                  if 'no signature' in msg.lower() or 'not signed' in msg.lower():
-                      print(f'– unsigned  {path}  (nothing to strip)')
-                  else:
-                      print(f'✗ failed    {path}: {msg}')
+          # 4. Brute-force scan of the GitHub Actions hostedtoolcache
+          while IFS= read -r f; do CANDIDATES+=("$f"); done < <(
+            find /Users/runner/hostedtoolcache/Python \
+                 -type f \( -name "libpython*.dylib" -o -name "Python" \) 2>/dev/null
+          )
 
-          if not found_any:
-              print('WARNING: Python shared library not found — skipping signature strip')
-          PYEOF
+          # Deduplicate and process
+          declare -A SEEN
+          FOUND=0
+          for LIB in "${CANDIDATES[@]}"; do
+            [ -f "$LIB" ] || continue
+            [ -n "${SEEN[$LIB]+x}" ] && continue
+            SEEN[$LIB]=1
+            FOUND=1
+            echo "--- ${LIB}"
+            codesign -dv "$LIB" 2>&1 | grep -E 'TeamIdentifier|Identifier' \
+              || echo "  (no existing signature)"
+            sudo codesign --remove-signature "$LIB" \
+              && echo "  ✓ signature stripped" \
+              || echo "  – already unsigned (nothing to strip)"
+          done
+          [ "$FOUND" -eq 0 ] && echo "WARNING: no Python dylib found to strip"
 
       - name: PyInstaller — package backend
         shell: bash
@@ -209,13 +210,23 @@ jobs:
           ENTEOF
 
           if [ -n "$APP" ]; then
-            # Sign the sidecar binary with Hardened Runtime + entitlements
-            SIDECAR=$(find "$APP" -name "backend-*" -type f | head -1)
+            # Tauri strips the target triple when copying the sidecar into the
+            # bundle, so inside Contents/MacOS the binary is just "backend"
+            # (not "backend-aarch64-apple-darwin").  Search for both forms.
+            SIDECAR=$(find "$APP/Contents/MacOS" -maxdepth 1 -type f \
+                           \( -name "backend" -o -name "backend-*" \) | head -1)
+            echo "Contents/MacOS files:"
+            ls -lh "$APP/Contents/MacOS/" || true
             if [ -n "$SIDECAR" ]; then
               echo "Signing sidecar with entitlements: $SIDECAR"
               codesign --force --options runtime \
                         --entitlements /tmp/sidecar.entitlements.plist \
                         --sign - "$SIDECAR"
+              echo "Sidecar entitlements:"
+              codesign -d --entitlements - "$SIDECAR" 2>&1 || true
+            else
+              echo "ERROR: sidecar binary not found inside $APP/Contents/MacOS"
+              exit 1
             fi
 
             # Sign all other nested executables/dylibs inside the bundle
