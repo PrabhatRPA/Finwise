@@ -77,8 +77,18 @@ def holding_to_dict(holding: models.Holding) -> dict:
         "current_value": float(holding.current_value) if holding.current_value else 0,
         "total_gain_loss": float(holding.total_gain_loss) if holding.total_gain_loss else 0,
         "total_gain_loss_percent": float(holding.total_gain_loss_percent) if holding.total_gain_loss_percent else 0,
-        "today_gain_loss": 0.0,
-        "today_gain_loss_percent": 0.0,
+        # Per-share day change ($) and percent (= today_gain_loss_percent for a holding).
+        # Persisted on the row so cached reads (refresh_prices=false) still return them.
+        "day_change": float(holding.day_change) if holding.day_change else 0.0,
+        "day_change_percent": float(holding.day_change_percent) if holding.day_change_percent else 0.0,
+        "previous_close": float(holding.previous_close) if holding.previous_close else 0.0,
+        # Position-level today $ and % (shares * day_change). Recomputed from persisted day_change below.
+        "today_gain_loss": round(
+            (float(holding.day_change) if holding.day_change else 0.0)
+            * (float(holding.shares) if holding.shares else 0.0),
+            2,
+        ),
+        "today_gain_loss_percent": float(holding.day_change_percent) if holding.day_change_percent else 0.0,
         "dividend_yield": float(holding.dividend_yield) if holding.dividend_yield else 0,
         "sector": holding.sector,
         "industry": holding.industry,
@@ -93,9 +103,16 @@ async def get_holdings(
     db: Session = Depends(get_db),
     ticker: Optional[str] = None,
     account_id: Optional[int] = None,
+    refresh_prices: bool = True,
     current_user: models.User = Depends(get_current_user),
 ):
-    """Get all holdings with optional filters."""
+    """Get all holdings with optional filters.
+
+    refresh_prices=false skips the live-quote fetch and returns persisted values
+    only. Used for the dashboard's cached-first initial render — the UI shows
+    last-known data immediately while a second call with refresh_prices=true
+    pulls fresh quotes in the background.
+    """
     query = db.query(models.Holding).filter(models.Holding.user_id == current_user.id)
 
     if ticker:
@@ -104,6 +121,14 @@ async def get_holdings(
         query = query.filter(models.Holding.account_id == account_id)
 
     holdings = query.all()
+
+    # Fast path: return persisted values without hitting the market data service.
+    if not refresh_prices:
+        return {
+            "holdings": [holding_to_dict(h) for h in holdings],
+            "count": len(holdings),
+            "prices_refreshed": False,
+        }
 
     # Update prices
     tickers = list(set(h.ticker for h in holdings if h.ticker))
@@ -121,6 +146,7 @@ async def get_holdings(
                 avg_cost = data["average_cost"]
 
                 data["current_price"] = current_price
+                data["previous_close"] = prev_close
                 data["current_value"] = round(shares * current_price, 2)
                 data["total_gain_loss"] = round(
                     data["current_value"] - (shares * avg_cost), 2
@@ -131,23 +157,29 @@ async def get_holdings(
                     )
 
                 # Today's gain/loss (vs. previous close)
+                day_change = 0.0
+                day_change_percent = 0.0
                 if prev_close > 0:
-                    today_price_change = current_price - prev_close
-                    data["today_gain_loss"] = round(today_price_change * shares, 2)
-                    data["today_gain_loss_percent"] = round(
-                        (today_price_change / prev_close) * 100, 2
-                    )
+                    day_change = round(current_price - prev_close, 4)
+                    day_change_percent = round((day_change / prev_close) * 100, 2)
+                data["day_change"] = day_change
+                data["day_change_percent"] = day_change_percent
+                data["today_gain_loss"] = round(day_change * shares, 2)
+                data["today_gain_loss_percent"] = day_change_percent
 
-                # Update database with latest price
+                # Persist so the next cached read (refresh_prices=false) returns these too.
                 h.current_price = current_price
+                h.previous_close = prev_close
                 h.current_value = data["current_value"]
                 h.total_gain_loss = data["total_gain_loss"]
                 h.total_gain_loss_percent = data["total_gain_loss_percent"]
+                h.day_change = day_change
+                h.day_change_percent = day_change_percent
                 h.last_updated = datetime.utcnow()
         result.append(data)
 
     db.commit()
-    return {"holdings": result, "count": len(result)}
+    return {"holdings": result, "count": len(result), "prices_refreshed": True}
 
 
 @router.get("/holdings/{holding_id}")

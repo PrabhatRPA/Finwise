@@ -42,6 +42,9 @@ def _holdings_rows(db: Session, user_id: int) -> list[dict]:
             "shares": h.shares or 0,
             "average_cost": h.average_cost or 0,
             "current_price": h.current_price or 0,
+            "previous_close": h.previous_close or 0,
+            "day_change": h.day_change or 0,
+            "day_change_percent": h.day_change_percent or 0,
             "current_value": h.current_value or 0,
             "total_gain_loss": h.total_gain_loss or 0,
             "total_gain_loss_percent": h.total_gain_loss_percent or 0,
@@ -103,7 +106,8 @@ def _csv_response(data: bytes, filename: str) -> StreamingResponse:
 
 HOLDINGS_FIELDS = [
     "ticker", "security_name", "security_type", "shares", "average_cost",
-    "current_price", "current_value", "total_gain_loss", "total_gain_loss_percent",
+    "current_price", "previous_close", "day_change", "day_change_percent",
+    "current_value", "total_gain_loss", "total_gain_loss_percent",
     "purchase_date", "account_id", "sector", "industry", "dividend_yield",
 ]
 WATCHLIST_FIELDS = [

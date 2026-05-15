@@ -36,7 +36,7 @@ type FormState = typeof EMPTY_FORM
 export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: HoldingsTableProps) {
   const { accounts, totalValue } = usePortfolioStore()
 
-  type SortField = 'ticker' | 'type' | 'shares' | 'avg_cost' | 'price' | 'value' | 'today_gain' | 'gain' | 'allocation'
+  type SortField = 'ticker' | 'type' | 'shares' | 'avg_cost' | 'price' | 'value' | 'today_pct' | 'today_dollar' | 'day_change' | 'gain' | 'allocation'
   const [sortBy, setSortBy] = useState<SortField>('ticker')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
@@ -68,7 +68,9 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
       case 'avg_cost': va = a.average_cost ?? 0;                 vb = b.average_cost ?? 0; break
       case 'price':    va = a.current_price ?? 0;                vb = b.current_price ?? 0; break
       case 'value':    va = a.current_value ?? 0;                vb = b.current_value ?? 0; break
-      case 'today_gain': va = a.today_gain_loss_percent ?? 0;                             vb = b.today_gain_loss_percent ?? 0; break
+      case 'today_pct':    va = a.today_gain_loss_percent ?? 0;                            vb = b.today_gain_loss_percent ?? 0; break
+      case 'today_dollar': va = a.today_gain_loss ?? 0;                                    vb = b.today_gain_loss ?? 0; break
+      case 'day_change':   va = a.day_change ?? 0;                                         vb = b.day_change ?? 0; break
       case 'gain':       va = a.total_gain_loss_percent ?? 0;                              vb = b.total_gain_loss_percent ?? 0; break
       case 'allocation': va = totalValue > 0 ? (a.current_value ?? 0) / totalValue : 0; vb = totalValue > 0 ? (b.current_value ?? 0) / totalValue : 0; break
     }
@@ -99,6 +101,23 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
       </div>
     )
   }
+
+  // Single-value cell coloured by the value's sign.
+  const signedCell = (value: number, formatter: (v: number) => string) => {
+    const colorClass = value > 0
+      ? 'text-emerald-600 dark:text-emerald-400'
+      : value < 0
+        ? 'text-red-600 dark:text-red-400'
+        : 'text-muted-foreground'
+    const sign = value > 0 ? '+' : ''
+    return (
+      <span className={`text-sm font-medium ${colorClass}`}>
+        {sign}{formatter(value)}
+      </span>
+    )
+  }
+  const pctCell = (pct: number) => signedCell(pct, v => `${v.toFixed(2)}%`)
+  const dollarCell = (n: number) => signedCell(n, formatCurrency)
 
   // ── Modal open/close ─────────────────────────────────────────
   function openAdd() {
@@ -380,8 +399,14 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
                   <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('value')}>
                     Value{sortIcon('value')}
                   </TableHead>
-                  <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('today_gain')}>
-                    Today{sortIcon('today_gain')}
+                  <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('today_pct')} title="Today's % change in position value">
+                    Today %{sortIcon('today_pct')}
+                  </TableHead>
+                  <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('today_dollar')} title="Today's $ change in position value (shares × per-share change)">
+                    Today ${sortIcon('today_dollar')}
+                  </TableHead>
+                  <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('day_change')} title="Per-share price change vs. yesterday's close">
+                    Day Change{sortIcon('day_change')}
                   </TableHead>
                   <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('gain')}>
                     Total Gain/Loss{sortIcon('gain')}
@@ -395,7 +420,7 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
               <TableBody>
                 {sorted.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={12} className="text-center py-10 text-muted-foreground">
                       {q ? `No holdings match "${searchQuery}".` : (
                         <>No holdings yet.{' '}
                           <button onClick={openAdd} className="underline text-primary hover:text-primary/80">
@@ -432,7 +457,9 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
                         )}
                       </TableCell>
                       <TableCell className="text-right font-medium">{formatCurrency(h.current_value ?? 0)}</TableCell>
-                      <TableCell className="text-right">{gainCell(h.today_gain_loss_percent ?? 0, h.today_gain_loss ?? 0)}</TableCell>
+                      <TableCell className="text-right">{pctCell(h.today_gain_loss_percent ?? 0)}</TableCell>
+                      <TableCell className="text-right">{dollarCell(h.today_gain_loss ?? 0)}</TableCell>
+                      <TableCell className="text-right">{dollarCell(h.day_change ?? 0)}</TableCell>
                       <TableCell className="text-right">{gainCell(h.total_gain_loss_percent ?? 0, h.total_gain_loss ?? 0)}</TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">
                         {totalValue > 0 ? ((h.current_value ?? 0) / totalValue * 100).toFixed(1) + '%' : '—'}

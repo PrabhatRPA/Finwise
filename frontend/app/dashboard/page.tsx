@@ -49,21 +49,49 @@ export default function DashboardPage() {
     }
   }, [authLoading, isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fetchData = async (silent = false, _retries = 8) => {
+  // Cached-first load:
+  //   1. Pull holdings with refresh_prices=false (instant — uses persisted values).
+  //   2. Render the table immediately, then in the background fire another
+  //      holdings call with refresh_prices=true to update live prices.
+  //   3. Accounts + net worth are fetched in parallel with the cached read.
+  // forceRefresh=true (e.g. the user clicked the Refresh button) skips the
+  // cached pre-fetch and goes straight to the live call.
+  const fetchData = async (silent = false, _retries = 8, forceRefresh = false) => {
     if (silent) {
       setIsRefreshing(true)
     } else {
       setIsLoading(true)
     }
     try {
-      const holdingsResp = await holdingsApi.getAll()
-      setHoldings(holdingsResp.data.holdings ?? [])
-
-      const accountsResp = await accountsApi.getAll()
-      if (accountsResp.data.accounts) {
-        usePortfolioStore.getState().setAccounts(accountsResp.data.accounts)
+      // 1. Cached holdings — instant render path. Drop the big spinner as
+      //    soon as anything (even 0 rows) comes back so the user sees the
+      //    table layout immediately.
+      let renderedSomething = false
+      if (!forceRefresh) {
+        try {
+          const cachedResp = await holdingsApi.getAll(false)
+          setHoldings(cachedResp.data.holdings ?? [])
+          renderedSomething = true
+          setIsLoading(false)
+          // Live fetch is now a background refresh.
+          if (!silent) setIsRefreshing(true)
+        } catch {
+          // If the cached read fails (network glitch, cold backend), fall
+          // through to the live call which has its own retry loop.
+        }
       }
 
+      // Accounts can load in parallel — they don't depend on the price fetch.
+      const accountsPromise = accountsApi.getAll().then(r => {
+        if (r.data.accounts) usePortfolioStore.getState().setAccounts(r.data.accounts)
+      }).catch(() => {})
+
+      // 2. Live holdings — replaces cached values when prices arrive.
+      const liveResp = await holdingsApi.getAll(true)
+      setHoldings(liveResp.data.holdings ?? [])
+      if (!renderedSomething) setIsLoading(false)
+
+      await accountsPromise
       calculatePortfolio()
 
       const netWorthResp = await netWorthApi.getCurrent()
@@ -74,7 +102,7 @@ export default function DashboardPage() {
       // On desktop the sidecar backend may still be warming up — retry on
       // network errors so the user never has to click Refresh manually.
       if (!error.response && _retries > 0) {
-        setTimeout(() => fetchData(silent, _retries - 1), 2500)
+        setTimeout(() => fetchData(silent, _retries - 1, forceRefresh), 2500)
         return
       }
       console.error('Error fetching data:', error)
@@ -186,7 +214,7 @@ export default function DashboardPage() {
           <Button variant="outline" size="sm" onClick={() => router.push('/documents')}>
             Upload Documents
           </Button>
-          <Button size="sm" onClick={async () => { await systemApi.forceRefreshPrices().catch(() => {}); fetchData(false) }} disabled={isRefreshing}>
+          <Button size="sm" onClick={async () => { await systemApi.forceRefreshPrices().catch(() => {}); fetchData(true, 8, true) }} disabled={isRefreshing}>
             {isRefreshing ? (
               <span className="flex items-center gap-1.5">
                 <span className="animate-spin h-3 w-3 border border-current border-t-transparent rounded-full inline-block" />

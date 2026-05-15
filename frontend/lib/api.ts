@@ -40,7 +40,11 @@ export const authApi = {
 }
 
 export const holdingsApi = {
-  getAll: () => api.get('/holdings'),
+  // refresh_prices=false returns persisted values instantly (no market fetch).
+  // Pass false on initial render for snappy UX, then call again with true in
+  // the background to update prices.
+  getAll: (refreshPrices: boolean = true) =>
+    api.get('/holdings', { params: { refresh_prices: refreshPrices } }),
   getById: (id: number) => api.get(`/holdings/${id}`),
   create: (data: Partial<Holding>) => api.post('/holdings', data),
   update: (id: number, data: Partial<Holding>) => api.put(`/holdings/${id}`, data),
