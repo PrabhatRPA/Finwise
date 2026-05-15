@@ -16,7 +16,7 @@ const LOG_PATHS = {
   win: '%APPDATA%\\com.raotechllc.finwise\\sidecar.log',
 }
 
-type BackendState = 'checking' | 'ready' | 'failed'
+type BackendState = 'checking' | 'ready' | 'failed' | 'stale-install'
 
 function AppMark() {
   return (
@@ -52,13 +52,24 @@ export default function LoginPage() {
     const MAX_ATTEMPTS = 90
 
     // Check if lib.rs already signalled a startup failure via a JS global.
+    // __staleInstall takes priority — it's set when the bundle's
+    // Contents/Frameworks/ is missing (drag-replace partial-overwrite).
+    if (typeof window !== 'undefined' && (window as any).__staleInstall) {
+      setBackendState('stale-install')
+      return
+    }
     if (typeof window !== 'undefined' && (window as any).__backendStartFailed) {
       setBackendState('failed')
       return
     }
 
     const check = async () => {
-      // Also check the Rust-side failure flag on each poll.
+      // Re-check Rust-side flags on each poll.
+      if (typeof window !== 'undefined' && (window as any).__staleInstall) {
+        setBackendState('stale-install')
+        if (pollingRef.current) clearInterval(pollingRef.current)
+        return
+      }
       if (typeof window !== 'undefined' && (window as any).__backendStartFailed) {
         setBackendState('failed')
         if (pollingRef.current) clearInterval(pollingRef.current)
@@ -138,6 +149,26 @@ export default function LoginPage() {
           </div>
         )}
 
+        {backendState === 'stale-install' && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-4 py-3 space-y-2">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+              Incomplete install detected
+            </p>
+            <p className="text-xs text-amber-700/90 dark:text-amber-300/80">
+              When you dragged the new Finwise into Applications, macOS didn&apos;t fully replace the old version&apos;s files. This is a known macOS gotcha &mdash; do a clean reinstall to fix it:
+            </p>
+            <ol className="text-xs text-amber-700/90 dark:text-amber-300/80 list-decimal list-inside space-y-0.5 ml-1">
+              <li>Quit Finwise (⌘Q).</li>
+              <li>Drag <span className="font-semibold">Finwise</span> from your Applications folder to the Trash.</li>
+              <li><span className="font-semibold">Empty the Trash.</span></li>
+              <li>Open the Finwise <span className="font-mono">.dmg</span> again and drag Finwise back into Applications.</li>
+            </ol>
+            <p className="text-[11px] text-amber-600/80 dark:text-amber-400/80 italic">
+              Your data is safe &mdash; it lives outside the app bundle and is never touched by reinstall.
+            </p>
+          </div>
+        )}
+
         {backendState === 'failed' && (
           <div className="rounded-lg border border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/30 px-4 py-3 space-y-1.5">
             <p className="text-sm font-semibold text-red-700 dark:text-red-400">Backend failed to start</p>
@@ -194,6 +225,8 @@ export default function LoginPage() {
               >
                 {backendState === 'checking'
                   ? 'Waiting for services…'
+                  : backendState === 'stale-install'
+                  ? 'Reinstall required'
                   : backendState === 'failed'
                   ? 'Backend unavailable'
                   : submitting

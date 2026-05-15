@@ -60,6 +60,26 @@ fn strip_quarantine_macos() {
     }
 }
 
+/// Detect a partial-install where macOS's drag-replace into /Applications/
+/// failed to overwrite the previous bundle's Contents/Frameworks/. Without
+/// the Python framework in there the sidecar's PyInstaller bootloader will
+/// fail with a cryptic "Failed to load Python shared library" error.
+///
+/// Returns true if the bundle looks complete (or if we're not inside an
+/// .app bundle at all, e.g. dev mode).
+#[cfg(target_os = "macos")]
+fn is_install_complete() -> bool {
+    let exe = match std::env::current_exe() { Ok(p) => p, Err(_) => return true };
+    let macos_dir = match exe.parent() { Some(d) => d, None => return true };
+    let contents_dir = match macos_dir.parent() { Some(d) => d, None => return true };
+    // Only enforce inside a real .app bundle. Dev builds (target/debug/finwise)
+    // don't sit under a Contents/ directory, so skip the check.
+    if contents_dir.file_name().and_then(|s| s.to_str()) != Some("Contents") {
+        return true;
+    }
+    contents_dir.join("Frameworks").join("Python").exists()
+}
+
 /// Poll TCP port 8000 until the backend is accepting connections or the
 /// deadline is reached. Returns true if the backend came up in time.
 fn wait_for_backend(timeout: Duration) -> bool {
@@ -87,6 +107,46 @@ pub fn run() {
             // blocked by Gatekeeper at exec time.
             #[cfg(target_os = "macos")]
             strip_quarantine_macos();
+
+            // ── 1b. Detect partial-install on macOS ───────────────────────────
+            // Drag-replace into /Applications/ doesn't always overwrite the
+            // previous Contents/Frameworks/ contents. If the Python framework
+            // is missing, the sidecar will spew a cryptic dlopen error and
+            // the user is stuck. Short-circuit here and tell the frontend so
+            // it can show a "reinstall fresh" message instead.
+            #[cfg(target_os = "macos")]
+            let install_ok = is_install_complete();
+            #[cfg(not(target_os = "macos"))]
+            let install_ok = true;
+
+            if !install_ok {
+                let log_dir = app.path().app_data_dir().ok();
+                if let Some(dir) = &log_dir {
+                    let _ = std::fs::create_dir_all(dir);
+                    let log_path = dir.join("sidecar.log");
+                    if let Ok(mut f) = std::fs::OpenOptions::new()
+                        .create(true).append(true).open(&log_path)
+                    {
+                        let ts = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
+                        let _ = writeln!(
+                            f,
+                            "\n──── Finwise started {ts} ────\n[stale-install] Contents/Frameworks/Python is missing — partial install detected, skipping sidecar spawn"
+                        );
+                    }
+                }
+                let app_handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(Duration::from_millis(300));
+                    if let Some(win) = app_handle.get_webview_window("main") {
+                        let _ = win.show();
+                        let _ = win.set_focus();
+                        let _ = win.eval(
+                            "window.__staleInstall = true; window.__backendStartFailed = true;",
+                        );
+                    }
+                });
+                return Ok(()); // skip sidecar spawn — it would only crash
+            }
 
             // ── 2. App-data directory ─────────────────────────────────────────
             let app_data_dir = app
