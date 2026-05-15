@@ -181,6 +181,22 @@ jobs:
           cp backend/dist/backend/backend "$APP/Contents/MacOS/backend"
           echo "✓ Sidecar restored to pristine PyInstaller binary (unsigned)"
 
+          # Sanity check — fail the build loudly if our modifications didn't land.
+          # This protects against silent regressions like our step running but
+          # producing an empty Frameworks/ (which is what makes the sidecar fail
+          # to find Python at runtime).
+          if [ ! -f "$APP/Contents/Frameworks/Python" ] && [ ! -L "$APP/Contents/Frameworks/Python" ]; then
+            echo "ERROR: Contents/Frameworks/Python is missing — DMG would ship broken"
+            ls -la "$APP/Contents/Frameworks/" || true
+            exit 1
+          fi
+          FW_COUNT=$(ls "$APP/Contents/Frameworks/" | wc -l | tr -d ' ')
+          if [ "$FW_COUNT" -lt 50 ]; then
+            echo "ERROR: Contents/Frameworks/ has only $FW_COUNT items (expected ~60+)"
+            exit 1
+          fi
+          echo "✓ Sanity check: Contents/Frameworks/Python present, $FW_COUNT items"
+
           # Build the DMG from the modified app bundle
           VERSION=$(python3 -c "import json; print(json.load(open('frontend/package.json'))['version'])")
           DMG_DIR="$BUNDLE_DIR/dmg"
@@ -233,7 +249,16 @@ jobs:
             - **Windows** — Run the `-setup.exe` installer. If Windows SmartScreen appears, click **More info → Run anyway**. When prompted, choose **Install for me only** (no admin rights needed) or **Install for all users** (requires admin).
 
             ### Upgrading from an older version
-            Install the new version on top of the old one — no need to uninstall first.
+
+            **macOS — important:** drag-replacing the old app does **not** always overwrite every file. To upgrade cleanly:
+            1. Quit Finwise (⌘Q — also quit from the menu if it's still running).
+            2. Drag the old `Finwise.app` from `/Applications/` to the **Trash** and empty it.
+            3. Open the new `.dmg` and drag the fresh `Finwise.app` into `/Applications/`.
+
+            If you see a "Backend failed to start" message after an upgrade, that almost always means the replace was partial — quit, delete, and re-install as above.
+
+            **Windows** — run the `-setup.exe` over the old install; the installer overwrites cleanly.
+
             Your data lives in a separate OS folder and is **never** touched by the installer:
             - macOS: `~/Library/Application Support/com.raotechllc.finwise/`
             - Windows: `%APPDATA%\com.raotechllc.finwise\`

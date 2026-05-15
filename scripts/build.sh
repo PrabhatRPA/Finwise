@@ -133,6 +133,19 @@ if $MACOS; then
     cp "$REPO_ROOT/backend/dist/backend/backend" "$APP/Contents/MacOS/backend"
     echo "✓ Sidecar restored to pristine PyInstaller binary (unsigned)"
 
+    # Sanity check — fail loudly if our modifications didn't land.
+    if [ ! -e "$APP/Contents/Frameworks/Python" ]; then
+        echo "ERROR: Contents/Frameworks/Python missing — DMG would ship broken"
+        ls -la "$APP/Contents/Frameworks/" 2>/dev/null || true
+        exit 1
+    fi
+    FW_COUNT=$(ls "$APP/Contents/Frameworks/" | wc -l | tr -d ' ')
+    if [ "$FW_COUNT" -lt 50 ]; then
+        echo "ERROR: Contents/Frameworks/ has only $FW_COUNT items (expected ~60+)"
+        exit 1
+    fi
+    echo "✓ Sanity check passed: Contents/Frameworks/Python present, $FW_COUNT items"
+
     # Create DMG from the modified app bundle.
     VERSION="$("$PYTHON" -c "import json; d=json.load(open('$REPO_ROOT/frontend/package.json')); print(d['version'])")"
     DMG_DIR="$BUNDLE_DIR/dmg"
