@@ -51,45 +51,50 @@ export default function DashboardPage() {
 
   // Cached-first load:
   //   1. Pull holdings with refresh_prices=false (instant — uses persisted values).
-  //   2. Render the table immediately, then in the background fire another
-  //      holdings call with refresh_prices=true to update live prices.
-  //   3. Accounts + net worth are fetched in parallel with the cached read.
-  // forceRefresh=true (e.g. the user clicked the Refresh button) skips the
-  // cached pre-fetch and goes straight to the live call.
+  //   2. If that returned non-empty data, render the table immediately and
+  //      dismiss the big spinner. Otherwise keep the spinner up — showing
+  //      an empty dashboard while we wait for live data is worse UX than
+  //      a spinner.
+  //   3. Fire a second holdings call with refresh_prices=true to get fresh
+  //      prices. Accounts load in parallel.
+  // forceRefresh=true skips the cached pre-fetch.
   const fetchData = async (silent = false, _retries = 8, forceRefresh = false) => {
     if (silent) {
       setIsRefreshing(true)
     } else {
       setIsLoading(true)
     }
+
+    // When we schedule a retry, we must NOT dismiss isLoading in the finally
+    // block — otherwise the dashboard flashes from spinner → empty dashboard →
+    // spinner each retry cycle. This flag tracks that.
+    let willRetry = false
+
     try {
-      // 1. Cached holdings — instant render path. Drop the big spinner as
-      //    soon as anything (even 0 rows) comes back so the user sees the
-      //    table layout immediately.
-      let renderedSomething = false
+      // Phase 1: cached holdings — instant.
       if (!forceRefresh) {
         try {
           const cachedResp = await holdingsApi.getAll(false)
-          setHoldings(cachedResp.data.holdings ?? [])
-          renderedSomething = true
-          setIsLoading(false)
-          // Live fetch is now a background refresh.
-          if (!silent) setIsRefreshing(true)
+          const cached = cachedResp.data.holdings ?? []
+          if (cached.length > 0) {
+            setHoldings(cached)
+            setIsLoading(false)
+            if (!silent) setIsRefreshing(true)
+          }
         } catch {
-          // If the cached read fails (network glitch, cold backend), fall
-          // through to the live call which has its own retry loop.
+          // Network glitch — fall through to the live call which has its
+          // own retry loop.
         }
       }
 
-      // Accounts can load in parallel — they don't depend on the price fetch.
+      // Phase 2: accounts load in parallel — independent of the price fetch.
       const accountsPromise = accountsApi.getAll().then(r => {
         if (r.data.accounts) usePortfolioStore.getState().setAccounts(r.data.accounts)
       }).catch(() => {})
 
-      // 2. Live holdings — replaces cached values when prices arrive.
+      // Phase 3: live holdings — replaces cached values when prices arrive.
       const liveResp = await holdingsApi.getAll(true)
       setHoldings(liveResp.data.holdings ?? [])
-      if (!renderedSomething) setIsLoading(false)
 
       await accountsPromise
       calculatePortfolio()
@@ -99,16 +104,19 @@ export default function DashboardPage() {
 
       netWorthApi.createRecord().catch(() => {})
     } catch (error: any) {
-      // On desktop the sidecar backend may still be warming up — retry on
-      // network errors so the user never has to click Refresh manually.
+      // Network errors during initial load (sidecar still warming up): retry
+      // quietly. Pass silent=true so subsequent attempts don't flip isLoading
+      // on/off — that's what was causing the flash between spinner and
+      // empty dashboard.
       if (!error.response && _retries > 0) {
-        setTimeout(() => fetchData(silent, _retries - 1, forceRefresh), 2500)
+        willRetry = true
+        setTimeout(() => fetchData(true, _retries - 1, forceRefresh), 2500)
         return
       }
       console.error('Error fetching data:', error)
     } finally {
-      setIsLoading(false)
       setIsRefreshing(false)
+      if (!willRetry) setIsLoading(false)
     }
   }
 
