@@ -126,60 +126,60 @@ jobs:
           APPLE_SIGNING_IDENTITY: "-"
         run: tauri build
 
-      # ── 6b. macOS post-build: inject _internal/, strip Python dylib, sign, DMG ─
-      # With PyInstaller onedir, the Python.framework dylib is a plain file in
-      # dist/backend/_internal/.  We copy it into Contents/MacOS/ next to the
-      # sidecar, strip its code signature (no sudo needed — we own the file),
-      # then re-sign the bundle and create the DMG.  An unsigned dylib has no
-      # Team ID, so macOS loads it without any Team ID matching check.
-      - name: Bundle _internal/, strip Python dylib, sign and create DMG (macOS)
+      # ── 6b. macOS post-build: place _internal/ at Contents/Frameworks/, sign, DMG ─
+      # Inside a .app bundle, dyld restricts framework lookup to
+      # @executable_path/../Frameworks/ and ignores PyInstaller's _MEIPASS-based
+      # fallback. So PyInstaller's entire _internal/ directory must land at
+      # Contents/Frameworks/ — that puts the flat Python symlink where dyld
+      # expects it AND keeps base_library.zip + the rest of the support files
+      # next to it so PYTHONHOME calculations stay coherent.
+      #
+      # The sidecar binary must remain byte-identical to the PyInstaller-built
+      # original. codesign mutates the Mach-O irreversibly (signature +
+      # identifier), and that breaks PyInstaller's bootloader inside an .app
+      # bundle. We copy the pristine binary back over after the bundle re-sign.
+      - name: Place _internal/ at Frameworks/, restore pristine sidecar, sign and DMG (macOS)
         if: runner.os == 'macOS'
         shell: bash
         run: |
           BUNDLE_DIR="frontend-tauri/src-tauri/target/release/bundle"
-          APP=$(find "$BUNDLE_DIR/macos" -name "*.app" -maxdepth 1 | head -1)
+          PRODUCT_NAME=$(python3 -c "import json; print(json.load(open('frontend-tauri/src-tauri/tauri.conf.json'))['productName'])")
+          APP="$BUNDLE_DIR/macos/$PRODUCT_NAME.app"
           echo "App bundle: $APP"
           ls -lh "$APP/Contents/MacOS/"
 
-          # Copy _internal/ next to the sidecar inside the bundle
+          # Inside a .app bundle, dyld restricts framework lookup to
+          # @executable_path/../Frameworks/. DYLD_FRAMEWORK_PATH and PyInstaller's
+          # own _MEIPASS-based fallback are ignored. So we copy PyInstaller's
+          # entire _internal/ directory into Contents/Frameworks/: the flat
+          # `Python` symlink lands at Contents/Frameworks/Python (where dyld
+          # expects it) and base_library.zip + the rest of PyInstaller's
+          # support files sit next to it, so PYTHONHOME calculations stay
+          # coherent.
+          #
+          # The sidecar binary is LEFT UNSIGNED (as PyInstaller built it).
+          # Ad-hoc signing it with Hardened Runtime causes dyld to ignore
+          # the framework search path PyInstaller relies on; plain ad-hoc
+          # signing also breaks things on macOS 15.
           INTERNAL_SRC="backend/dist/backend/_internal"
-          [ -d "$INTERNAL_SRC" ] || INTERNAL_SRC="backend/dist/backend"
-          echo "Copying $(basename "$INTERNAL_SRC")/ into Contents/MacOS/ ..."
-          cp -r "$INTERNAL_SRC" "$APP/Contents/MacOS/_internal"
+          echo "Copying _internal/ contents into Contents/Frameworks/ ..."
+          mkdir -p "$APP/Contents/Frameworks"
+          cp -R "$INTERNAL_SRC"/. "$APP/Contents/Frameworks/"
+          echo "✓ $(ls "$APP/Contents/Frameworks/" | wc -l | tr -d ' ') items in Contents/Frameworks/"
 
-          # Strip code signature from the Python dylib — it's a regular file
-          # we own, so no sudo required.
-          echo "Stripping Python dylib signatures..."
-          find "$APP/Contents/MacOS/_internal" \
-               -type f \( -name "Python" -o -name "Python3" -o -name "libpython*.dylib" \) \
-          | while IFS= read -r dylib; do
-              codesign --remove-signature "$dylib" 2>/dev/null \
-                && echo "  ✓ stripped: $(basename "$dylib")" \
-                || echo "  – already unsigned: $(basename "$dylib")"
-          done
-
-          # Sign the sidecar launcher with disable-library-validation (belt-and-suspenders)
-          SIDECAR=$(find "$APP/Contents/MacOS" -maxdepth 1 -type f \
-                         \( -name "backend" -o -name "backend-*" \) | head -1)
-          if [ -z "$SIDECAR" ]; then
-            echo "ERROR: sidecar not found in $APP/Contents/MacOS"; exit 1
-          fi
-          {
-            echo '<?xml version="1.0" encoding="UTF-8"?>'
-            echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">'
-            echo '<plist version="1.0"><dict>'
-            echo '  <key>com.apple.security.cs.disable-library-validation</key><true/>'
-            echo '  <key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>'
-            echo '</dict></plist>'
-          } > /tmp/sidecar.entitlements.plist
-          echo "Signing sidecar: $SIDECAR"
-          codesign --force --options runtime \
-                   --entitlements /tmp/sidecar.entitlements.plist \
-                   --sign - "$SIDECAR"
-
-          # Re-sign the bundle to cover the newly added _internal/ files
-          codesign --force --sign - "$APP"
+          # Re-sign the bundle to cover the newly added _internal/ files.
+          # --no-strict: PyInstaller adds *.dist-info dirs that codesign mistakes
+          # for malformed bundles; without --no-strict codesign exits 1 and aborts.
+          codesign --force --sign - --no-strict "$APP" 2>&1 | grep -v "bundle format unrecognized" || true
           echo "✓ App bundle signed"
+
+          # CRITICAL: Restore the sidecar to the pristine PyInstaller binary
+          # AFTER any codesign step. Both Tauri's build and our bundle re-sign
+          # mutate the Mach-O (signature + identifier). `codesign --remove-signature`
+          # does NOT restore the original bytes; the bootloader still misbehaves
+          # inside a .app bundle. Only the byte-identical original binary works.
+          cp backend/dist/backend/backend "$APP/Contents/MacOS/backend"
+          echo "✓ Sidecar restored to pristine PyInstaller binary (unsigned)"
 
           # Build the DMG from the modified app bundle
           VERSION=$(python3 -c "import json; print(json.load(open('frontend/package.json'))['version'])")
