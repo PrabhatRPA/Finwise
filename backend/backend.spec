@@ -94,11 +94,12 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    # macOS onedir: binaries/datas go into _internal/ via COLLECT below.
-    # Windows/Linux onefile: embed everything in the single executable.
+    # macOS onedir: EXE produces only the launcher; COLLECT assembles _internal/.
+    # Windows/Linux onefile: EXE embeds everything in the single executable.
     [] if _macos else a.binaries,
     [] if _macos else a.datas,
     [],
+    exclude_binaries=_macos,
     name="backend",
     debug=False,
     bootloader_ignore_signals=False,
