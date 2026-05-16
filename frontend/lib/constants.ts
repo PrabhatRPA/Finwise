@@ -1,2 +1,2 @@
 export const APP_NAME = 'Finwise'
-export const APP_VERSION = '1.3.7'
+export const APP_VERSION = '1.3.8'
