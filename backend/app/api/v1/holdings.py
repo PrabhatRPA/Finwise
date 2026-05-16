@@ -77,12 +77,18 @@ def holding_to_dict(holding: models.Holding) -> dict:
         "current_value": float(holding.current_value) if holding.current_value else 0,
         "total_gain_loss": float(holding.total_gain_loss) if holding.total_gain_loss else 0,
         "total_gain_loss_percent": float(holding.total_gain_loss_percent) if holding.total_gain_loss_percent else 0,
-        # Per-share day change ($) and percent (= today_gain_loss_percent for a holding).
-        # Persisted on the row so cached reads (refresh_prices=false) still return them.
+        # Per-share day change and percent — persisted on the Holding row so
+        # cached reads (refresh_prices=false) still return them. previous_close
+        # is derived (current_price - day_change) so we don't need a separate
+        # column on the model.
         "day_change": float(holding.day_change) if holding.day_change else 0.0,
         "day_change_percent": float(holding.day_change_percent) if holding.day_change_percent else 0.0,
-        "previous_close": float(holding.previous_close) if holding.previous_close else 0.0,
-        # Position-level today $ and % (shares * day_change). Recomputed from persisted day_change below.
+        "previous_close": round(
+            (float(holding.current_price) if holding.current_price else 0.0)
+            - (float(holding.day_change) if holding.day_change else 0.0),
+            4,
+        ),
+        # Position-level today $ and % (shares * day_change).
         "today_gain_loss": round(
             (float(holding.day_change) if holding.day_change else 0.0)
             * (float(holding.shares) if holding.shares else 0.0),
@@ -168,8 +174,9 @@ async def get_holdings(
                 data["today_gain_loss_percent"] = day_change_percent
 
                 # Persist so the next cached read (refresh_prices=false) returns these too.
+                # NOTE: Holding has no previous_close column — it's derived from
+                # current_price - day_change in holding_to_dict.
                 h.current_price = current_price
-                h.previous_close = prev_close
                 h.current_value = data["current_value"]
                 h.total_gain_loss = data["total_gain_loss"]
                 h.total_gain_loss_percent = data["total_gain_loss_percent"]

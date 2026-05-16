@@ -35,6 +35,8 @@ def _backup_dir(user_id: int) -> Path:
 def _holdings_rows(db: Session, user_id: int) -> list[dict]:
     rows = []
     for h in db.query(models.Holding).filter(models.Holding.user_id == user_id).all():
+        # previous_close isn't stored on Holding — derive it from current_price - day_change.
+        prev_close = round((h.current_price or 0) - (h.day_change or 0), 4)
         rows.append({
             "ticker": h.ticker or "",
             "security_name": h.security_name or "",
@@ -42,7 +44,7 @@ def _holdings_rows(db: Session, user_id: int) -> list[dict]:
             "shares": h.shares or 0,
             "average_cost": h.average_cost or 0,
             "current_price": h.current_price or 0,
-            "previous_close": h.previous_close or 0,
+            "previous_close": prev_close,
             "day_change": h.day_change or 0,
             "day_change_percent": h.day_change_percent or 0,
             "current_value": h.current_value or 0,
@@ -302,10 +304,49 @@ def delete_backup(
 
 # ─── Import endpoints ─────────────────────────────────────────────────────────
 
+# Common column-name aliases used by other portfolio trackers, brokerage
+# exports (Fidelity, Schwab, Robinhood, etc.), and older versions of this app.
+# Mapped to our canonical names so the user can drop in any reasonable CSV.
+_CSV_ALIAS_MAP = {
+    # ticker
+    "symbol": "ticker", "stock": "ticker", "stock_symbol": "ticker",
+    "security_symbol": "ticker", "instrument": "ticker",
+    # shares
+    "quantity": "shares", "qty": "shares", "units": "shares",
+    "share_quantity": "shares", "no_of_shares": "shares",
+    # average_cost
+    "avg_cost": "average_cost", "cost_basis": "average_cost",
+    "cost_per_share": "average_cost", "purchase_price": "average_cost",
+    "avg_price": "average_cost",
+    # security_name
+    "name": "security_name", "company_name": "security_name", "description": "security_name",
+    # security_type
+    "type": "security_type", "asset_class": "security_type", "asset_type": "security_type",
+    # purchase_date
+    "buy_date": "purchase_date", "date": "purchase_date", "acquired": "purchase_date",
+    # account_id / account_name
+    "account": "account_name", "broker": "account_name",
+}
+
+
+def _normalize_row(row: dict) -> dict:
+    """Map common column-name aliases to canonical names, lowercase keys, trim values."""
+    out: dict = {}
+    for raw_k, v in row.items():
+        if raw_k is None:
+            continue
+        k = str(raw_k).strip().lower().replace(" ", "_").replace("-", "_")
+        k = _CSV_ALIAS_MAP.get(k, k)
+        # Don't overwrite a canonical value with an alias's value (canonical wins).
+        if k not in out or not out[k]:
+            out[k] = v.strip() if isinstance(v, str) else v
+    return out
+
+
 def _parse_csv(content: bytes) -> list[dict]:
     text = content.decode("utf-8-sig")  # strip BOM if present
     reader = csv.DictReader(io.StringIO(text))
-    return [row for row in reader]
+    return [_normalize_row(row) for row in reader]
 
 
 @router.post("/import/holdings")
@@ -703,18 +744,38 @@ async def import_full_data(
       not as database IDs.
     """
     if not file.filename or not file.filename.lower().endswith(".json"):
-        raise HTTPException(status_code=400, detail="File must be a .json exported by Finwise.")
+        raise HTTPException(status_code=400, detail="File must be a .json file.")
     content = await file.read()
     try:
         payload = json.loads(content)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON file.")
 
-    if not payload.get("_finwise_export"):
-        raise HTTPException(
-            status_code=400,
-            detail="This does not look like a Finwise export. Missing _finwise_export marker.",
-        )
+    # Forward-compatible: accept any JSON object that has at least one of our
+    # known top-level sections. Older exports (pre-Finwise rebrand) and
+    # third-party tools won't have the _finwise_export marker — that's fine
+    # as long as the structure is recognizable.
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="JSON root must be an object.")
+    known_sections = {
+        "accounts", "holdings", "transactions", "watchlist",
+        "loans", "properties", "portfolio_history",
+    }
+    if not (known_sections & set(payload.keys())):
+        # Some exports wrap everything under a "data" key — peek there too.
+        inner = payload.get("data") if isinstance(payload.get("data"), dict) else None
+        if inner and (known_sections & set(inner.keys())):
+            payload = inner
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "JSON file doesn't contain any recognizable Finwise sections "
+                    "(holdings, accounts, transactions, watchlist, loans, properties, "
+                    "or portfolio_history). If this is from another tool, convert "
+                    "the holdings list to CSV with columns: ticker, shares, average_cost."
+                ),
+            )
 
     uid = current_user.id
     summary: dict[str, dict] = {}
