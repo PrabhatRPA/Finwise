@@ -202,9 +202,14 @@ export const dataApi = {
     const fd = new FormData(); fd.append('file', file)
     return api.post('/import/debts', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
   },
-  importFullData: (file: File) => {
+  // mode='add' (default) skips duplicates. mode='replace' wipes the user's
+  // current rows in each section before importing — true restore-from-backup.
+  importFullData: (file: File, mode: 'add' | 'replace' = 'add') => {
     const fd = new FormData(); fd.append('file', file)
-    return api.post('/import/full-data', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    return api.post('/import/full-data', fd, {
+      params: { mode },
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
   },
 
   // Backups

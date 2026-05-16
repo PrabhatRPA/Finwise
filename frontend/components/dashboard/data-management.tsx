@@ -18,25 +18,33 @@ function formatBytes(b: number) {
   return `${(b / 1048576).toFixed(1)} MB`
 }
 
+type ImportResult = {
+  message: string
+  /** Real per-row errors (shown red). */
+  errors?: string[]
+  /** Per-section summary lines (shown neutral, never truncated). */
+  details?: string[]
+}
+
 function ImportRow({
   label,
   onImport,
   accept = '.csv',
 }: {
   label: string
-  onImport: (file: File) => Promise<{ message: string; errors?: string[] }>
+  onImport: (file: File) => Promise<ImportResult>
   accept?: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<{ ok: boolean; message: string; errors?: string[] } | null>(null)
+  const [result, setResult] = useState<{ ok: boolean } & ImportResult | null>(null)
 
   const handle = async (file: File) => {
     setLoading(true)
     setResult(null)
     try {
       const res = await onImport(file)
-      setResult({ ok: true, message: res.message, errors: res.errors })
+      setResult({ ok: true, ...res })
     } catch (err: any) {
       setResult({ ok: false, message: err?.response?.data?.detail ?? 'Import failed' })
     } finally {
@@ -67,12 +75,23 @@ function ImportRow({
         </Button>
       </div>
       {result && (
-        <p className={`text-xs pl-32 ${result.ok ? 'text-green-700' : 'text-red-600'}`}>
-          {result.message}
-          {result.errors && result.errors.length > 0 && (
-            <span className="block mt-0.5 text-red-500">{result.errors.slice(0, 3).join(' | ')}</span>
+        <div className="pl-32 space-y-1">
+          <p className={`text-xs ${result.ok ? 'text-green-700' : 'text-red-600'}`}>
+            {result.message}
+          </p>
+          {/* Per-section summary lines — informational, not errors. Show ALL. */}
+          {result.details && result.details.length > 0 && (
+            <ul className="text-xs text-muted-foreground space-y-0.5">
+              {result.details.map((line, i) => (
+                <li key={i} className="font-mono">{line}</li>
+              ))}
+            </ul>
           )}
-        </p>
+          {/* Real errors (e.g. row 5 missing ticker). Show first 5 in red. */}
+          {result.errors && result.errors.length > 0 && (
+            <p className="text-xs text-red-500">{result.errors.slice(0, 5).join(' | ')}</p>
+          )}
+        </div>
       )}
     </div>
   )
@@ -84,6 +103,7 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
   const [creatingBackup, setCreatingBackup] = useState(false)
   const [backupMsg, setBackupMsg] = useState('')
   const [exportBusy, setExportBusy] = useState<string | null>(null)
+  const [replaceExisting, setReplaceExisting] = useState(false)
 
   const loadBackups = useCallback(async () => {
     try {
@@ -198,22 +218,51 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
         <CardContent className="space-y-4">
           <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
             <p className="text-xs font-semibold text-primary">Full Restore (recommended)</p>
+
+            <label className="flex items-start gap-2 text-xs cursor-pointer">
+              <input
+                type="checkbox"
+                checked={replaceExisting}
+                onChange={e => setReplaceExisting(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-medium">Replace existing data</span>{' '}
+                <span className="text-muted-foreground">
+                  &mdash; wipe my current holdings, accounts, transactions, watchlist, loans,
+                  properties, and trend history before importing. Use this to truly
+                  restore from a backup.
+                </span>
+              </span>
+            </label>
+
             <ImportRow
               label="All Data JSON"
               accept=".json"
               onImport={async f => {
-                const res = await dataApi.importFullData(f)
+                if (replaceExisting && !confirm(
+                  'This will DELETE all your current holdings, accounts, transactions, watchlist, loans, properties, and trend history, then import everything from the JSON file.\n\nUser account and login are preserved. This cannot be undone.\n\nProceed?'
+                )) {
+                  return { message: 'Replace cancelled.' }
+                }
+                const res = await dataApi.importFullData(f, replaceExisting ? 'replace' : 'add')
                 onDataChanged?.()
                 const s = res.data.summary ?? {}
-                const lines = Object.entries(s).map(([k, v]: [string, any]) =>
-                  `${k}: +${v.created ?? 0}${v.skipped ? ` / ${v.skipped} skipped` : ''}${v.updated ? ` / ${v.updated} updated` : ''}`
-                )
-                return { message: res.data.message, errors: lines }
+                const details = Object.entries(s).map(([k, v]: [string, any]) => {
+                  const parts = [`${k}: +${v.created ?? 0}`]
+                  if (v.skipped) parts.push(`${v.skipped} skipped`)
+                  if (v.updated) parts.push(`${v.updated} updated`)
+                  if (v.deleted) parts.push(`${v.deleted} replaced`)
+                  return parts.join(' / ')
+                })
+                return { message: res.data.message, details }
               }}
             />
             <p className="text-xs text-muted-foreground">
-              Import a <strong>finwise_full_export.json</strong> to restore all holdings, accounts, transactions, loans, properties, and trend history in one step.
-              New fields added in future app versions are handled gracefully.
+              Import a <strong>finwise_full_export.json</strong> to restore all holdings,
+              accounts, transactions, watchlist, loans, properties, and portfolio history.
+              Without the &quot;Replace&quot; checkbox, existing rows are skipped (no
+              duplicates); with it, your current data is wiped first.
             </p>
           </div>
 

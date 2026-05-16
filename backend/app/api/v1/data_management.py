@@ -731,11 +731,21 @@ def _parse_int(v) -> int | None:
 @router.post("/import/full-data")
 async def import_full_data(
     file: UploadFile = File(...),
+    mode: str = "add",
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     """
     Import all user data from a Finwise JSON export file.
+
+    mode:
+      add     — default. Existing rows are matched by their natural key and
+                kept (skipped). Use this to merge a backup into existing data.
+      replace — wipe the user's holdings/accounts/transactions/watchlist/loans/
+                properties/portfolio_history first, then import everything
+                from the file. True restore-from-backup. User account is
+                preserved.
+
     - Unknown keys are silently ignored (forward-compatible).
     - Each section is imported independently; one section failing doesn't block others.
     - Accounts are matched by account_name; holdings by ticker+account; loans by loan_name;
@@ -743,6 +753,8 @@ async def import_full_data(
     - Original IDs from the export are used only to resolve cross-references within the file,
       not as database IDs.
     """
+    if mode not in ("add", "replace"):
+        raise HTTPException(status_code=400, detail="mode must be 'add' or 'replace'")
     if not file.filename or not file.filename.lower().endswith(".json"):
         raise HTTPException(status_code=400, detail="File must be a .json file.")
     content = await file.read()
@@ -779,6 +791,28 @@ async def import_full_data(
 
     uid = current_user.id
     summary: dict[str, dict] = {}
+
+    # ── mode=replace: wipe all of THIS user's data before importing ──────────
+    # Order matters because of foreign keys: transactions and portfolio_history
+    # reference accounts/holdings, so delete the dependent rows first.
+    deleted_counts: dict[str, int] = {}
+    if mode == "replace":
+        for model, label in [
+            (models.Transaction,       "transactions"),
+            (models.PortfolioHistory,  "portfolio_history"),
+            (models.PortfolioAllocation, "portfolio_allocation"),
+            (models.Holding,           "holdings"),
+            (models.Account,           "accounts"),
+            (models.Watchlist,         "watchlist"),
+            (models.Loan,              "loans"),
+            (models.Property,          "properties"),
+        ]:
+            try:
+                n = db.query(model).filter(model.user_id == uid).delete(synchronize_session=False)
+                deleted_counts[label] = int(n or 0)
+            except Exception:
+                deleted_counts[label] = 0
+        db.commit()
 
     # ── Accounts ──────────────────────────────────────────────────────────────
     # Build a mapping: export_id → real db id (needed to remap holding.account_id etc.)
@@ -1044,9 +1078,18 @@ async def import_full_data(
     db.commit()
     summary["portfolio_history"] = {"created": ph_created, "updated": ph_updated}
 
+    # Fold the replace-mode delete counts into the summary so the UI can show them.
+    for k, n in deleted_counts.items():
+        if n > 0:
+            summary.setdefault(k, {})["deleted"] = n
+
     total_imported = sum(v.get("created", 0) for v in summary.values())
-    return {
-        "ok": True,
-        "summary": summary,
-        "message": f"Import complete — {total_imported} records created across all sections.",
-    }
+    total_deleted = sum(deleted_counts.values())
+    if mode == "replace":
+        msg = (
+            f"Restore complete — wiped {total_deleted} existing record(s) and "
+            f"imported {total_imported}."
+        )
+    else:
+        msg = f"Import complete — {total_imported} records created across all sections."
+    return {"ok": True, "mode": mode, "summary": summary, "message": msg}
