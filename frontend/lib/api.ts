@@ -202,9 +202,11 @@ export const dataApi = {
     const fd = new FormData(); fd.append('file', file)
     return api.post('/import/debts', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
   },
-  // mode='add' (default) skips duplicates. mode='replace' wipes the user's
-  // current rows in each section before importing — true restore-from-backup.
-  importFullData: (file: File, mode: 'add' | 'replace' = 'add') => {
+  // mode='add' skips duplicates (only inserts new rows).
+  // mode='update' upserts (overwrites existing rows with values from the file).
+  // mode='replace' wipes all of the user's data first, then imports — true
+  // restore-from-backup.
+  importFullData: (file: File, mode: 'add' | 'update' | 'replace' = 'add') => {
     const fd = new FormData(); fd.append('file', file)
     return api.post('/import/full-data', fd, {
       params: { mode },

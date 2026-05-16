@@ -103,7 +103,7 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
   const [creatingBackup, setCreatingBackup] = useState(false)
   const [backupMsg, setBackupMsg] = useState('')
   const [exportBusy, setExportBusy] = useState<string | null>(null)
-  const [replaceExisting, setReplaceExisting] = useState(false)
+  const [importMode, setImportMode] = useState<'add' | 'update' | 'replace'>('update')
 
   const loadBackups = useCallback(async () => {
     try {
@@ -216,36 +216,45 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-3">
             <p className="text-xs font-semibold text-primary">Full Restore (recommended)</p>
 
-            <label className="flex items-start gap-2 text-xs cursor-pointer">
-              <input
-                type="checkbox"
-                checked={replaceExisting}
-                onChange={e => setReplaceExisting(e.target.checked)}
-                className="mt-0.5"
-              />
-              <span>
-                <span className="font-medium">Replace existing data</span>{' '}
-                <span className="text-muted-foreground">
-                  &mdash; wipe my current holdings, accounts, transactions, watchlist, loans,
-                  properties, and trend history before importing. Use this to truly
-                  restore from a backup.
-                </span>
-              </span>
-            </label>
+            <fieldset className="space-y-1.5">
+              <legend className="text-xs font-medium mb-1">Conflict mode</legend>
+              {([
+                ['update', 'Update existing + add new', 'Existing rows are overwritten with values from the file; new rows are created. Use this to revert recent edits back to a snapshot.'],
+                ['add',    'Add new only',              'Existing rows are kept unchanged; only rows that don\'t already exist are added.'],
+                ['replace','Replace everything',        'Wipe ALL my current holdings, accounts, transactions, watchlist, loans, properties, and trend history before importing. True bit-for-bit restore. User account is preserved.'],
+              ] as const).map(([value, label, help]) => (
+                <label key={value} className="flex items-start gap-2 text-xs cursor-pointer">
+                  <input
+                    type="radio"
+                    name="import-mode"
+                    value={value}
+                    checked={importMode === value}
+                    onChange={() => setImportMode(value)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className={value === 'replace' ? 'font-medium text-red-600 dark:text-red-400' : 'font-medium'}>
+                      {label}
+                    </span>{' '}
+                    <span className="text-muted-foreground">&mdash; {help}</span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
 
             <ImportRow
               label="All Data JSON"
               accept=".json"
               onImport={async f => {
-                if (replaceExisting && !confirm(
+                if (importMode === 'replace' && !confirm(
                   'This will DELETE all your current holdings, accounts, transactions, watchlist, loans, properties, and trend history, then import everything from the JSON file.\n\nUser account and login are preserved. This cannot be undone.\n\nProceed?'
                 )) {
                   return { message: 'Replace cancelled.' }
                 }
-                const res = await dataApi.importFullData(f, replaceExisting ? 'replace' : 'add')
+                const res = await dataApi.importFullData(f, importMode)
                 onDataChanged?.()
                 const s = res.data.summary ?? {}
                 const details = Object.entries(s).map(([k, v]: [string, any]) => {
@@ -259,10 +268,9 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
               }}
             />
             <p className="text-xs text-muted-foreground">
-              Import a <strong>finwise_full_export.json</strong> to restore all holdings,
-              accounts, transactions, watchlist, loans, properties, and portfolio history.
-              Without the &quot;Replace&quot; checkbox, existing rows are skipped (no
-              duplicates); with it, your current data is wiped first.
+              Pick a conflict mode above, then choose your <strong>finwise_full_export.json</strong>.
+              All sections (holdings, accounts, transactions, watchlist, loans,
+              properties, portfolio history) are restored together.
             </p>
           </div>
 

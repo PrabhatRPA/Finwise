@@ -740,7 +740,11 @@ async def import_full_data(
 
     mode:
       add     — default. Existing rows are matched by their natural key and
-                kept (skipped). Use this to merge a backup into existing data.
+                kept (skipped). Use this to merge a backup, only adding new
+                rows.
+      update  — Existing rows have their fields refreshed from the JSON
+                (upsert); new rows are created. Use this to revert recent
+                changes back to a snapshot.
       replace — wipe the user's holdings/accounts/transactions/watchlist/loans/
                 properties/portfolio_history first, then import everything
                 from the file. True restore-from-backup. User account is
@@ -753,8 +757,8 @@ async def import_full_data(
     - Original IDs from the export are used only to resolve cross-references within the file,
       not as database IDs.
     """
-    if mode not in ("add", "replace"):
-        raise HTTPException(status_code=400, detail="mode must be 'add' or 'replace'")
+    if mode not in ("add", "update", "replace"):
+        raise HTTPException(status_code=400, detail="mode must be 'add', 'update', or 'replace'")
     if not file.filename or not file.filename.lower().endswith(".json"):
         raise HTTPException(status_code=400, detail="File must be a .json file.")
     content = await file.read()
@@ -822,6 +826,7 @@ async def import_full_data(
         "brokerage", "traditional_ira", "roth_ira", "401k",
         "savings", "checking", "cash_management", "hsa", "pension", "other",
     }
+    acc_updated = 0
     for row in payload.get("accounts", []):
         name = str(row.get("account_name") or "").strip()
         if not name:
@@ -834,8 +839,20 @@ async def import_full_data(
             models.Account.account_name == name,
         ).first()
         if existing:
+            if mode == "update":
+                # Upsert: overwrite fields from JSON.
+                existing.account_type = acct_type
+                existing.account_number = row.get("account_number") or None
+                existing.institution_name = row.get("institution_name") or None
+                existing.institution_type = row.get("institution_type") or None
+                existing.balance = _parse_float(row.get("balance")) or 0.0
+                existing.balance_date = _parse_date(row.get("balance_date"))
+                existing.currency = str(row.get("currency") or "USD")
+                existing.is_active = bool(row.get("is_active", True))
+                acc_updated += 1
+            else:
+                acc_skipped += 1
             account_id_map[row.get("id", -1)] = existing.id
-            acc_skipped += 1
         else:
             a = models.Account(
                 user_id=uid,
@@ -854,7 +871,7 @@ async def import_full_data(
             account_id_map[row.get("id", -1)] = a.id
             acc_created += 1
     db.commit()
-    summary["accounts"] = {"created": acc_created, "skipped": acc_skipped}
+    summary["accounts"] = {"created": acc_created, "skipped": acc_skipped, "updated": acc_updated}
 
     # ── Holdings ──────────────────────────────────────────────────────────────
     VALID_SEC_TYPES = {
@@ -862,26 +879,42 @@ async def import_full_data(
         "cash", "crypto", "reit", "other",
     }
     holding_id_map: dict[int, int] = {}
-    h_created = h_skipped = 0
+    h_created = h_skipped = h_updated = 0
     for row in payload.get("holdings", []):
         ticker = str(row.get("ticker") or "").strip().upper()
         if not ticker:
             continue
         real_acct_id = account_id_map.get(row.get("account_id", -1))
+        sec_type = str(row.get("security_type") or "stock").strip().lower()
+        if sec_type not in VALID_SEC_TYPES:
+            sec_type = "stock"
+        shares = _parse_float(row.get("shares")) or 0.0
+        avg_cost = _parse_float(row.get("average_cost")) or 0.0
         existing = db.query(models.Holding).filter(
             models.Holding.user_id == uid,
             models.Holding.ticker == ticker,
             models.Holding.account_id == real_acct_id,
         ).first()
         if existing:
+            if mode == "update":
+                # Upsert: overwrite fields from JSON. shares/avg_cost are the
+                # main user-editable fields, so this is the typical "revert
+                # my recent edits back to the snapshot" path.
+                existing.account_id = real_acct_id
+                existing.security_name = row.get("security_name") or existing.security_name
+                existing.security_type = sec_type
+                existing.shares = shares
+                existing.average_cost = avg_cost
+                existing.purchase_date = _parse_date(row.get("purchase_date")) or existing.purchase_date
+                existing.dividend_yield = _parse_float(row.get("dividend_yield"))
+                existing.sector = row.get("sector") or existing.sector
+                existing.industry = row.get("industry") or existing.industry
+                existing.is_active = bool(row.get("is_active", True))
+                h_updated += 1
+            else:
+                h_skipped += 1
             holding_id_map[row.get("id", -1)] = existing.id
-            h_skipped += 1
             continue
-        sec_type = str(row.get("security_type") or "stock").strip().lower()
-        if sec_type not in VALID_SEC_TYPES:
-            sec_type = "stock"
-        shares = _parse_float(row.get("shares")) or 0.0
-        avg_cost = _parse_float(row.get("average_cost")) or 0.0
         h = models.Holding(
             user_id=uid,
             account_id=real_acct_id,
@@ -905,7 +938,7 @@ async def import_full_data(
         holding_id_map[row.get("id", -1)] = h.id
         h_created += 1
     db.commit()
-    summary["holdings"] = {"created": h_created, "skipped": h_skipped}
+    summary["holdings"] = {"created": h_created, "skipped": h_skipped, "updated": h_updated}
 
     # ── Transactions ─────────────────────────────────────────────────────────
     VALID_TXN_TYPES = {
@@ -946,17 +979,10 @@ async def import_full_data(
     summary["transactions"] = {"created": t_created, "skipped": t_skipped}
 
     # ── Watchlist ─────────────────────────────────────────────────────────────
-    w_created = w_skipped = 0
+    w_created = w_skipped = w_updated = 0
     for row in payload.get("watchlist", []):
         ticker = str(row.get("ticker") or "").strip().upper()
         if not ticker:
-            continue
-        existing = db.query(models.Watchlist).filter(
-            models.Watchlist.user_id == uid,
-            models.Watchlist.ticker == ticker,
-        ).first()
-        if existing:
-            w_skipped += 1
             continue
         direction = str(row.get("target_direction") or "").strip().lower()
         if direction not in {"above", "below"}:
@@ -964,6 +990,22 @@ async def import_full_data(
         notify = str(row.get("notification_method") or "in_app").strip()
         if notify not in {"in_app", "browser", "both"}:
             notify = "in_app"
+        existing = db.query(models.Watchlist).filter(
+            models.Watchlist.user_id == uid,
+            models.Watchlist.ticker == ticker,
+        ).first()
+        if existing:
+            if mode == "update":
+                existing.company_name = row.get("company_name") or existing.company_name
+                existing.target_price = _parse_float(row.get("target_price"))
+                existing.target_direction = direction
+                existing.notification_method = notify
+                existing.notes = row.get("notes") or existing.notes
+                existing.alert_triggered = bool(row.get("alert_triggered", False))
+                w_updated += 1
+            else:
+                w_skipped += 1
+            continue
         db.add(models.Watchlist(
             user_id=uid, ticker=ticker,
             company_name=row.get("company_name") or ticker,
@@ -975,24 +1017,17 @@ async def import_full_data(
         ))
         w_created += 1
     db.commit()
-    summary["watchlist"] = {"created": w_created, "skipped": w_skipped}
+    summary["watchlist"] = {"created": w_created, "skipped": w_skipped, "updated": w_updated}
 
     # ── Loans ─────────────────────────────────────────────────────────────────
     VALID_LOAN_TYPES = {
         "mortgage", "auto", "student", "credit_card",
         "personal", "business", "home_equity", "line_of_credit", "other",
     }
-    l_created = l_skipped = 0
+    l_created = l_skipped = l_updated = 0
     for row in payload.get("loans", []):
         name = str(row.get("loan_name") or "").strip()
         if not name:
-            continue
-        existing = db.query(models.Loan).filter(
-            models.Loan.user_id == uid,
-            models.Loan.loan_name == name,
-        ).first()
-        if existing:
-            l_skipped += 1
             continue
         loan_type = str(row.get("loan_type") or "other").strip().lower()
         if loan_type not in VALID_LOAN_TYPES:
@@ -1000,6 +1035,26 @@ async def import_full_data(
         status = str(row.get("status") or "active").strip()
         if status not in {"active", "paid_off", "closed", "charged_off"}:
             status = "active"
+        existing = db.query(models.Loan).filter(
+            models.Loan.user_id == uid,
+            models.Loan.loan_name == name,
+        ).first()
+        if existing:
+            if mode == "update":
+                existing.loan_type = loan_type
+                existing.original_balance = _parse_float(row.get("original_balance")) or 0.0
+                existing.current_balance = _parse_float(row.get("current_balance")) or 0.0
+                existing.interest_rate = _parse_float(row.get("interest_rate"))
+                existing.monthly_payment = _parse_float(row.get("monthly_payment"))
+                existing.lender_name = row.get("lender_name") or existing.lender_name
+                existing.status = status
+                existing.start_date = _parse_date(row.get("start_date")) or existing.start_date
+                existing.end_date = _parse_date(row.get("end_date")) or existing.end_date
+                existing.due_day = _parse_int(row.get("due_day"))
+                l_updated += 1
+            else:
+                l_skipped += 1
+            continue
         db.add(models.Loan(
             user_id=uid,
             loan_name=name,
@@ -1016,10 +1071,10 @@ async def import_full_data(
         ))
         l_created += 1
     db.commit()
-    summary["loans"] = {"created": l_created, "skipped": l_skipped}
+    summary["loans"] = {"created": l_created, "skipped": l_skipped, "updated": l_updated}
 
     # ── Properties ────────────────────────────────────────────────────────────
-    p_created = p_skipped = 0
+    p_created = p_skipped = p_updated = 0
     for row in payload.get("properties", []):
         prop_type = str(row.get("property_type") or "other").strip()
         nickname = str(row.get("nickname") or "").strip() or None
@@ -1029,7 +1084,20 @@ async def import_full_data(
             models.Property.nickname == nickname,
         ).first()
         if existing:
-            p_skipped += 1
+            if mode == "update":
+                existing.address = row.get("address") or existing.address
+                existing.city = row.get("city") or existing.city
+                existing.state = row.get("state") or existing.state
+                existing.zip_code = row.get("zip_code") or existing.zip_code
+                existing.country = str(row.get("country") or existing.country or "US")
+                existing.manual_value = _parse_float(row.get("manual_value"))
+                existing.purchase_price = _parse_float(row.get("purchase_price"))
+                existing.purchase_date = _parse_date(row.get("purchase_date")) or existing.purchase_date
+                existing.notes = row.get("notes") or existing.notes
+                existing.is_active = bool(row.get("is_active", True))
+                p_updated += 1
+            else:
+                p_skipped += 1
             continue
         db.add(models.Property(
             user_id=uid,
@@ -1048,7 +1116,7 @@ async def import_full_data(
         ))
         p_created += 1
     db.commit()
-    summary["properties"] = {"created": p_created, "skipped": p_skipped}
+    summary["properties"] = {"created": p_created, "skipped": p_skipped, "updated": p_updated}
 
     # ── Portfolio history (upsert by date) ────────────────────────────────────
     ph_created = ph_updated = 0
@@ -1083,13 +1151,23 @@ async def import_full_data(
         if n > 0:
             summary.setdefault(k, {})["deleted"] = n
 
-    total_imported = sum(v.get("created", 0) for v in summary.values())
+    total_created = sum(v.get("created", 0) for v in summary.values())
+    total_updated = sum(v.get("updated", 0) for v in summary.values())
     total_deleted = sum(deleted_counts.values())
     if mode == "replace":
         msg = (
-            f"Restore complete — wiped {total_deleted} existing record(s) and "
-            f"imported {total_imported}."
+            f"Restore complete — wiped {total_deleted} existing record(s) "
+            f"and imported {total_created}."
+        )
+    elif mode == "update":
+        msg = (
+            f"Import complete — {total_updated} record(s) updated and "
+            f"{total_created} new record(s) created."
         )
     else:
-        msg = f"Import complete — {total_imported} records created across all sections."
+        msg = (
+            f"Import complete — {total_created} record(s) created. "
+            f"Existing rows were skipped (use the Update or Replace mode "
+            f"to overwrite them)."
+        )
     return {"ok": True, "mode": mode, "summary": summary, "message": msg}

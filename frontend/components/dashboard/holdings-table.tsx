@@ -17,7 +17,9 @@ const BROKER_SUGGESTIONS = [
 
 interface HoldingsTableProps {
   holdings: any[]
-  onHoldingAdded?: () => void
+  // Refreshes data after add/edit/delete. Pass true to do a silent refresh
+  // (no big spinner — keeps the table visible while live prices reload).
+  onHoldingAdded?: (silent?: boolean) => void
   searchQuery?: string
 }
 
@@ -45,6 +47,10 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
   const [editingId, setEditingId] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  // Inline confirmation modal — window.confirm() is unreliable in Tauri webview
+  // (it sometimes never renders / silently returns false on macOS), which is
+  // why "delete" appeared to do nothing.
+  const [confirmDelete, setConfirmDelete] = useState<any | null>(null)
   const [error, setError] = useState('')
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
 
@@ -214,14 +220,22 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
   }
 
   // ── Delete ────────────────────────────────────────────────
-  const handleDelete = async (h: any) => {
-    if (!window.confirm(`Remove ${h.ticker} from your holdings?`)) return
+  // Two-step: row × button sets confirmDelete (opens modal), modal's Delete
+  // button calls confirmAndDelete. Avoids window.confirm() which is flaky
+  // inside Tauri's webview on macOS.
+  const confirmAndDelete = async () => {
+    const h = confirmDelete
+    if (!h) return
     setDeletingId(h.id)
     try {
       await holdingsApi.delete(h.id)
-      onHoldingAdded?.()
-    } catch {
-      alert('Failed to delete. Check that the backend is running.')
+      setConfirmDelete(null)
+      // Silent refresh so the user doesn't see the big "Loading…" spinner
+      // re-appear right after deleting.
+      onHoldingAdded?.(true)
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail ?? 'Failed to delete. Check that the backend is running.'
+      setError(typeof detail === 'string' ? detail : 'Failed to delete.')
     } finally {
       setDeletingId(null)
     }
@@ -338,6 +352,44 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
                 <Button type="button" variant="outline" onClick={closeModal} className="flex-1">Cancel</Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete confirmation modal (replaces window.confirm, flaky in Tauri) ── */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setConfirmDelete(null)} />
+          <div className="relative bg-card text-card-foreground border border-border rounded-xl shadow-2xl w-full max-w-sm mx-4 p-5 space-y-4">
+            <div>
+              <h2 className="text-base font-semibold">Remove holding?</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Delete <span className="font-semibold text-foreground">{confirmDelete.ticker}</span>
+                {confirmDelete.shares ? <> ({confirmDelete.shares} shares)</> : null} from your holdings.
+                This can&apos;t be undone.
+              </p>
+            </div>
+            {error && (
+              <p className="text-sm text-red-600 border border-red-200 bg-red-50 dark:bg-red-950/20 rounded-md p-2">{error}</p>
+            )}
+            <div className="flex gap-2 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { setConfirmDelete(null); setError('') }}
+                disabled={deletingId !== null}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={confirmAndDelete}
+                disabled={deletingId !== null}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {deletingId !== null ? 'Deleting…' : 'Delete'}
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -477,7 +529,7 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
                             Edit
                           </button>
                           <button
-                            onClick={() => handleDelete(h)}
+                            onClick={() => setConfirmDelete(h)}
                             disabled={deletingId === h.id}
                             className="text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-40 text-lg leading-none px-1"
                             aria-label={`Delete ${h.ticker}`}
