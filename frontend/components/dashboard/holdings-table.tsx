@@ -378,7 +378,11 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
 
         <CardContent>
           <div className="rounded-md border">
-            <Table>
+            {/* Tighter padding via the [&_th]/[&_td] arbitrary descendant selectors —
+                keeps the shared <Table> primitive while compacting this
+                12-column view enough to fit without horizontal scroll. Saves
+                ~16px per cell × 12 cells = ~190px vs. the default px-4 p-4. */}
+            <Table className="[&_th]:px-2 [&_th]:h-10 [&_th]:text-xs [&_td]:px-2 [&_td]:py-2.5">
               <TableHeader>
                 <TableRow>
                   <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('ticker')}>
@@ -394,7 +398,7 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
                     Avg Cost{sortIcon('avg_cost')}
                   </TableHead>
                   <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('price')}>
-                    Current Price{sortIcon('price')}
+                    Price{sortIcon('price')}
                   </TableHead>
                   <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('value')}>
                     Value{sortIcon('value')}
@@ -406,15 +410,15 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
                     Today ${sortIcon('today_dollar')}
                   </TableHead>
                   <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('day_change')} title="Per-share price change vs. yesterday's close">
-                    Day Change{sortIcon('day_change')}
+                    Day Δ{sortIcon('day_change')}
                   </TableHead>
-                  <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('gain')}>
-                    Total Gain/Loss{sortIcon('gain')}
+                  <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('gain')} title="Total gain/loss since purchase">
+                    Total G/L{sortIcon('gain')}
                   </TableHead>
                   <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('allocation')}>
-                    Allocation{sortIcon('allocation')}
+                    Alloc{sortIcon('allocation')}
                   </TableHead>
-                  <TableHead className="w-20" />
+                  <TableHead className="w-14" />
                 </TableRow>
               </TableHeader>
               <TableBody>
