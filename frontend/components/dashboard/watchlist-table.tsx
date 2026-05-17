@@ -22,8 +22,8 @@ function dirLabel(dir?: string) {
 }
 
 function notifyLabel(method: string) {
-  if (method === 'browser') return 'Browser'
-  if (method === 'both') return 'In-app + Browser'
+  if (method === 'push' || method === 'browser') return 'Push'  // 'browser' kept for legacy rows
+  if (method === 'both') return 'In-app + Push'
   return 'In-app'
 }
 
@@ -151,11 +151,11 @@ function WatchlistModal({ initial, onSave, onClose }: ModalProps) {
               className="border rounded-md px-3 py-2 text-sm w-full bg-background"
             >
               <option value="in_app">In-app alert only</option>
-              <option value="browser">Browser / desktop notification</option>
-              <option value="both">Both in-app and browser</option>
+              <option value="push">Push notification</option>
+              <option value="both">Both in-app and push</option>
             </select>
             <p className="text-xs text-muted-foreground mt-1">
-              Browser notifications require permission when an alert first fires.
+              Push notifications ask for permission the first time an alert fires.
             </p>
           </div>
 
@@ -200,35 +200,13 @@ export function WatchlistTable() {
       const list: WatchlistItem[] = res.data.watchlist ?? []
       setItems(list)
 
-      // Collect items that need browser notifications
+      // The data layer (native watchlist + FastAPI) is responsible for
+      // firing OS-level notifications when an alert crosses. This component
+      // only renders the in-app banner — see lib/native/notifications.ts
+      // for the platform-aware firing path (Capacitor LocalNotifications
+      // on iOS/Android, window.Notification on web/Tauri).
       const active = list.filter(i => i.alert_active)
       setAlerts(active)
-
-      // Fire browser notifications for items that want it
-      const browserItems = active.filter(
-        i => i.notification_method === 'browser' || i.notification_method === 'both'
-      )
-      if (browserItems.length > 0 && typeof Notification !== 'undefined') {
-        if (Notification.permission === 'granted') {
-          browserItems.forEach(i => {
-            new Notification(`${i.ticker} price alert`, {
-              body: `${i.ticker} (${i.company_name}) is now ${formatCurrency(i.current_price ?? 0)} — ${i.target_direction} your target of ${formatCurrency(i.target_price ?? 0)}`,
-              icon: '/favicon.ico',
-            })
-          })
-        } else if (Notification.permission !== 'denied') {
-          Notification.requestPermission().then(perm => {
-            if (perm === 'granted') {
-              browserItems.forEach(i => {
-                new Notification(`${i.ticker} price alert`, {
-                  body: `${i.ticker} hit your target of ${formatCurrency(i.target_price ?? 0)}`,
-                  icon: '/favicon.ico',
-                })
-              })
-            }
-          })
-        }
-      }
     } catch {
       // silently ignore — backend may not be running
     } finally {

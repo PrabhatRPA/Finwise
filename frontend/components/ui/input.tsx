@@ -14,12 +14,19 @@ export type InputProps = {
   minLength?: number
   maxLength?: number
   autoComplete?: string
+  // iOS auto-capitalizes text fields by default — caller must opt out
+  // explicitly for fields that need to be case-sensitive (username, ticker).
+  autoCapitalize?: 'off' | 'none' | 'on' | 'sentences' | 'words' | 'characters'
+  autoCorrect?: 'on' | 'off'
+  spellCheck?: boolean
+  inputMode?: 'none' | 'text' | 'decimal' | 'numeric' | 'tel' | 'search' | 'email' | 'url'
   ref?: React.Ref<HTMLInputElement>
 }
 
 export const Input = ({
   value, onChange, placeholder, className, type = 'text',
-  min, max, step, disabled, required, minLength, maxLength, autoComplete, ref,
+  min, max, step, disabled, required, minLength, maxLength, autoComplete,
+  autoCapitalize, autoCorrect, spellCheck, inputMode, ref,
 }: InputProps) => (
   <input
     type={type}
@@ -34,6 +41,10 @@ export const Input = ({
     minLength={minLength}
     maxLength={maxLength}
     autoComplete={autoComplete}
+    autoCapitalize={autoCapitalize}
+    autoCorrect={autoCorrect}
+    spellCheck={spellCheck}
+    inputMode={inputMode}
     ref={ref}
     className={cn(
       'flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm',

@@ -1,10 +1,17 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.personalfinance.app',
-  appName: 'Personal Finance',
-  webDir: '.next',
-  bundledWebRuntime: false,
+  // Bundle ID kept as com.finwise.app so existing on-device SQLite data
+  // survives the rename. The display name (CFBundleDisplayName) is the
+  // string the user actually sees on the springboard — that's now Nworth.
+  appId: 'com.finwise.app',
+  appName: 'Nworth',
+  // Next.js static export output directory (set by `output: 'export'` in next.config.js)
+  webDir: 'out',
+  server: {
+    androidScheme: 'https',
+    iosScheme: 'https',
+  },
   plugins: {
     CapacitorCookies: {
       enable: true,
@@ -12,19 +19,31 @@ const config: CapacitorConfig = {
     CapacitorHttp: {
       enable: true,
     },
-  },
-  server: {
-    androidScheme: 'https',
+    SplashScreen: {
+      launchShowDuration: 2000,
+      backgroundColor: '#1a1a2e',
+    },
+    Keyboard: {
+      resize: 'body',
+      resizeOnFullScreen: true,
+    },
+    StatusBar: {
+      style: 'dark',
+    },
   },
   ios: {
-    webView: {
-      preferredChromeEarliestVersion: '100',
-    },
-  },
-  android: {
-    webView: {
-      preferredChromeEarliestVersion: '100',
-    },
+    // 'never' = let the body fill the viewport edge-to-edge. We handle the
+    // safe-area inset ourselves in CSS (navbar padding-top extends its dark
+    // background behind the status bar). 'automatic' was pushing the body
+    // DOWN by the inset and exposing the WebView's default white background
+    // above it — that's the white band the user reported.
+    contentInset: 'never',
+    allowsLinkPreview: false,
+    scrollEnabled: true,
+    // Backstop: tint the WebView itself black so any brief gap during the
+    // app launch / rotation doesn't flash white in dark mode. The body's
+    // bg-background paints over this for the actual content.
+    backgroundColor: '#0a0f1d',
   },
 };
 

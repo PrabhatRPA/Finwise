@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { authApi } from './api'
+import { loadToken, saveToken, clearToken } from './token'
 
 interface AuthUser {
   user_id: number
@@ -16,7 +17,7 @@ interface AuthContextValue {
   isLoading: boolean
   login: (username: string, password: string) => Promise<void>
   register: (username: string, password: string, fullName?: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -26,13 +27,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      setIsLoading(false)
-      return
-    }
-
     let cancelled = false
+
     // The packaged desktop app spawns the backend sidecar on launch; it can
     // take up to ~20 s to extract and start.  Retry on network errors rather
     // than invalidating a perfectly good token just because the server isn't
@@ -49,19 +45,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return tryAuth(attemptsLeft - 1)
         }
         // Actual auth failure (401/403) or retries exhausted → clear token
-        localStorage.removeItem('token')
+        await clearToken()
       } finally {
         if (!cancelled) setIsLoading(false)
       }
     }
 
-    tryAuth(15)  // retry up to 15 × 2 s = 30 s before giving up
+    ;(async () => {
+      // On iOS, loadToken mirrors Preferences → localStorage so the synchronous
+      // axios interceptor can find the token on the first request.
+      const token = await loadToken()
+      if (cancelled) return
+      if (!token) {
+        setIsLoading(false)
+        return
+      }
+      tryAuth(15)  // retry up to 15 × 2 s = 30 s before giving up
+    })()
+
     return () => { cancelled = true }
   }, [])
 
   const login = async (username: string, password: string) => {
     const res = await authApi.login(username, password)
-    localStorage.setItem('token', res.data.access_token)
+    await saveToken(res.data.access_token)
     setUser({
       user_id: res.data.user_id,
       username: res.data.username,
@@ -72,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (username: string, password: string, fullName?: string) => {
     const res = await authApi.register(username, password, fullName)
-    localStorage.setItem('token', res.data.access_token)
+    await saveToken(res.data.access_token)
     setUser({
       user_id: res.data.user_id,
       username: res.data.username,
@@ -81,8 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  const logout = () => {
-    localStorage.removeItem('token')
+  const logout = async () => {
+    await clearToken()
     setUser(null)
     window.location.href = '/login'
   }

@@ -130,6 +130,41 @@ export default function DocumentsPage() {
   const isImageFile = (file: File) =>
     file.type.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(file.name)
 
+  // Capacitor Camera — opens iOS camera UI, converts the resulting photo
+  // into a File, then routes it through the same uploadFile() pipeline.
+  // Returns silently if the user cancels or the platform isn't native.
+  const takePhoto = async () => {
+    try {
+      const { Capacitor } = await import('@capacitor/core')
+      if (!Capacitor.isNativePlatform()) {
+        // Fall back to the file picker on web — the browser will offer the
+        // OS camera as one of its options.
+        fileInputRef.current?.click()
+        return
+      }
+      const { Camera, CameraResultType, CameraSource } = await import('@capacitor/camera')
+      const photo = await Camera.getPhoto({
+        quality: 88,
+        allowEditing: false,
+        resultType: CameraResultType.Uri,
+        source: CameraSource.Camera,
+        saveToGallery: false,
+      })
+      if (!photo.webPath) return
+      const blob = await (await fetch(photo.webPath)).blob()
+      const ext = photo.format || 'jpg'
+      const file = new File([blob], `statement_${Date.now()}.${ext}`, {
+        type: blob.type || `image/${ext}`,
+      })
+      uploadFile(file)
+    } catch (err: any) {
+      // User-cancelled camera throws a "User cancelled photos app" — swallow.
+      if (!/cancel/i.test(err?.message ?? '')) {
+        setUploadError(err?.message || 'Could not open the camera.')
+      }
+    }
+  }
+
   const uploadFile = async (file: File) => {
     const allowedPattern = /\.(pdf|csv|txt|png|jpe?g|webp)$/i
     const allowedMime = ['application/pdf', 'text/csv', 'text/plain', 'image/png', 'image/jpeg', 'image/webp']
@@ -257,15 +292,27 @@ export default function DocumentsPage() {
 
   // ── Render ────────────────────────────────────────────────
   return (
-    <div className="container mx-auto p-4 space-y-6 max-w-5xl">
-      <header className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Upload Documents</h1>
-          <p className="text-muted-foreground">
+    <div className="container mx-auto p-3 sm:p-4 space-y-4 sm:space-y-6 max-w-5xl">
+      {/* Mobile: stack title above the back-link as a thin top row.
+          Desktop: keep the side-by-side header. */}
+      <header className="space-y-2 sm:space-y-0 sm:flex sm:justify-between sm:items-start sm:gap-4">
+        <button
+          onClick={() => router.push('/dashboard')}
+          className="sm:hidden inline-flex items-center gap-1 text-sm text-primary font-medium"
+        >
+          ← Dashboard
+        </button>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Upload Documents</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
             Upload tax forms, 401(k), Roth IRA, or brokerage statements — AI extracts tickers, shares, and costs automatically.
           </p>
         </div>
-        <Button variant="outline" onClick={() => router.push('/dashboard')}>
+        <Button
+          variant="outline"
+          onClick={() => router.push('/dashboard')}
+          className="hidden sm:inline-flex shrink-0"
+        >
           ← Dashboard
         </Button>
       </header>
@@ -302,13 +349,29 @@ export default function DocumentsPage() {
             </div>
           </div>
 
+          {/* Take Photo — primary action on mobile, secondary on desktop */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={takePhoto}
+            disabled={uploading}
+            className="w-full h-11 flex items-center justify-center gap-2"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+            Take Photo of Statement
+          </Button>
+
           {/* Drop Zone */}
           <div
             onDragOver={e => { e.preventDefault(); setDragging(true) }}
             onDragLeave={() => setDragging(false)}
             onDrop={handleDrop}
             onClick={() => !uploading && fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+            className={`border-2 border-dashed rounded-lg p-4 sm:p-8 text-center cursor-pointer transition-colors ${
               dragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/30 hover:border-primary/60'
             } ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
@@ -348,11 +411,17 @@ export default function DocumentsPage() {
                   <p className="text-sm font-medium">Uploading &amp; running OCR + AI extraction…</p>
                 ) : (
                   <>
-                    <p className="text-sm font-medium">Drag &amp; drop your file here, or click to browse</p>
-                    <div className="text-xs text-muted-foreground space-y-1">
+                    <p className="text-sm font-medium">
+                      <span className="hidden sm:inline">Drag &amp; drop your file here, or click to browse</span>
+                      <span className="sm:hidden">Tap to upload a document or photo</span>
+                    </p>
+                    <div className="hidden sm:block text-xs text-muted-foreground space-y-1">
                       <p><span className="font-medium">Documents:</span> PDF, CSV, TXT — 1099-B, 1099-DIV, brokerage &amp; bank statements</p>
                       <p><span className="font-medium">Images:</span> PNG, JPG, JPEG, WEBP — screenshots, photos of statements — OCR + AI extracts holdings automatically</p>
                     </div>
+                    <p className="sm:hidden text-[11px] text-muted-foreground">
+                      PDF, CSV, TXT, PNG, JPG — AI extracts holdings automatically
+                    </p>
                   </>
                 )}
               </div>

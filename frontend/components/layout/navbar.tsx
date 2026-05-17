@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import { useTheme } from '@/lib/theme'
 import { APP_NAME, APP_VERSION } from '@/lib/constants'
@@ -57,86 +57,139 @@ function MoonIcon() {
   )
 }
 
-const NAV_LINKS = [
-  { href: '/dashboard',  label: 'Dashboard'  },
-  { href: '/documents',  label: 'Documents'  },
-]
+function UploadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  )
+}
+
+function InfoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="16" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+  )
+}
+
+function ProfileChevronIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 opacity-70" aria-hidden="true">
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  )
+}
 
 export function Navbar() {
-  const { user, isAuthenticated, isLoading, logout } = useAuth()
+  const { user, isAuthenticated, isLoading } = useAuth()
   const { theme, setTheme } = useTheme()
   const pathname = usePathname()
+  const router = useRouter()
 
   const initials = user
     ? (user.full_name || user.username || '?')[0].toUpperCase()
     : '?'
 
   return (
-    <nav className="sticky top-0 z-40 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <div className="mx-auto max-w-screen-xl px-4 h-14 flex items-center justify-between gap-4">
+    <nav
+      className="sticky top-0 z-40 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80"
+      // Extend background behind the iOS status bar without bloating the brand row.
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+    >
+      {/* h-12 instead of h-14 — denser on mobile while still meeting Apple's
+          44pt touch target since the buttons inside are h-9. */}
+      <div className="mx-auto max-w-screen-xl px-3 sm:px-4 h-12 flex items-center justify-between gap-2">
 
         {/* ── Brand ──────────────────────────────────── */}
-        <Link href={isAuthenticated ? '/dashboard' : '/'} className="flex items-center gap-2.5 flex-shrink-0 group">
-          <AppLogo size={30} />
-          <span className="font-bold text-[17px] tracking-tight text-foreground group-hover:text-primary transition-colors">
+        <Link href={isAuthenticated ? '/dashboard' : '/'} className="flex items-center gap-2 flex-shrink-0 group min-w-0">
+          <AppLogo size={26} />
+          <span className="font-bold text-base sm:text-[17px] tracking-tight text-foreground group-hover:text-primary transition-colors">
             {APP_NAME}
           </span>
-          <span className="hidden sm:inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold
+          <span className="hidden md:inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold
             bg-primary/10 text-primary border border-primary/20 select-none">
             v{APP_VERSION}
           </span>
         </Link>
 
-        {/* ── Page nav ───────────────────────────────── */}
-        {!isLoading && isAuthenticated && (
-          <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
-            {NAV_LINKS.map(link => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                  pathname?.startsWith(link.href)
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+        {/* ── Center tagline (tablet+ only) ───────────────
+            On the dashboard, surface the "Your investment portfolio and
+            net worth" subtitle here so the page header below can be a
+            single dense row (title + search). Hidden on phone where the
+            navbar is already crowded. */}
+        {!isLoading && isAuthenticated && pathname?.startsWith('/dashboard') && (
+          <div className="hidden md:flex flex-1 justify-center px-4">
+            <p className="text-sm text-muted-foreground truncate">
+              Your investment portfolio and net worth
+            </p>
           </div>
         )}
 
-        {/* ── Right controls ─────────────────────────── */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        {/* ── Right cluster — uniform h-9 / w-9 icon buttons ── */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+
+          {/* About */}
+          <button
+            onClick={() => router.push('/about')}
+            title="About Nworth"
+            aria-label="About"
+            className="h-9 w-9 flex items-center justify-center rounded-lg border border-border
+              text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            <InfoIcon />
+          </button>
 
           {/* Theme toggle */}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             aria-label="Toggle colour theme"
-            className="h-8 w-8 flex items-center justify-center rounded-lg border border-border
+            className="h-9 w-9 flex items-center justify-center rounded-lg border border-border
               text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
             {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
           </button>
 
-          {/* User chip */}
+          {/* Upload Documents — icon button (mobile) / icon+label (tablet+) */}
+          {!isLoading && isAuthenticated && (
+            <button
+              onClick={() => router.push('/documents')}
+              title="Upload documents"
+              aria-label="Upload documents"
+              className="h-9 inline-flex items-center justify-center gap-1.5 px-2 sm:px-3 rounded-lg border border-border
+                text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <UploadIcon />
+              <span className="hidden sm:inline text-sm font-medium">Documents</span>
+            </button>
+          )}
+
+          {/* Profile chip — same h-9, initial + chevron on mobile, full label on tablet+.
+              Replaces the old "Sign out" shortcut. The Profile page houses
+              sign-out plus all per-user settings (theme, Face ID, etc). */}
           {!isLoading && isAuthenticated && user && (
-            <div className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5 text-sm">
-              <div className="h-6 w-6 rounded-full bg-primary/15 text-primary flex items-center
+            <button
+              onClick={() => router.push('/profile')}
+              title="Profile"
+              aria-label="Profile"
+              className="h-9 inline-flex items-center gap-1.5 rounded-lg border border-border px-1.5 sm:px-2.5 text-sm
+                text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <span className="h-6 w-6 rounded-full bg-primary/15 text-primary flex items-center
                 justify-center text-[11px] font-bold flex-shrink-0 select-none">
                 {initials}
-              </div>
-              <span className="hidden sm:block text-muted-foreground max-w-[120px] truncate">
-                {user.full_name || user.username}
               </span>
-              <button
-                onClick={logout}
-                className="text-[11px] text-muted-foreground hover:text-destructive transition-colors ml-0.5"
-              >
-                Sign out
-              </button>
-            </div>
+              <span className="hidden sm:inline">Profile</span>
+              <span className="sm:hidden"><ProfileChevronIcon /></span>
+            </button>
           )}
         </div>
       </div>

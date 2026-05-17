@@ -7,13 +7,20 @@ import { useAuth } from '@/lib/auth'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { APP_NAME, APP_VERSION } from '@/lib/constants'
+import { APP_NAME, APP_TAGLINE, APP_VERSION } from '@/lib/constants'
 import { authApi } from '@/lib/api'
+import { saveToken } from '@/lib/token'
+import {
+  isBiometricEnabled,
+  promptBiometric,
+  getBiometryStatus,
+} from '@/lib/native/biometric'
+import { Preferences } from '@capacitor/preferences'
 
 // Path shown in the "failed to start" error — matches what lib.rs writes.
 const LOG_PATHS = {
-  mac: '~/Library/Application Support/com.raotechllc.finwise/sidecar.log',
-  win: '%APPDATA%\\com.raotechllc.finwise\\sidecar.log',
+  mac: '~/Library/Application Support/com.raotechllc.nworth/sidecar.log',
+  win: '%APPDATA%\\com.raotechllc.nworth\\sidecar.log',
 }
 
 type BackendState = 'checking' | 'ready' | 'failed' | 'stale-install'
@@ -36,18 +43,76 @@ export default function LoginPage() {
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [backendState, setBackendState] = useState<BackendState>('checking')
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Face ID / Touch ID state — only shown if previously enabled in /profile.
+  const [bioEnabled, setBioEnabled] = useState(false)
+  const [bioKind, setBioKind] = useState<'face_id' | 'touch_id' | 'other'>('face_id')
+  const [bioBusy, setBioBusy] = useState(false)
+
   useEffect(() => {
     if (!isLoading && isAuthenticated) router.replace('/dashboard')
   }, [isAuthenticated, isLoading, router])
 
+  // Detect if biometric sign-in was enabled previously.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const [status, enabled] = await Promise.all([
+        getBiometryStatus(),
+        isBiometricEnabled(),
+      ])
+      if (cancelled) return
+      setBioEnabled(enabled.enabled && status.available)
+      if (status.available) setBioKind(status.kind)
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  // Sign in via Face ID / Touch ID.
+  // On success, we re-establish the session for the saved user_id without
+  // going through the username/password flow. This works because the bcrypt
+  // check happened at registration time; Face ID is the new auth factor.
+  const handleBiometricSignIn = async () => {
+    setError('')
+    setBioBusy(true)
+    try {
+      const enabled = await isBiometricEnabled()
+      if (!enabled.enabled || !enabled.userId) {
+        setError('Biometric sign-in is not enabled. Sign in with your password first.')
+        return
+      }
+      const ok = await promptBiometric(`Sign in to ${APP_NAME}`)
+      if (!ok) return
+      // Set the on-device session marker the AuthProvider checks on mount.
+      await Preferences.set({ key: 'session_user_id', value: String(enabled.userId) })
+      await saveToken('local-session')
+      // Reload so AuthProvider picks up the new session and routes to dashboard.
+      window.location.href = '/dashboard'
+    } catch (err: any) {
+      setError(err?.message ?? 'Biometric sign-in failed.')
+    } finally {
+      setBioBusy(false)
+    }
+  }
+
   // Poll the backend health endpoint every second.
   // Max 90 attempts = 90 seconds before giving up with a failure message.
   useEffect(() => {
+    // On Capacitor (iOS/Android) there is no backend sidecar to wait for —
+    // the data layer is on-device SQLite. Skip the polling entirely so the
+    // form unlocks immediately.
+    const isNative = typeof window !== 'undefined'
+      && (window as any).Capacitor?.isNativePlatform?.() === true
+    if (isNative) {
+      setBackendState('ready')
+      return
+    }
+
     let attempts = 0
     const MAX_ATTEMPTS = 90
 
@@ -105,7 +170,9 @@ export default function LoginPage() {
     setError('')
     setSubmitting(true)
     try {
-      await login(username, password)
+      // Always lowercase: registration also lowercases, so this keeps the
+      // login lookup case-insensitive regardless of what iOS auto-capitalized.
+      await login(username.trim().toLowerCase(), password)
       router.replace('/dashboard')
     } catch (err: any) {
       if (!err?.response) {
@@ -132,7 +199,7 @@ export default function LoginPage() {
           <AppMark />
           <div>
             <h1 className="text-2xl font-bold tracking-tight">{APP_NAME}</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Your private finance dashboard</p>
+            <p className="text-sm text-muted-foreground mt-0.5">{APP_TAGLINE}</p>
           </div>
         </div>
 
@@ -155,13 +222,13 @@ export default function LoginPage() {
               Incomplete install detected
             </p>
             <p className="text-xs text-amber-700/90 dark:text-amber-300/80">
-              When you dragged the new Finwise into Applications, macOS didn&apos;t fully replace the old version&apos;s files. This is a known macOS gotcha &mdash; do a clean reinstall to fix it:
+              When you dragged the new Nworth into Applications, macOS didn&apos;t fully replace the old version&apos;s files. This is a known macOS gotcha &mdash; do a clean reinstall to fix it:
             </p>
             <ol className="text-xs text-amber-700/90 dark:text-amber-300/80 list-decimal list-inside space-y-0.5 ml-1">
-              <li>Quit Finwise (⌘Q).</li>
-              <li>Drag <span className="font-semibold">Finwise</span> from your Applications folder to the Trash.</li>
+              <li>Quit Nworth (⌘Q).</li>
+              <li>Drag <span className="font-semibold">Nworth</span> from your Applications folder to the Trash.</li>
               <li><span className="font-semibold">Empty the Trash.</span></li>
-              <li>Open the Finwise <span className="font-mono">.dmg</span> again and drag Finwise back into Applications.</li>
+              <li>Open the Nworth <span className="font-mono">.dmg</span> again and drag Nworth back into Applications.</li>
             </ol>
             <p className="text-[11px] text-amber-600/80 dark:text-amber-400/80 italic">
               Your data is safe &mdash; it lives outside the app bundle and is never touched by reinstall.
@@ -173,7 +240,7 @@ export default function LoginPage() {
           <div className="rounded-lg border border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/30 px-4 py-3 space-y-1.5">
             <p className="text-sm font-semibold text-red-700 dark:text-red-400">Backend failed to start</p>
             <p className="text-xs text-red-600/80 dark:text-red-400/80">
-              The Finwise service did not start. Try quitting and reopening the app.
+              The Nworth service did not start. Try quitting and reopening the app.
               If the problem persists, check the log file:
             </p>
             <p className="text-[11px] font-mono text-red-500 dark:text-red-400 break-all">
@@ -189,6 +256,42 @@ export default function LoginPage() {
         <Card className="shadow-md border-border/60">
           <CardContent className="pt-6">
             <h2 className="text-base font-semibold mb-4 text-center">Sign in to your account</h2>
+
+            {/* Biometric sign-in — shown only when previously enabled in Profile */}
+            {bioEnabled && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleBiometricSignIn}
+                  disabled={bioBusy || backendState !== 'ready'}
+                  className="w-full mb-3 inline-flex items-center justify-center gap-2 h-11 rounded-md border border-primary/30 bg-primary/5 text-primary font-medium text-sm hover:bg-primary/10 transition-colors disabled:opacity-50"
+                >
+                  {bioKind === 'face_id' ? (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"
+                      strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                      <path d="M3 9V6a3 3 0 0 1 3-3h3M21 9V6a3 3 0 0 0-3-3h-3M3 15v3a3 3 0 0 0 3 3h3M21 15v3a3 3 0 0 1-3 3h-3" />
+                      <path d="M8 9v2M16 9v2M9 16s1 1.5 3 1.5S15 16 15 16M12 9v4h-1" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"
+                      strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                      <path d="M12 11v6m-4-9a4 4 0 0 1 8 0v1m-9 4c0-3 1-5 5-5s5 2 5 5v3a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3z" />
+                    </svg>
+                  )}
+                  {bioBusy
+                    ? 'Authenticating…'
+                    : (bioKind === 'face_id' ? 'Sign in with Face ID'
+                      : bioKind === 'touch_id' ? 'Sign in with Touch ID'
+                      : 'Sign in with biometrics')}
+                </button>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">or password</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+              </>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
                 <label className="text-sm font-medium block mb-1">Username</label>
@@ -197,21 +300,51 @@ export default function LoginPage() {
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="your-username"
                   autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   required
                   disabled={backendState !== 'ready'}
                 />
               </div>
               <div>
                 <label className="text-sm font-medium block mb-1">Password</label>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  required
-                  disabled={backendState !== 'ready'}
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    required
+                    disabled={backendState !== 'ready'}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(s => !s)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute right-0 top-0 h-9 w-10 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      // eye-off
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                        <line x1="1" y1="1" x2="23" y2="23" />
+                      </svg>
+                    ) : (
+                      // eye
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
               {error && (
                 <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">

@@ -57,6 +57,25 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    /* iOS home indicator + landscape notch. Top inset is handled by the
+       sticky navbar itself, so its background extends behind the status bar
+       and the brand row sits below the notch. */
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Apple HIG: 44x44pt minimum tap target on touch devices.
+   Scoped to `pointer: coarse` so desktop UI stays compact. */
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  input[type="submit"],
+  input[type="button"],
+  a.btn {
+    min-height: 44px;
+    min-width: 44px;
   }
 }
 

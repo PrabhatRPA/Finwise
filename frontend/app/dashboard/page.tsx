@@ -15,12 +15,73 @@ import { AssetAllocationChart } from '@/components/dashboard/allocation-chart'
 import { PortfolioPerformanceChart } from '@/components/dashboard/performance-chart'
 import { NetWorthTrendChart } from '@/components/dashboard/net-worth-chart'
 import { AIAnalysisCard } from '@/components/dashboard/ai-analysis'
+import { GrowthChart } from '@/components/dashboard/growth-chart'
+import { AccountsTable } from '@/components/dashboard/accounts-table'
 import { AssetAllocationDonutChart } from '@/components/dashboard/allocation-donut-chart'
 import { TopHoldingsChart, CostBasisChart, ConcentrationChart } from '@/components/dashboard/allocation-extra-charts'
 import { BenchmarkChart } from '@/components/dashboard/benchmark-chart'
 import { DebtsTable } from '@/components/dashboard/debts-table'
 import { WatchlistTable } from '@/components/dashboard/watchlist-table'
 import { PropertiesTable } from '@/components/dashboard/properties-table'
+
+// Tiny stat tile — used in the 5-up summary row.
+//
+// Layout is identical across all 5 tiles: tiny uppercase label on top, bold
+// compact value below. The cell is rendered as a <div> (not <button>) when
+// `onAction` is provided so that the global `@media (pointer: coarse)` rule
+// in globals.css — which inflates real buttons to 44px — doesn't make the
+// interactive tile taller than the static ones.
+function SummaryStat({
+  label, value, valueClass, onAction,
+}: {
+  label: string
+  value: string
+  valueClass?: string
+  onAction?: () => void
+}) {
+  const interactive = !!onAction
+  return (
+    <div
+      onClick={onAction}
+      className={`rounded-md border border-border bg-card px-1.5 py-1.5 sm:px-3 sm:py-2 overflow-hidden select-none ${
+        interactive
+          ? 'cursor-pointer hover:bg-accent/30 active:bg-accent/60 transition-colors'
+          : ''
+      }`}
+    >
+      <p className="text-[9px] sm:text-[10px] uppercase tracking-wide text-muted-foreground font-medium flex items-center gap-0.5 min-w-0">
+        <span className="truncate">{label}</span>
+        {interactive && (
+          // Pencil icon — small affordance that this tile is tappable.
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+               strokeLinecap="round" strokeLinejoin="round"
+               className="h-2.5 w-2.5 opacity-50 shrink-0" aria-hidden="true">
+            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+          </svg>
+        )}
+      </p>
+      <p className={`text-xs sm:text-lg font-bold tabular-nums truncate mt-0.5 ${valueClass ?? ''}`}>
+        {value}
+      </p>
+    </div>
+  )
+}
+
+// Compact currency: 7221.5 → "$7.2K", 936558 → "$936.6K", 1500000 → "$1.5M".
+// Keeps the summary row readable on a narrow phone (5 cells across).
+function formatCompactCurrency(n: number): string {
+  if (!isFinite(n)) return '$0'
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }).format(n)
+  } catch {
+    return `$${Math.round(n).toLocaleString()}`
+  }
+}
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -34,9 +95,11 @@ export default function DashboardPage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [netWorthData, setNetWorthData] = useState<any>(null)
-  const [showBalanceModal, setShowBalanceModal] = useState(false)
-  const [balanceEdits, setBalanceEdits] = useState<Record<number, string>>({})
-  const [savingBalances, setSavingBalances] = useState(false)
+  // Balance editing now lives in the Accounts tab — the legacy modal was
+  // removed when the Cash tile became non-tappable. The Accounts tab
+  // handles full CRUD (name / type / institution / balance).
+  // Controlled tab state so the mobile <select> and the desktop TabsList stay in sync.
+  const [activeTab, setActiveTab] = useState('holdings')
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -120,30 +183,6 @@ export default function DashboardPage() {
     }
   }
 
-  const openBalanceModal = () => {
-    const initial: Record<number, string> = {}
-    accounts.forEach(a => { initial[a.id] = String(a.balance ?? 0) })
-    setBalanceEdits(initial)
-    setShowBalanceModal(true)
-  }
-
-  const saveBalances = async () => {
-    setSavingBalances(true)
-    try {
-      await Promise.all(
-        accounts.map(a =>
-          accountsApi.updateBalance(a.id, Number(balanceEdits[a.id] ?? a.balance))
-        )
-      )
-      setShowBalanceModal(false)
-      await fetchData()
-    } catch {
-      alert('Failed to save balances. Check the backend is running.')
-    } finally {
-      setSavingBalances(false)
-    }
-  }
-
   if (authLoading || (isLoading && isAuthenticated)) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)]">
@@ -158,71 +197,97 @@ export default function DashboardPage() {
   if (!isAuthenticated) return null
 
   return (
-    <div className="mx-auto max-w-screen-xl px-4 py-6 space-y-6">
+    <div className="mx-auto max-w-screen-xl px-3 sm:px-4 pt-3 pb-6 sm:pt-3 sm:pb-8 space-y-3 sm:space-y-4">
 
-      {/* ── Balance Edit Modal ── */}
-      {showBalanceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowBalanceModal(false)} />
-          <div className="relative bg-card rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6 border border-border">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold">Edit Account Balances</h2>
-              <button onClick={() => setShowBalanceModal(false)} className="text-muted-foreground hover:text-foreground text-2xl leading-none">×</button>
-            </div>
-            <div className="space-y-3">
-              {accounts.map(a => (
-                <div key={a.id}>
-                  <label className="block text-sm font-medium mb-1">
-                    {a.account_name}{' '}
-                    <span className="text-muted-foreground font-normal">({a.account_type})</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">$</span>
-                    <input
-                      type="number" min="0" step="0.01"
-                      value={balanceEdits[a.id] ?? ''}
-                      onChange={e => setBalanceEdits(prev => ({ ...prev, [a.id]: e.target.value }))}
-                      className="border border-input rounded-md px-3 py-2 w-full text-sm bg-background"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-3 mt-5">
-              <button
-                onClick={saveBalances} disabled={savingBalances}
-                className="flex-1 bg-primary text-primary-foreground rounded-md py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
-              >
-                {savingBalances ? 'Saving…' : 'Save'}
-              </button>
-              <button
-                onClick={() => setShowBalanceModal(false)}
-                className="flex-1 border border-border rounded-md py-2 text-sm font-medium hover:bg-accent transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
+
+      {/* ── Page header ── single row: title + search.
+          The subtitle moved into the navbar center. Refresh moved next to
+          the View dropdown below. Upload Documents moved into the navbar. */}
+      <header className="flex items-center justify-between gap-3">
+        <h1 className="text-lg sm:text-2xl font-bold tracking-tight leading-tight shrink-0">Dashboard</h1>
+        <Input
+          placeholder="Search holdings…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="h-9 text-sm w-full max-w-xs"
+        />
+      </header>
+
+      {/* ── Summary stat row ──
+          Always 5 columns. Each cell is just a tiny uppercase label + a
+          compact-formatted value ($7.2K, $1.5M). No icons, no descriptions,
+          no left stripe — packs into a single phone-width row at ~72px each. */}
+      <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
+        <SummaryStat label="Portfolio" value={formatCompactCurrency(totalValue)} valueClass="text-emerald-600 dark:text-emerald-400" />
+        <SummaryStat label="Cash" value={formatCompactCurrency(netWorthData?.cash ?? 0)} valueClass="text-amber-600 dark:text-amber-400" />
+        <SummaryStat label="Debt" value={formatCompactCurrency(netWorthData?.total_liabilities ?? 0)} valueClass={(netWorthData?.total_liabilities ?? 0) > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-foreground'} />
+        <SummaryStat label="Holdings" value={String(holdings.length)} valueClass="text-violet-600 dark:text-violet-400" />
+        <SummaryStat label="Net Worth" value={formatCompactCurrency(netWorthData?.net_worth ?? 0)} valueClass="text-blue-600 dark:text-blue-400" />
+      </div>
+
+      {/* ── Growth chart ── live net worth + time-range area chart.
+          Pulls daily snapshots from portfolio_history. A new snapshot is
+          recorded on every dashboard load (one per day max, UPSERT). */}
+      <GrowthChart currentNetWorth={netWorthData?.net_worth ?? totalValue} />
+
+      {/* ── Tabs ──
+          The 7-button tab bar wraps horribly on a phone. On mobile we show
+          a single <select> dropdown bound to the same Tabs state; on md+
+          the original 7-col tab bar renders normally. */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        {/* Mobile: View dropdown + Refresh button side-by-side */}
+        <div className="md:hidden mb-3 flex items-end gap-2">
+          <div className="flex-1 min-w-0">
+            <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium block mb-1">
+              View
+            </label>
+            <select
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value)}
+              className="w-full h-10 rounded-md border border-input bg-background text-foreground px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="holdings">Holdings</option>
+              <option value="accounts">Cash &amp; Accounts</option>
+              <option value="watchlist">Watchlist</option>
+              <option value="debts">Debts</option>
+              <option value="properties">Properties</option>
+              <option value="allocation">Allocation</option>
+              <option value="performance">Performance</option>
+              <option value="ai">AI Insights</option>
+            </select>
           </div>
-        </div>
-      )}
-
-      {/* ── Page header ── */}
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Your investment portfolio and net worth</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Input
-            placeholder="Search holdings…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-52 h-8 text-sm"
-          />
-          <Button variant="outline" size="sm" onClick={() => router.push('/documents')}>
-            Upload Documents
+          <Button
+            size="sm"
+            onClick={async () => { await systemApi.forceRefreshPrices().catch(() => {}); fetchData(true, 8, true) }}
+            disabled={isRefreshing}
+            className="h-10 shrink-0"
+          >
+            {isRefreshing ? (
+              <span className="flex items-center gap-1.5">
+                <span className="animate-spin h-3 w-3 border border-current border-t-transparent rounded-full inline-block" />
+                <span className="sr-only">Refreshing</span>
+              </span>
+            ) : 'Refresh'}
           </Button>
-          <Button size="sm" onClick={async () => { await systemApi.forceRefreshPrices().catch(() => {}); fetchData(true, 8, true) }} disabled={isRefreshing}>
+        </div>
+
+        {/* Tablet + desktop: tab bar + refresh button */}
+        <div className="hidden md:flex items-center gap-2 mb-3">
+          <TabsList className="grid grid-cols-8 flex-1">
+          <TabsTrigger value="holdings">Holdings</TabsTrigger>
+          <TabsTrigger value="accounts">Cash</TabsTrigger>
+          <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
+          <TabsTrigger value="debts">Debts</TabsTrigger>
+          <TabsTrigger value="properties">Properties</TabsTrigger>
+          <TabsTrigger value="allocation">Allocation</TabsTrigger>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
+          <TabsTrigger value="ai">AI Insights</TabsTrigger>
+        </TabsList>
+          <Button
+            size="sm"
+            onClick={async () => { await systemApi.forceRefreshPrices().catch(() => {}); fetchData(true, 8, true) }}
+            disabled={isRefreshing}
+          >
             {isRefreshing ? (
               <span className="flex items-center gap-1.5">
                 <span className="animate-spin h-3 w-3 border border-current border-t-transparent rounded-full inline-block" />
@@ -231,114 +296,13 @@ export default function DashboardPage() {
             ) : 'Refresh'}
           </Button>
         </div>
-      </header>
-
-      {/* ── Summary cards ── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {/* Portfolio Value */}
-        <Card className="border-l-4 border-l-emerald-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-4 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Portfolio Value</CardTitle>
-            <div className="h-7 w-7 rounded-md bg-emerald-500/10 flex items-center justify-center">
-              <svg className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-              </svg>
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <div className="text-2xl font-bold">{formatCurrency(totalValue)}</div>
-            <p className="text-xs text-muted-foreground mt-0.5">Market value of holdings</p>
-          </CardContent>
-        </Card>
-
-        {/* Net Worth */}
-        <Card className="border-l-4 border-l-blue-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-4 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Net Worth</CardTitle>
-            <div className="h-7 w-7 rounded-md bg-blue-500/10 flex items-center justify-center">
-              <svg className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
-              </svg>
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <div className="text-2xl font-bold">{formatCurrency(netWorthData?.net_worth ?? 0)}</div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {formatCurrency(netWorthData?.total_assets ?? 0)} assets − {formatCurrency(netWorthData?.total_liabilities ?? 0)} debt
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Total Debt */}
-        <Card className="border-l-4 border-l-rose-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-4 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Debt</CardTitle>
-            <div className="h-7 w-7 rounded-md bg-rose-500/10 flex items-center justify-center">
-              <svg className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M12 2v20M5 12h14" />
-              </svg>
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <div className={`text-2xl font-bold ${(netWorthData?.total_liabilities ?? 0) > 0 ? 'text-rose-600 dark:text-rose-400' : ''}`}>
-              {formatCurrency(netWorthData?.total_liabilities ?? 0)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">Loans, credit &amp; mortgages</p>
-          </CardContent>
-        </Card>
-
-        {/* Holdings count */}
-        <Card className="border-l-4 border-l-violet-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-4 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Holdings</CardTitle>
-            <div className="h-7 w-7 rounded-md bg-violet-500/10 flex items-center justify-center">
-              <svg className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" />
-              </svg>
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <div className="text-2xl font-bold">{holdings.length}</div>
-            <p className="text-xs text-muted-foreground mt-0.5">Active positions</p>
-          </CardContent>
-        </Card>
-
-        {/* Cash & Banks */}
-        <Card className="border-l-4 border-l-amber-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-4 px-4">
-            <div className="flex items-center justify-between w-full">
-              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Cash &amp; Banks</CardTitle>
-              <button
-                onClick={openBalanceModal}
-                className="text-[11px] text-primary hover:underline font-medium"
-              >
-                Edit
-              </button>
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <div className="text-2xl font-bold">{formatCurrency(netWorthData?.cash ?? 0)}</div>
-            <p className="text-xs text-muted-foreground mt-0.5">Checking &amp; savings</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── Tabs ── */}
-      <Tabs defaultValue="holdings">
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="holdings">Holdings</TabsTrigger>
-          <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
-          <TabsTrigger value="debts">Debts</TabsTrigger>
-          <TabsTrigger value="properties">Properties</TabsTrigger>
-          <TabsTrigger value="allocation">Allocation</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="ai">AI Insights</TabsTrigger>
-        </TabsList>
 
         <TabsContent value="holdings" className="space-y-4">
           <HoldingsTable holdings={holdings} onHoldingAdded={fetchData} searchQuery={searchQuery} />
+        </TabsContent>
+
+        <TabsContent value="accounts" className="space-y-4">
+          <AccountsTable accounts={accounts} onAccountChanged={fetchData} />
         </TabsContent>
 
         <TabsContent value="watchlist" className="space-y-4">

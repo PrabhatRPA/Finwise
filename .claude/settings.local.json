@@ -14,6 +14,9 @@
       "Bash($PYTHON -m pip install -r requirements.txt --break-system-packages -q)",
       "Bash(PYTHON=/opt/homebrew/opt/python@3.13/Frameworks/Python.framework/Versions/3.13/bin/python3.13 $PYTHON -m pip install yfinance pdfplumber python-jose passlib bcrypt ollama langchain langchain-community --break-system-packages -q)",
       "Bash(curl -s -X POST http://localhost:8000/api/v1/holdings -H 'Content-Type: application/json' -d '{\"ticker\":\"AAPL\",\"shares\":10,\"average_cost\":150.0,\"account_id\":1,\"security_type\":\"stock\"}')"
+    ],
+    "additionalDirectories": [
+      "/Users/raos/Practice"
     ]
   }
 }

@@ -1,19 +1,49 @@
-import axios from 'axios'
+// API client for the frontend.
+//
+// On web / Tauri (desktop): all calls hit the FastAPI backend via axios.
+// On Capacitor (iOS): all calls dispatch to the on-device modules under
+// lib/native/*, which talk to SQLite + market/AI providers directly.
+//
+// The exported surface is identical in both modes so the rest of the
+// frontend doesn't know or care which runtime it's in.
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
+import axios from 'axios'
+import { getTokenSync } from './token'
+
+// ── Platform detection ───────────────────────────────────────────────────────
+// `Capacitor` is injected onto window by the native shell. We avoid importing
+// @capacitor/core directly at module top level so a web build doesn't need
+// every native plugin resolved at bundle time.
+function isNativeRuntime(): boolean {
+  if (typeof window === 'undefined') return false
+  const cap = (window as any).Capacitor
+  return cap?.isNativePlatform?.() === true
+}
+
+// ── Remote (axios) base URL ──────────────────────────────────────────────────
+function getApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    if (isNativeRuntime()) {
+      // Shouldn't be reached — native dispatches before hitting axios.
+      return process.env.NEXT_PUBLIC_API_URL || 'https://api.nworth.app/api/v1'
+    }
+    if ('__TAURI__' in window || '__TAURI_INTERNALS__' in window) {
+      return 'http://localhost:8000/api/v1'
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
+}
+
+const API_BASE_URL = getApiBaseUrl()
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 })
 
 api.interceptors.request.use((config) => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
+  const token = getTokenSync()
+  if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
@@ -30,7 +60,11 @@ api.interceptors.response.use(
   },
 )
 
-export const authApi = {
+// ─────────────────────────────────────────────────────────────────────────────
+// Remote (axios) implementations — used on web and Tauri desktop.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const remoteAuthApi = {
   checkSetup: () => api.get('/auth/check-setup'),
   register: (username: string, password: string, fullName?: string) =>
     api.post('/auth/register', { username, password, full_name: fullName }),
@@ -39,10 +73,7 @@ export const authApi = {
   me: () => api.get('/auth/me'),
 }
 
-export const holdingsApi = {
-  // refresh_prices=false returns persisted values instantly (no market fetch).
-  // Pass false on initial render for snappy UX, then call again with true in
-  // the background to update prices.
+const remoteHoldingsApi = {
   getAll: (refreshPrices: boolean = true) =>
     api.get('/holdings', { params: { refresh_prices: refreshPrices } }),
   getById: (id: number) => api.get(`/holdings/${id}`),
@@ -54,7 +85,7 @@ export const holdingsApi = {
   batchAdd: (holdings: Partial<Holding>[]) => api.post('/holdings/batch', holdings),
 }
 
-export const accountsApi = {
+const remoteAccountsApi = {
   getAll: () => api.get('/accounts'),
   getById: (id: number) => api.get(`/accounts/${id}`),
   create: (data: Partial<Account>) => api.post('/accounts', data),
@@ -65,7 +96,7 @@ export const accountsApi = {
     api.patch(`/accounts/${id}/balance`, { balance }),
 }
 
-export const transactionsApi = {
+const remoteTransactionsApi = {
   getAll: () => api.get('/transactions'),
   create: (data: Partial<Transaction>) => api.post('/transactions', data),
   update: (id: number, data: Partial<Transaction>) => api.put(`/transactions/${id}`, data),
@@ -73,7 +104,7 @@ export const transactionsApi = {
   summary: () => api.get('/transactions/summary'),
 }
 
-export const documentsApi = {
+const remoteDocumentsApi = {
   upload: (file: File, type: string, accountId?: number) => {
     const formData = new FormData()
     formData.append('file', file)
@@ -91,7 +122,7 @@ export const documentsApi = {
     api.post(`/documents/${id}/import-holdings`, holdings),
 }
 
-export const marketApi = {
+const remoteMarketApi = {
   getPrice: (ticker: string) => api.get(`/market/price/${ticker}`),
   getHistory: (ticker: string, period: string = '1y') =>
     api.get(`/market/history/${ticker}?period=${period}`),
@@ -100,7 +131,7 @@ export const marketApi = {
   suggestions: (query: string) => api.get(`/market/suggestions?query=${query}`),
 }
 
-export const aiApi = {
+const remoteAiApi = {
   check: () => api.get('/ai/check'),
   portfolioAnalysis: (holdings: any[]) => api.post('/ai/portfolio-analysis', holdings),
   stockAnalysis: (ticker: string, companyName?: string) =>
@@ -111,15 +142,11 @@ export const aiApi = {
   riskAssessment: (data: any) => api.post('/ai/risk-assessment', data),
   suggestions: (data: any) => api.post('/ai/investment-suggestions', data),
   getSettings: () => api.get('/ai/settings'),
-  saveSettings: (data: {
-    provider: string
-    api_key?: string
-    model?: string
-    host?: string
-  }) => api.post('/ai/settings', data),
+  saveSettings: (data: { provider: string; api_key?: string; model?: string; host?: string }) =>
+    api.post('/ai/settings', data),
 }
 
-export const loansApi = {
+const remoteLoansApi = {
   getAll: (includePaidOff = false) =>
     api.get(`/loans?include_paid_off=${includePaidOff}`),
   create: (data: LoanCreate) => api.post('/loans', data),
@@ -128,9 +155,8 @@ export const loansApi = {
   delete: (id: number) => api.delete(`/loans/${id}`),
 }
 
-// Trigger an authenticated file download by fetching as a blob then clicking a link
 async function _authDownload(path: string, defaultFilename: string) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  const token = getTokenSync()
   const res = await fetch(`${API_BASE_URL}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
@@ -148,48 +174,21 @@ async function _authDownload(path: string, defaultFilename: string) {
   URL.revokeObjectURL(url)
 }
 
-export const propertiesApi = {
+const remotePropertiesApi = {
   getAll: () => api.get('/properties'),
-  create: (data: {
-    property_type: string
-    nickname?: string
-    address?: string
-    city?: string
-    state?: string
-    zip_code?: string
-    country?: string
-    manual_value?: number
-    purchase_price?: number
-    purchase_date?: string
-    notes?: string
-  }) => api.post('/properties', data),
-  update: (id: number, data: Partial<{
-    property_type: string
-    nickname: string
-    address: string
-    city: string
-    state: string
-    zip_code: string
-    country: string
-    manual_value: number | null
-    purchase_price: number
-    purchase_date: string
-    notes: string
-  }>) => api.put(`/properties/${id}`, data),
+  create: (data: any) => api.post('/properties', data),
+  update: (id: number, data: any) => api.put(`/properties/${id}`, data),
   delete: (id: number) => api.delete(`/properties/${id}`),
   refreshValue: (id: number) => api.post(`/properties/${id}/refresh-value`),
 }
 
-export const dataApi = {
-  // Export (authenticated downloads)
+const remoteDataApi = {
   exportHoldings: () => _authDownload('/export/holdings', 'holdings.csv'),
   exportWatchlist: () => _authDownload('/export/watchlist', 'watchlist.csv'),
   exportDebts: () => _authDownload('/export/debts', 'debts.csv'),
   exportTrends: () => _authDownload('/export/trends', 'net_worth_trends.csv'),
-  exportFullData: () => _authDownload('/export/full-data', 'finwise_full_export.json'),
+  exportFullData: () => _authDownload('/export/full-data', 'nworth_full_export.json'),
   exportFullBackup: () => _authDownload('/export/full-backup', 'portfolio_backup.zip'),
-
-  // Import
   importHoldings: (file: File) => {
     const fd = new FormData(); fd.append('file', file)
     return api.post('/import/holdings', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
@@ -202,10 +201,6 @@ export const dataApi = {
     const fd = new FormData(); fd.append('file', file)
     return api.post('/import/debts', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
   },
-  // mode='add' skips duplicates (only inserts new rows).
-  // mode='update' upserts (overwrites existing rows with values from the file).
-  // mode='replace' wipes all of the user's data first, then imports — true
-  // restore-from-backup.
   importFullData: (file: File, mode: 'add' | 'update' | 'replace' = 'add') => {
     const fd = new FormData(); fd.append('file', file)
     return api.post('/import/full-data', fd, {
@@ -213,36 +208,33 @@ export const dataApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
-
-  // Backups
   createBackup: () => api.post('/backup/create'),
   listBackups: () => api.get('/backup/list'),
-  downloadBackup: (filename: string) => _authDownload(`/backup/download/${encodeURIComponent(filename)}`, filename),
+  downloadBackup: (filename: string) =>
+    _authDownload(`/backup/download/${encodeURIComponent(filename)}`, filename),
   deleteBackup: (filename: string) => api.delete(`/backup/${encodeURIComponent(filename)}`),
+  // iOS-only: restoring from a managed backup file. The Python backend uses
+  // the Import endpoints directly, so this is a no-op on desktop. Annotated
+  // return type so TypeScript keeps the proper shape after native dispatch.
+  restoreBackup: async (
+    _filename: string,
+    _mode: 'add' | 'update' | 'replace' = 'replace',
+  ): Promise<{ data: { message: string } }> => {
+    throw new Error(
+      'Restore from managed backups is only available on iOS — download the file and use Import instead.',
+    )
+  },
 }
 
-export const watchlistApi = {
+const remoteWatchlistApi = {
   getAll: () => api.get('/watchlist'),
-  create: (data: {
-    ticker: string
-    company_name?: string
-    target_price?: number
-    target_direction?: 'above' | 'below'
-    notification_method?: string
-    notes?: string
-  }) => api.post('/watchlist', data),
-  update: (id: number, data: {
-    company_name?: string
-    target_price?: number | null
-    target_direction?: string | null
-    notification_method?: string
-    notes?: string
-  }) => api.put(`/watchlist/${id}`, data),
+  create: (data: any) => api.post('/watchlist', data),
+  update: (id: number, data: any) => api.put(`/watchlist/${id}`, data),
   delete: (id: number) => api.delete(`/watchlist/${id}`),
   acknowledgeAlert: (id: number) => api.post(`/watchlist/${id}/acknowledge-alert`),
 }
 
-export const netWorthApi = {
+const remoteNetWorthApi = {
   getCurrent: () => api.get('/net-worth/current'),
   getHistory: (start?: string, end?: string) => {
     const params = new URLSearchParams()
@@ -255,9 +247,61 @@ export const netWorthApi = {
   getAllocations: () => api.get('/net-worth/allocations'),
 }
 
-export const systemApi = {
+const remoteSystemApi = {
   forceRefreshPrices: () => api.post('/refresh-prices'),
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Platform dispatch
+//
+// On native, every exported *Api is replaced with the local SQLite/HTTP
+// implementation. The native modules return promises that resolve to the
+// same axios-style `{ data: ... }` envelope, so callers (which do
+// `(await fooApi.x()).data.y`) work without modification.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const NATIVE = isNativeRuntime()
+
+// Lazy require so web builds never evaluate native-only paths. Static `import`
+// would also work — these modules don't open the DB at top level — but
+// require() keeps the dependency graph honest.
+const native = NATIVE ? {
+  auth: require('./native/auth').nativeAuthApi,
+  accounts: require('./native/accounts').nativeAccountsApi,
+  holdings: require('./native/holdings').nativeHoldingsApi,
+  transactions: require('./native/transactions').nativeTransactionsApi,
+  market: require('./native/market').nativeMarketApi,
+  ai: require('./native/ai').nativeAiApi,
+  loans: require('./native/loans').nativeLoansApi,
+  properties: require('./native/properties').nativePropertiesApi,
+  watchlist: require('./native/watchlist').nativeWatchlistApi,
+  documents: require('./native/documents').nativeDocumentsApi,
+  data: require('./native/data').nativeDataApi,
+  netWorth: require('./native/networth').nativeNetWorthApi,
+  // Force-refresh is a no-op on iOS — prices are pulled live from Yahoo/Stooq
+  // every time holdings load, there's no separate refresh-prices job to kick.
+  system: {
+    forceRefreshPrices: async () => ({ data: { success: true } }),
+  },
+} : null
+
+export const authApi          = (native?.auth          ?? remoteAuthApi)         as typeof remoteAuthApi
+export const holdingsApi      = (native?.holdings      ?? remoteHoldingsApi)     as typeof remoteHoldingsApi
+export const accountsApi      = (native?.accounts      ?? remoteAccountsApi)     as typeof remoteAccountsApi
+export const transactionsApi  = (native?.transactions  ?? remoteTransactionsApi) as typeof remoteTransactionsApi
+export const documentsApi     = (native?.documents     ?? remoteDocumentsApi)    as typeof remoteDocumentsApi
+export const marketApi        = (native?.market        ?? remoteMarketApi)       as typeof remoteMarketApi
+export const aiApi            = (native?.ai            ?? remoteAiApi)           as typeof remoteAiApi
+export const loansApi         = (native?.loans         ?? remoteLoansApi)        as typeof remoteLoansApi
+export const propertiesApi    = (native?.properties    ?? remotePropertiesApi)   as typeof remotePropertiesApi
+export const watchlistApi     = (native?.watchlist     ?? remoteWatchlistApi)    as typeof remoteWatchlistApi
+export const dataApi          = (native?.data          ?? remoteDataApi)         as typeof remoteDataApi
+export const netWorthApi      = (native?.netWorth      ?? remoteNetWorthApi)     as typeof remoteNetWorthApi
+export const systemApi        = (native?.system        ?? remoteSystemApi)       as typeof remoteSystemApi
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types — unchanged from the original axios-only build.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface Holding {
   id: number
@@ -350,7 +394,6 @@ export interface WatchlistItem {
   last_notified_at?: string
   created_at?: string
   updated_at?: string
-  // live-enriched
   current_price?: number
   day_change_percent?: number
   pct_to_target?: number

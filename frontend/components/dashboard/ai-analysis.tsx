@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -78,186 +79,25 @@ function Field({
   )
 }
 
-// ── Provider labels / metadata ────────────────────────────────────
-const PROVIDERS = [
-  { id: 'claude',    label: 'Claude',    kind: 'cloud', placeholder: 'claude-opus-4-7' },
-  { id: 'openai',   label: 'OpenAI',    kind: 'cloud', placeholder: 'gpt-4o' },
-  { id: 'ollama',   label: 'Ollama',    kind: 'local', placeholder: 'qwen3:4b' },
-  { id: 'lmstudio', label: 'LM Studio', kind: 'local', placeholder: 'local-model' },
-] as const
+// AI Provider configuration lives on the Profile page now. We render a thin
+// inline reminder so first-time users know where to set their key.
 
-type ProviderId = typeof PROVIDERS[number]['id']
-
-// ── AI Provider Settings card ─────────────────────────────────────
-function AIProviderSettings() {
-  const [settings, setSettings] = useState<any>(null)
-  const [selected, setSelected] = useState<ProviderId>('claude')
-
-  // per-provider form state
-  const [apiKey, setApiKey]   = useState('')
-  const [model, setModel]     = useState('')
-  const [host, setHost]       = useState('')
-
-  const [saving, setSaving]   = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [status, setStatus]   = useState<{ ok: boolean; msg: string } | null>(null)
-
-  useEffect(() => {
-    aiApi.getSettings()
-      .then(r => {
-        const s = r.data
-        setSettings(s)
-        setSelected(s.provider as ProviderId)
-        prefillForm(s, s.provider as ProviderId)
-      })
-      .catch(() => {})
-  }, [])
-
-  function prefillForm(s: any, provider: ProviderId) {
-    if (provider === 'claude') {
-      setModel(s.claude_model ?? '')
-      setApiKey('')   // never pre-fill key
-      setHost('')
-    } else if (provider === 'openai') {
-      setModel(s.openai_model ?? '')
-      setApiKey('')
-      setHost('')
-    } else if (provider === 'ollama') {
-      setHost(s.ollama_host ?? '')
-      setModel(s.ollama_model ?? '')
-      setApiKey('')
-    } else if (provider === 'lmstudio') {
-      setHost(s.lmstudio_host ?? '')
-      setModel(s.lmstudio_model ?? '')
-      setApiKey('')
-    }
-    setStatus(null)
-  }
-
-  function selectProvider(p: ProviderId) {
-    setSelected(p)
-    if (settings) prefillForm(settings, p)
-  }
-
-  async function handleSave() {
-    setSaving(true)
-    setStatus(null)
-    try {
-      const meta = PROVIDERS.find(p => p.id === selected)!
-      const payload: any = { provider: selected, model: model || undefined }
-      if (meta.kind === 'cloud') {
-        if (apiKey) payload.api_key = apiKey
-      } else {
-        if (host) payload.host = host
-      }
-      const r = await aiApi.saveSettings(payload)
-      setSettings(r.data)
-      setStatus({ ok: true, msg: 'Settings saved and applied.' })
-    } catch (err: any) {
-      const detail = err?.response?.data?.detail
-      setStatus({ ok: false, msg: typeof detail === 'string' ? detail : 'Save failed.' })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function handleTest() {
-    setTesting(true)
-    setStatus(null)
-    try {
-      const r = await aiApi.check()
-      const { available, provider, model: m } = r.data
-      setStatus({
-        ok: available,
-        msg: available
-          ? `Connected — ${provider} / ${m}`
-          : `Provider not reachable (${provider}).`,
-      })
-    } catch {
-      setStatus({ ok: false, msg: 'Could not reach the backend.' })
-    } finally {
-      setTesting(false)
-    }
-  }
-
-  const meta = PROVIDERS.find(p => p.id === selected)!
-  const isCloud = meta.kind === 'cloud'
-  const keySet = settings
-    ? (selected === 'claude' ? settings.claude_api_key_set : settings.openai_api_key_set)
-    : false
-
+function ProviderHint() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>AI Provider</span>
-          {settings && (
-            <span className="text-xs font-normal text-muted-foreground">
-              Active: <span className="font-medium text-foreground capitalize">{settings.provider}</span>
-            </span>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Provider selector */}
-        <div className="flex gap-2 flex-wrap">
-          {PROVIDERS.map(p => (
-            <button
-              key={p.id}
-              onClick={() => selectProvider(p.id)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                selected === p.id
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'border-border hover:bg-accent'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Credential fields */}
-        <div className="grid gap-3 sm:grid-cols-2">
-          {isCloud ? (
-            <Field
-              label="API Key"
-              type="password"
-              value={apiKey}
-              onChange={setApiKey}
-              placeholder={keySet ? '••••••••  (already set)' : 'sk-…'}
-            />
-          ) : (
-            <Field
-              label="Host URL"
-              value={host}
-              onChange={setHost}
-              placeholder={selected === 'ollama' ? 'http://localhost:11434' : 'http://localhost:1234'}
-            />
-          )}
-          <Field
-            label="Model"
-            value={model}
-            onChange={setModel}
-            placeholder={meta.placeholder}
-          />
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-2 items-center flex-wrap">
-          <Button onClick={handleSave} disabled={saving} size="sm">
-            {saving ? 'Saving…' : 'Save'}
-          </Button>
-          <Button onClick={handleTest} disabled={testing} variant="outline" size="sm">
-            {testing ? 'Testing…' : 'Test Connection'}
-          </Button>
-          {status && (
-            <span className={`text-sm ${status.ok ? 'text-green-600' : 'text-destructive'}`}>
-              {status.msg}
-            </span>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-sm font-medium">AI Provider</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Choose a provider and paste your API key in Profile → AI Provider.
+        </p>
+      </div>
+      <Link
+        href="/profile"
+        className="shrink-0 text-xs font-medium text-primary hover:underline"
+      >
+        Configure →
+      </Link>
+    </div>
   )
 }
 
@@ -340,8 +180,8 @@ export function AIAnalysisCard({ holdings }: AIAnalysisCardProps) {
 
   return (
     <div className="space-y-4">
-      {/* Provider settings — full width at top */}
-      <AIProviderSettings />
+      {/* Thin pointer to Profile → AI Provider — full settings live there now. */}
+      <ProviderHint />
 
       {/* Analysis panels */}
       <div className="grid gap-4 md:grid-cols-2">

@@ -55,11 +55,15 @@ STOOQ_ENABLED = os.getenv("STOOQ_ENABLED", "true").lower() == "true"
 APP_TITLE = os.getenv("APP_TITLE", "Personal Finance Platform")
 APP_ENV = os.getenv("APP_ENV", "development")
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
-# tauri:// and https://tauri.localhost are the origins used by Tauri v2 on
-# macOS/Linux and Windows respectively when serving from frontendDist.
+# Origin schemes used by the various wrappers:
+#   • tauri://, https://tauri.localhost  — Tauri v2 (macOS/Linux, Windows)
+#   • capacitor://localhost, ionic://localhost  — Capacitor iOS/Android
+#   • http://localhost  — Capacitor live-reload dev
 CORS_ORIGINS = os.getenv(
     "CORS_ORIGINS",
-    "http://localhost:3000,http://localhost:8000,tauri://localhost,https://tauri.localhost",
+    "http://localhost,http://localhost:3000,http://localhost:8000,"
+    "tauri://localhost,https://tauri.localhost,"
+    "capacitor://localhost,ionic://localhost",
 ).split(",")
 
 # Property valuation — Rentcast free tier (50 calls/month, no CC required)

@@ -157,6 +157,24 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
     } catch {}
   }
 
+  const handleRestoreBackup = async (filename: string) => {
+    if (!confirm(
+      `Restore from "${filename}"?\n\n` +
+      `This will REPLACE all your current holdings, accounts, transactions, ` +
+      `watchlist, loans, properties, and trend history with the contents of ` +
+      `this backup. Your login is preserved. This can't be undone.\n\nProceed?`
+    )) return
+    setBackupMsg('Restoring…')
+    try {
+      const res = await dataApi.restoreBackup(filename, 'replace')
+      const msg = res?.data?.message ?? 'Restored from backup.'
+      setBackupMsg(msg)
+      onDataChanged?.()
+    } catch (err: any) {
+      setBackupMsg(`Restore failed: ${err?.response?.data?.detail ?? err?.message ?? 'unknown error'}`)
+    }
+  }
+
   const handleImport = async (
     fn: (f: File) => ReturnType<typeof dataApi.importHoldings>,
     file: File
@@ -172,13 +190,14 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Export Data</CardTitle>
-          <p className="text-sm text-muted-foreground">Download your data as CSV files or a full ZIP backup.</p>
+          <p className="text-sm text-muted-foreground">
+            Download your data as CSV files or a complete JSON snapshot.
+          </p>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
               { label: 'All Data JSON', fn: dataApi.exportFullData },
-              { label: 'Full Backup ZIP', fn: dataApi.exportFullBackup },
               { label: 'Holdings CSV', fn: dataApi.exportHoldings },
               { label: 'Watchlist CSV', fn: dataApi.exportWatchlist },
               { label: 'Debts CSV', fn: dataApi.exportDebts },
@@ -268,7 +287,7 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
               }}
             />
             <p className="text-xs text-muted-foreground">
-              Pick a conflict mode above, then choose your <strong>finwise_full_export.json</strong>.
+              Pick a conflict mode above, then choose your <strong>nworth_full_export.json</strong>.
               All sections (holdings, accounts, transactions, watchlist, loans,
               properties, portfolio history) are restored together.
             </p>
@@ -299,7 +318,7 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
           <div>
             <CardTitle className="text-base">Automatic Backups</CardTitle>
             <p className="text-sm text-muted-foreground mt-0.5">
-              The app saves a ZIP backup automatically every 7 days. Up to 10 backups are kept.
+              A complete JSON snapshot is saved on your device every 7 days. Up to 10 backups are kept.
             </p>
           </div>
           <Button
@@ -332,7 +351,15 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
                       {new Date(b.created_at).toLocaleString()} · {formatBytes(b.size_bytes)}
                     </p>
                   </div>
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex gap-1.5 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-7 px-2"
+                      onClick={() => handleRestoreBackup(b.filename)}
+                    >
+                      Restore
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"

@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { APP_NAME, APP_VERSION } from '@/lib/constants'
+import { APP_NAME, APP_TAGLINE, APP_VERSION } from '@/lib/constants'
 
 // Username and password rules (kept in sync with backend/app/api/v1/auth.py)
 const USERNAME_MIN   = 3
@@ -65,6 +65,9 @@ function RegisterForm() {
   const [fullName, setFullName]   = useState('')
   const [password, setPassword]   = useState('')
   const [confirm, setConfirm]     = useState('')
+  // Single toggle controls both password fields — common UX pattern that
+  // saves the user the second tap.
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError]         = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -73,6 +76,15 @@ function RegisterForm() {
   const cancelRef = useRef(false)
 
   useEffect(() => {
+    // On Capacitor (iOS/Android) there is no backend sidecar — skip the
+    // localhost health check, which would hang forever on a device.
+    const isNative = typeof window !== 'undefined'
+      && (window as any).Capacitor?.isNativePlatform?.() === true
+    if (isNative) {
+      setBackendReady(true)
+      return
+    }
+
     cancelRef.current = false
     const check = async () => {
       try {
@@ -144,7 +156,7 @@ function RegisterForm() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">{APP_NAME}</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {isSetup ? 'Set up your private local profile' : 'Create your account'}
+              {APP_TAGLINE}
             </p>
           </div>
         </div>
@@ -188,6 +200,9 @@ function RegisterForm() {
                   onChange={(e) => setUsername(e.target.value.toLowerCase())}
                   placeholder="e.g. john_doe"
                   autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   required
                 />
                 <HintRow status={userStatus} msg={
@@ -209,14 +224,39 @@ function RegisterForm() {
                 <label className="text-sm font-medium block mb-1">
                   Password <span className="text-destructive">*</span>
                 </label>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    required
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(s => !s)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    tabIndex={-1}
+                    className="absolute right-0 top-0 h-9 w-10 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                        <line x1="1" y1="1" x2="23" y2="23" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
                 <HintRow status={passStatus} msg={`At least ${PASSWORD_MIN} characters (${password.length}/${PASSWORD_MIN})`} />
                 {!password && (
                   <p className="text-xs text-muted-foreground mt-1">
@@ -231,11 +271,14 @@ function RegisterForm() {
                   Confirm password <span className="text-destructive">*</span>
                 </label>
                 <Input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   placeholder="••••••••"
                   autoComplete="new-password"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   required
                 />
                 {confirm.length > 0 && (

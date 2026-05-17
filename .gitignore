@@ -52,3 +52,18 @@ Thumbs.db
 # Editor
 .vscode/settings.json
 .idea/
+
+# iOS / Xcode build artifacts
+frontend/ios/build/
+frontend/ios/DerivedData/
+frontend/ios/Pods/
+frontend/ios/App/App.xcodeproj/xcuserdata/
+frontend/ios/App/App.xcworkspace/xcuserdata/
+frontend/ios/App/App.xcworkspace/xcshareddata/swiftpm/Package.resolved
+frontend/ios/capacitor-cordova-ios-plugins/
+
+# Generated / cache
+graphify-out/
+logs/*.log
+frontend/tsconfig.tsbuildinfo
+*.tsbuildinfo

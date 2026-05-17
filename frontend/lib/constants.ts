@@ -1,2 +1,3 @@
-export const APP_NAME = 'Finwise'
-export const APP_VERSION = '1.3.8'
+export const APP_NAME = 'Nworth'
+export const APP_TAGLINE = 'Track Everything. Share Nothing.'
+export const APP_VERSION = '1.4.0'

@@ -2,16 +2,39 @@
 # build.sh — Full macOS release build for Finwise
 #
 # Usage:
-#   chmod +x scripts/build.sh && ./scripts/build.sh
+#   chmod +x scripts/build.sh && ./scripts/build.sh           # Tauri desktop
+#   ./scripts/build.sh ios                                    # iOS (Capacitor)
 #
 # Prerequisites:
 #   • Python 3.11+   (with pip)
 #   • Node.js 18+    (with npm)
 #   • Rust toolchain (rustup)
 #   • Tauri CLI:     npm install -g @tauri-apps/cli@^2
+#   • iOS only:      Xcode + an Apple Developer account
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# ── iOS branch — only the Next.js export + capacitor sync, then hand off to Xcode ───
+if [ "${1:-}" = "ios" ]; then
+    echo "═══════════════════════════════════════"
+    echo " iOS build: Next.js export + cap sync"
+    echo "═══════════════════════════════════════"
+    cd "$REPO_ROOT/frontend"
+    npm install
+    # Deliberately don't bake NEXT_PUBLIC_API_URL=localhost here — the
+    # Capacitor branch in lib/api.ts falls back to the production URL.
+    # Override at the command line if you need to point a build at staging.
+    npm run build
+    npx cap sync ios
+    echo ""
+    echo "✓ Static export → frontend/out/"
+    echo "✓ Synced to frontend/ios/"
+    echo ""
+    echo "Next: npx cap open ios   (then Product → Archive in Xcode)"
+    exit 0
+fi
+
 BINARY_DIR="$REPO_ROOT/frontend-tauri/src-tauri/binaries"
 BUNDLE_DIR="$REPO_ROOT/frontend-tauri/src-tauri/target/release/bundle"
 TARGET_TRIPLE="$(rustc -Vv | awk '/^host:/{print $2}')"

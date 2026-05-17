@@ -429,7 +429,97 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
         )}
 
         <CardContent>
-          <div className="rounded-md border">
+          {/* ── Mobile card list (sm:hidden) ─────────────────────────────
+              The 12-column desktop table doesn't fit on a phone screen, so
+              under md we render each holding as a stacked card with the key
+              numbers up top and a Edit / Delete row at the bottom. */}
+          <div className="md:hidden rounded-md border divide-y divide-border">
+            {sorted.length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground text-sm">
+                {q ? `No holdings match "${searchQuery}".` : (
+                  <>No holdings yet.{' '}
+                    <button onClick={openAdd} className="underline text-primary hover:text-primary/80">
+                      Add your first holding
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : (
+              sorted.map(h => {
+                const gainPct = h.total_gain_loss_percent ?? 0
+                const gainColor = gainPct > 0
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : gainPct < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
+                const todayPct = h.today_gain_loss_percent ?? 0
+                const todayColor = todayPct > 0
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : todayPct < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
+                const alloc = totalValue > 0 ? ((h.current_value ?? 0) / totalValue * 100) : 0
+                return (
+                  <div key={h.id ?? h.ticker} className="p-3 space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-base">{h.ticker}</span>
+                          <span className="capitalize text-[10px] border border-border rounded-full px-1.5 py-px text-muted-foreground">
+                            {h.security_type || 'stock'}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {h.shares ?? 0} sh · avg {formatCurrency(h.average_cost ?? 0)}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-semibold text-base">{formatCurrency(h.current_value ?? 0)}</div>
+                        <div className={`text-xs font-medium ${gainColor}`}>
+                          {gainPct > 0 ? '+' : ''}{gainPct.toFixed(2)}%
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div>
+                        <div className="text-muted-foreground">Price</div>
+                        <div className="font-medium">
+                          {h.current_price && h.current_price > 0
+                            ? formatCurrency(h.current_price)
+                            : <span className="text-muted-foreground">—</span>}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Today</div>
+                        <div className={`font-medium ${todayColor}`}>
+                          {todayPct > 0 ? '+' : ''}{todayPct.toFixed(2)}%
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Alloc</div>
+                        <div className="font-medium">{alloc.toFixed(1)}%</div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={() => openEdit(h)}
+                        className="flex-1 py-1.5 text-xs border border-border rounded-md hover:bg-accent"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(h)}
+                        disabled={deletingId === h.id}
+                        className="px-3 py-1.5 text-xs border border-border rounded-md hover:bg-red-50 hover:border-red-300 hover:text-red-600 dark:hover:bg-red-950/30 transition-colors disabled:opacity-40"
+                        aria-label={`Delete ${h.ticker}`}
+                      >
+                        {deletingId === h.id ? '…' : 'Delete'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          {/* ── Desktop table (md and up) ────────────────────────────── */}
+          <div className="hidden md:block rounded-md border">
             {/* Tighter padding via the [&_th]/[&_td] arbitrary descendant selectors —
                 keeps the shared <Table> primitive while compacting this
                 12-column view enough to fit without horizontal scroll. Saves
