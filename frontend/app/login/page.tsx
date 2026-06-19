@@ -15,7 +15,7 @@ import {
   promptBiometric,
   getBiometryStatus,
 } from '@/lib/native/biometric'
-import { Preferences } from '@capacitor/preferences'
+import { setSessionUserId } from '@/lib/native/session'
 
 // Path shown in the "failed to start" error — matches what lib.rs writes.
 const LOG_PATHS = {
@@ -39,7 +39,7 @@ function AppMark() {
 }
 
 export default function LoginPage() {
-  const { login, isAuthenticated, isLoading } = useAuth()
+  const { login, isAuthenticated, isLoading, refreshUser } = useAuth()
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -88,11 +88,22 @@ export default function LoginPage() {
       }
       const ok = await promptBiometric(`Sign in to ${APP_NAME}`)
       if (!ok) return
-      // Set the on-device session marker the AuthProvider checks on mount.
-      await Preferences.set({ key: 'session_user_id', value: String(enabled.userId) })
+      // Establish the on-device session. setSessionUserId updates BOTH the
+      // persisted value and the in-memory cache in session.ts — using raw
+      // Preferences.set left the cache stale, so the very next me() lookup
+      // failed and the dashboard bounced straight back here.
+      await setSessionUserId(enabled.userId)
       await saveToken('local-session')
-      // Reload so AuthProvider picks up the new session and routes to dashboard.
-      window.location.href = '/dashboard'
+      // Pull the session into auth state, then SPA-navigate. (A hard
+      // window.location to '/dashboard' broke because static export uses
+      // trailingSlash, so the file lives at '/dashboard/' and the bare path
+      // fell back to the index → login.)
+      const established = await refreshUser()
+      if (established) {
+        router.replace('/dashboard')
+      } else {
+        setError('Could not start your session. Please sign in with your password.')
+      }
     } catch (err: any) {
       setError(err?.message ?? 'Biometric sign-in failed.')
     } finally {

@@ -219,6 +219,11 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent className="space-y-2">
           <Row
+            label="Know your app"
+            sub="How to add holdings, import/export, backups, AI keys & more."
+            onClick={() => router.push('/help')}
+          />
+          <Row
             label="Manage exports & backups"
             sub="Download CSV/JSON, restore from a snapshot."
             onClick={() => router.push('/documents')}

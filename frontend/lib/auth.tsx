@@ -18,6 +18,9 @@ interface AuthContextValue {
   login: (username: string, password: string) => Promise<void>
   register: (username: string, password: string, fullName?: string) => Promise<void>
   logout: () => Promise<void>
+  // Re-reads the current on-device session (used after Face ID / Touch ID
+  // sign-in, which establishes the session outside the password flow).
+  refreshUser: () => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -94,8 +97,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = '/login'
   }
 
+  // Pull the active session into state without a full reload. Returns false if
+  // there's no valid session (so callers can show an error instead of bouncing).
+  const refreshUser = async (): Promise<boolean> => {
+    try {
+      const res = await authApi.me()
+      setUser(res.data)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )
