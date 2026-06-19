@@ -71,9 +71,14 @@ export default function ProfilePage() {
   }
 
   const handleSignOut = async () => {
-    // Disabling biometric is intentional on sign out — protects against
-    // someone else hitting "Sign in with Face ID" after you log out.
-    await disableBiometric()
+    // Keep the biometric-enabled flag across sign-out — otherwise the
+    // "Sign in with Face ID" button never appears on the login screen
+    // (signing out is the only way to reach it), so Face ID login could
+    // never actually be used. Face ID itself is the security factor: the
+    // saved flag only records "this device may use Face ID for user X"; a
+    // successful face/passcode match is still required to restore the
+    // session. To turn it off entirely, use the toggle above before signing
+    // out.
     await logout()
   }
 

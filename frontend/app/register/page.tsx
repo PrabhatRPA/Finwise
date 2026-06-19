@@ -258,11 +258,10 @@ function RegisterForm() {
                   </button>
                 </div>
                 <HintRow status={passStatus} msg={`At least ${PASSWORD_MIN} characters (${password.length}/${PASSWORD_MIN})`} />
-                {!password && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Minimum {PASSWORD_MIN} characters
-                  </p>
-                )}
+                {/* Always-visible requirement so the user knows the format up front. */}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Must be at least {PASSWORD_MIN} characters. Any letters, numbers, or symbols are allowed — choose something only you know.
+                </p>
               </div>
 
               {/* Confirm password */}

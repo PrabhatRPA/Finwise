@@ -30,6 +30,24 @@ interface HoldingRow {
   created_at: string | null
 }
 
+// The HoldingsTable renders three "today" columns that the FastAPI backend
+// used to compute in PortfolioEngine but the native layer never did:
+//   • Today $  (today_gain_loss)         = shares × per-share day change
+//   • Today %  (today_gain_loss_percent) = same % as the per-share day change
+//   • Day Δ    (day_change)              = per-share change (already stored)
+// We derive the first two from the stored day_change/day_change_percent so they
+// work on BOTH the cached-read path and the live-refresh path.
+function withTodayFields<T extends HoldingRow>(rows: T[]): (T & {
+  today_gain_loss: number
+  today_gain_loss_percent: number
+})[] {
+  return rows.map((h) => ({
+    ...h,
+    today_gain_loss: (h.shares ?? 0) * (h.day_change ?? 0),
+    today_gain_loss_percent: h.day_change_percent ?? 0,
+  }))
+}
+
 async function refreshPricesFor(holdings: HoldingRow[]): Promise<HoldingRow[]> {
   const tickers = Array.from(new Set(holdings.map((h) => h.ticker).filter(Boolean)))
   if (tickers.length === 0) return holdings
@@ -81,8 +99,8 @@ export const nativeHoldingsApi = {
       [userId],
     )
     const finalRows = refreshPrices ? await refreshPricesFor(rows) : rows
-    // Match FastAPI shape: { holdings: [...] }.
-    return { data: { holdings: finalRows } }
+    // Match FastAPI shape: { holdings: [...] }, with today's P&L fields derived.
+    return { data: { holdings: withTodayFields(finalRows) } }
   },
 
   getById: async (id: number) => {

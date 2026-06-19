@@ -67,6 +67,26 @@ function SummaryStat({
   )
 }
 
+// Last-known net-worth snapshot, cached so the dashboard shows real numbers on
+// load instead of flashing $0 (which made the growth chart briefly render a
+// red plunge-to-zero). Refreshed every time live data resolves.
+const NET_WORTH_CACHE_KEY = 'last_net_worth_snapshot'
+
+function loadNetWorthCache(): any {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(NET_WORTH_CACHE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function saveNetWorthCache(data: any) {
+  if (typeof window === 'undefined' || !data) return
+  try { window.localStorage.setItem(NET_WORTH_CACHE_KEY, JSON.stringify(data)) } catch {}
+}
+
 // Compact currency: 7221.5 → "$7.2K", 936558 → "$936.6K", 1500000 → "$1.5M".
 // Keeps the summary row readable on a narrow phone (5 cells across).
 function formatCompactCurrency(n: number): string {
@@ -94,7 +114,10 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(holdings.length === 0)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  // Seed from the cached snapshot so the first paint shows the previous net
+  // worth (not $0). Hydrated on mount to stay SSR-safe.
   const [netWorthData, setNetWorthData] = useState<any>(null)
+  useEffect(() => { setNetWorthData((prev: any) => prev ?? loadNetWorthCache()) }, [])
   // Balance editing now lives in the Accounts tab — the legacy modal was
   // removed when the Cash tile became non-tappable. The Accounts tab
   // handles full CRUD (name / type / institution / balance).
@@ -163,7 +186,11 @@ export default function DashboardPage() {
       calculatePortfolio()
 
       const netWorthResp = await netWorthApi.getCurrent()
-      setNetWorthData(netWorthResp.data)
+      // Stash the live portfolio value alongside the net-worth figures so the
+      // next cold start can paint both tiles + the growth chart from cache.
+      const snapshot = { ...netWorthResp.data, totalValue: usePortfolioStore.getState().totalValue }
+      setNetWorthData(snapshot)
+      saveNetWorthCache(snapshot)
 
       netWorthApi.createRecord().catch(() => {})
     } catch (error: any) {
@@ -196,6 +223,10 @@ export default function DashboardPage() {
 
   if (!isAuthenticated) return null
 
+  // Prefer the live store value; fall back to the cached snapshot so the
+  // Portfolio tile and growth chart never momentarily read $0 on a cold start.
+  const displayTotalValue = totalValue || netWorthData?.totalValue || netWorthData?.investments || 0
+
   return (
     <div className="mx-auto max-w-screen-xl px-3 sm:px-4 pt-3 pb-6 sm:pt-3 sm:pb-8 space-y-3 sm:space-y-4">
 
@@ -218,7 +249,7 @@ export default function DashboardPage() {
           compact-formatted value ($7.2K, $1.5M). No icons, no descriptions,
           no left stripe — packs into a single phone-width row at ~72px each. */}
       <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
-        <SummaryStat label="Portfolio" value={formatCompactCurrency(totalValue)} valueClass="text-emerald-600 dark:text-emerald-400" />
+        <SummaryStat label="Portfolio" value={formatCompactCurrency(displayTotalValue)} valueClass="text-emerald-600 dark:text-emerald-400" />
         <SummaryStat label="Cash" value={formatCompactCurrency(netWorthData?.cash ?? 0)} valueClass="text-amber-600 dark:text-amber-400" />
         <SummaryStat label="Debt" value={formatCompactCurrency(netWorthData?.total_liabilities ?? 0)} valueClass={(netWorthData?.total_liabilities ?? 0) > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-foreground'} />
         <SummaryStat label="Holdings" value={String(holdings.length)} valueClass="text-violet-600 dark:text-violet-400" />
@@ -228,7 +259,7 @@ export default function DashboardPage() {
       {/* ── Growth chart ── live net worth + time-range area chart.
           Pulls daily snapshots from portfolio_history. A new snapshot is
           recorded on every dashboard load (one per day max, UPSERT). */}
-      <GrowthChart currentNetWorth={netWorthData?.net_worth ?? totalValue} />
+      <GrowthChart currentNetWorth={netWorthData?.net_worth ?? displayTotalValue} />
 
       {/* ── Tabs ──
           The 7-button tab bar wraps horribly on a phone. On mobile we show

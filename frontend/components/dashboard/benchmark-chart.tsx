@@ -154,8 +154,13 @@ export function BenchmarkChart() {
 
         const dataMap: Record<string, number> = {}
         hist.forEach((row: any) => {
-          if (row.close !== null) {
-            dataMap[toDateStr(row.timestamp)] = ((row.close - base) / base) * 100
+          if (row.close !== null && row.close !== undefined) {
+            // Native getHistory returns `date` (YYYY-MM-DD) + numeric `timestamp`;
+            // the FastAPI backend returns an ISO `timestamp`. Prefer `date` so the
+            // keys line up with the portfolio's YYYY-MM-DD snapshot dates — using
+            // the numeric timestamp here produced keys like "1734…" that never
+            // matched, so benchmark lines silently dropped out.
+            dataMap[toDateStr(row.date ?? row.timestamp)] = ((row.close - base) / base) * 100
           }
         })
 

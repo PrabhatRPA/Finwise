@@ -22,56 +22,161 @@ export async function fetchPrice(ticker: string, useCache = true): Promise<Price
     const cached = await readCache(upper)
     if (cached) return cached
   }
-  const quote = (await fromYahoo(upper)) ?? (await fromStooq(upper))
-  if (quote) await writeCache(quote)
-  return quote
+  const quote = await fetchFromProviders(upper)
+  if (quote) {
+    await writeCache(quote)
+    return quote
+  }
+  // Last resort: serve the last value we ever stored, even past its TTL — a
+  // slightly stale price beats a blank cell when every live source is down.
+  return readCache(upper, true)
 }
 
 export async function fetchPrices(tickers: string[], useCache = true): Promise<PriceQuote[]> {
-  // Yahoo supports comma-separated multi-quote, but rate limits at high QPS.
-  // For now, just fan out sequentially — calling code rarely asks for >20 tickers.
+  const uppers = Array.from(new Set(tickers.map((t) => t.toUpperCase()).filter(Boolean)))
   const out: PriceQuote[] = []
-  for (const t of tickers) {
-    const q = await fetchPrice(t, useCache)
-    if (q) out.push(q)
+  const need: string[] = []
+
+  // Cache pass first so we don't hit the network for anything still fresh.
+  for (const t of uppers) {
+    const cached = useCache ? await readCache(t) : null
+    if (cached) out.push(cached)
+    else need.push(t)
+  }
+  if (need.length === 0) return out
+
+  // Fast path: a single Yahoo "spark" call quotes many symbols at once.
+  const batch = await yahooSparkBatch(need)
+  for (const t of need) {
+    let q: PriceQuote | null = batch.get(t) ?? null
+    if (!q) q = await fetchFromProviders(t)  // batch missed it → full chain
+    if (!q) q = await readCache(t, true)     // everything failed → stale value
+    if (q) {
+      if (q.source !== 'cache') await writeCache(q)
+      out.push(q)
+    }
   }
   return out
 }
 
-// ── Yahoo v7 quote endpoint ────────────────────────────────────────────
-async function fromYahoo(ticker: string): Promise<PriceQuote | null> {
+// ── Provider chain ─────────────────────────────────────────────────────
+// Prices come from an ordered list of independent sources; the first that
+// returns a usable quote wins and the rest are fallbacks. The chain is
+// data-driven on purpose: to add/remove a source (e.g. a keyed provider the
+// user configures later) you edit PROVIDERS only — no call-site changes. This
+// is what makes the strategy robust enough to ship without frequent updates.
+//
+// The old v7 `/finance/quote` endpoint now 401s without a crumb handshake, so
+// we use Yahoo's v8 chart + v7 spark endpoints (both still keyless) across two
+// hosts, then Stooq as a geo-dependent last-ditch.
+const YAHOO_HOSTS = ['query1', 'query2'] as const
+type YahooHost = (typeof YAHOO_HOSTS)[number]
+
+interface PriceProvider {
+  name: string
+  quote: (ticker: string) => Promise<PriceQuote | null>
+}
+
+const PROVIDERS: PriceProvider[] = [
+  { name: 'yahoo-chart-q1', quote: (t) => yahooChart(t, 'query1') },
+  { name: 'yahoo-chart-q2', quote: (t) => yahooChart(t, 'query2') },
+  { name: 'yahoo-spark-q1', quote: (t) => yahooSparkOne(t, 'query1') },
+  { name: 'yahoo-spark-q2', quote: (t) => yahooSparkOne(t, 'query2') },
+  { name: 'stooq',          quote: (t) => stooq(t) },
+]
+
+async function fetchFromProviders(ticker: string): Promise<PriceQuote | null> {
+  for (const p of PROVIDERS) {
+    try {
+      const q = await p.quote(ticker)
+      if (q && isFinite(q.price) && q.price > 0) return q
+    } catch {
+      // Provider threw — move on to the next.
+    }
+  }
+  return null
+}
+
+// Shared parser for Yahoo's chart/spark `meta` block.
+function quoteFromMeta(ticker: string, meta: any): PriceQuote | null {
+  const price = meta?.regularMarketPrice
+  if (price == null) return null
+  // Yahoo exposes the prior session's close as `chartPreviousClose`; some
+  // symbols also carry `previousClose`. Either yields the day change.
+  const prevRaw = meta?.chartPreviousClose ?? meta?.previousClose
+  const prev = prevRaw != null ? Number(prevRaw) : null
+  const change = prev != null ? Number(price) - prev : null
+  const changePct = prev != null && prev !== 0 ? ((Number(price) - prev) / prev) * 100 : null
+  return {
+    ticker: ticker.toUpperCase(),
+    price: Number(price),
+    previous_close: prev,
+    day_change: change,
+    day_change_percent: changePct,
+    source: 'yahoo',
+  }
+}
+
+// ── Yahoo v8 chart (single ticker, full meta) ──────────────────────────
+async function yahooChart(ticker: string, host: YahooHost): Promise<PriceQuote | null> {
   try {
     const res = await CapacitorHttp.get({
-      url: `https://query1.finance.yahoo.com/v7/finance/quote`,
-      params: { symbols: ticker },
+      url: `https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`,
+      params: { range: '1d', interval: '1d' },
       headers: { 'User-Agent': 'Mozilla/5.0 Nworth/1.0' },
     })
     if (res.status !== 200) return null
-    const q = res.data?.quoteResponse?.result?.[0]
-    if (!q?.regularMarketPrice) return null
-    return {
-      ticker,
-      price: Number(q.regularMarketPrice),
-      previous_close: q.regularMarketPreviousClose != null ? Number(q.regularMarketPreviousClose) : null,
-      day_change: q.regularMarketChange != null ? Number(q.regularMarketChange) : null,
-      day_change_percent: q.regularMarketChangePercent != null ? Number(q.regularMarketChangePercent) : null,
-      source: 'yahoo',
-    }
+    return quoteFromMeta(ticker, res.data?.chart?.result?.[0]?.meta)
   } catch {
     return null
   }
 }
 
-// ── Stooq CSV fallback ─────────────────────────────────────────────────
-async function fromStooq(ticker: string): Promise<PriceQuote | null> {
+// ── Yahoo v7 spark (single + batch) ────────────────────────────────────
+async function yahooSparkOne(ticker: string, host: YahooHost): Promise<PriceQuote | null> {
+  const m = await yahooSparkBatch([ticker], host)
+  return m.get(ticker.toUpperCase()) ?? null
+}
+
+// One request can quote many symbols — used as the bulk fast-path in
+// fetchPrices(). Returns a ticker→quote map (missing symbols simply absent).
+async function yahooSparkBatch(
+  tickers: string[],
+  host: YahooHost = 'query1',
+): Promise<Map<string, PriceQuote>> {
+  const result = new Map<string, PriceQuote>()
+  if (tickers.length === 0) return result
   try {
-    // Stooq tickers: US stocks need ".US" suffix.
+    const res = await CapacitorHttp.get({
+      url: `https://${host}.finance.yahoo.com/v7/finance/spark`,
+      params: { symbols: tickers.join(','), range: '1d', interval: '1d' },
+      headers: { 'User-Agent': 'Mozilla/5.0 Nworth/1.0' },
+    })
+    if (res.status !== 200) return result
+    const list = res.data?.spark?.result ?? []
+    for (const item of list) {
+      const meta = item?.response?.[0]?.meta
+      const q = quoteFromMeta(String(item?.symbol ?? ''), meta)
+      if (q && isFinite(q.price) && q.price > 0) result.set(q.ticker, q)
+    }
+  } catch {
+    // Whole batch failed — caller falls back to the per-ticker chain.
+  }
+  return result
+}
+
+// ── Stooq CSV (last-ditch; frequently geo-blocked / challenge-walled) ───
+async function stooq(ticker: string): Promise<PriceQuote | null> {
+  try {
+    // Stooq tickers: US stocks need a ".US" suffix.
     const symbol = ticker.includes('.') ? ticker.toLowerCase() : `${ticker.toLowerCase()}.us`
     const res = await CapacitorHttp.get({
       url: 'https://stooq.com/q/l/',
       params: { s: symbol, f: 'sd2t2ohlcv', h: '', e: 'csv' },
     })
     if (res.status !== 200 || typeof res.data !== 'string') return null
+    // A challenge/error page is HTML, not CSV — bail if it doesn't look like data.
+    if (!res.data.includes(',') || /</.test(res.data.slice(0, 1))) return null
     // CSV: Symbol,Date,Time,Open,High,Low,Close,Volume
     const [, dataLine] = res.data.trim().split('\n')
     if (!dataLine) return null
@@ -80,7 +185,7 @@ async function fromStooq(ticker: string): Promise<PriceQuote | null> {
     const open = Number(cols[3])
     if (!isFinite(close) || close === 0) return null
     return {
-      ticker,
+      ticker: ticker.toUpperCase(),
       price: close,
       previous_close: isFinite(open) ? open : null,
       day_change: isFinite(open) ? close - open : null,
@@ -92,16 +197,74 @@ async function fromStooq(ticker: string): Promise<PriceQuote | null> {
   }
 }
 
+// ── Historical series (Yahoo v8 chart) ─────────────────────────────────
+// Returns one row per period with { date, timestamp, close } — the shape the
+// BenchmarkChart consumes (`res.data.data[].close` / `.timestamp`).
+const PERIOD_RANGE: Record<string, string> = {
+  '1d': '1d', '5d': '5d', '1mo': '1mo', '3mo': '3mo', '6mo': '6mo',
+  '1y': '1y', '2y': '2y', '5y': '5y', 'ytd': 'ytd', 'max': 'max',
+}
+
+export interface HistoryPoint {
+  date: string        // YYYY-MM-DD
+  timestamp: number   // unix seconds
+  close: number | null
+}
+
+async function fetchHistory(ticker: string, period = '1y'): Promise<HistoryPoint[]> {
+  const range = PERIOD_RANGE[period] ?? '1y'
+  const interval = range === '1d' ? '5m' : range === '5d' ? '60m' : '1d'
+  for (const host of YAHOO_HOSTS) {
+    try {
+      const res = await CapacitorHttp.get({
+        url: `https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`,
+        params: { range, interval },
+        headers: { 'User-Agent': 'Mozilla/5.0 Nworth/1.0' },
+      })
+      if (res.status !== 200) continue
+      const result = res.data?.chart?.result?.[0]
+      const stamps: number[] | undefined = result?.timestamp
+      const closes: (number | null)[] | undefined = result?.indicators?.quote?.[0]?.close
+      if (!stamps || !closes) continue
+      const out: HistoryPoint[] = []
+      for (let i = 0; i < stamps.length; i++) {
+        const ts = stamps[i]
+        out.push({
+          timestamp: ts,
+          date: new Date(ts * 1000).toISOString().slice(0, 10),
+          close: closes[i] != null ? Number(closes[i]) : null,
+        })
+      }
+      return out
+    } catch {
+      // Try next host.
+    }
+  }
+  return []
+}
+
 // ── Cache (SQLite) ─────────────────────────────────────────────────────
-async function readCache(ticker: string): Promise<PriceQuote | null> {
+async function readCache(ticker: string, ignoreTtl = false): Promise<PriceQuote | null> {
   const row = await dbGet<any>(
     `SELECT ticker, price, previous_close, day_change, day_change_percent, fetched_at
      FROM market_prices WHERE ticker = ?`,
     [ticker],
   )
   if (!row) return null
-  const fetchedMs = Date.parse(row.fetched_at?.endsWith('Z') ? row.fetched_at : row.fetched_at + 'Z')
-  if (Date.now() - fetchedMs > PRICE_TTL_MS) return null
+  // `ignoreTtl` is the "every live source is down, serve whatever we have"
+  // path. Otherwise enforce the freshness window below.
+  if (!ignoreTtl) {
+    // SQLite's CURRENT_TIMESTAMP is "YYYY-MM-DD HH:MM:SS" (UTC, space-separated,
+    // no zone). iOS JavaScriptCore won't parse that space form, returning NaN —
+    // and `Date.now() - NaN > TTL` is false, which would mark every cached row
+    // as permanently fresh and freeze prices after the first fetch. Normalise to
+    // ISO 8601 ("…THH:MM:SSZ") so the TTL check actually works. If parsing still
+    // fails, treat the row as stale so we re-fetch rather than serve old data.
+    const raw = String(row.fetched_at ?? '')
+    const iso = (raw.includes('T') ? raw : raw.replace(' ', 'T')).replace(/Z?$/, 'Z')
+    const fetchedMs = Date.parse(iso)
+    if (!isFinite(fetchedMs) || Date.now() - fetchedMs > PRICE_TTL_MS) return null
+  }
   return {
     ticker,
     price: row.price,
@@ -142,9 +305,11 @@ export const nativeMarketApi = {
     const out = await fetchPrices(tickers)
     return { data: out }
   },
-  getHistory: async (_ticker: string, _period = '1y') => {
-    // History not yet ported — would need Yahoo's chart endpoint.
-    return { data: { ticker: _ticker, period: _period, history: [] } }
+  getHistory: async (ticker: string, period = '1y') => {
+    const history = await fetchHistory(ticker, period)
+    // BenchmarkChart reads `res.data.data`; keep `history` too for any other
+    // caller that expects the FastAPI `{ history: [...] }` shape.
+    return { data: { ticker, period, data: history, history } }
   },
   search: async (_query: string) => ({ data: [] }),
   suggestions: async (_query: string) => ({ data: [] }),

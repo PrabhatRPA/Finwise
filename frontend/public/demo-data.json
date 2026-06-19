@@ -1,0 +1,5022 @@
+{
+  "version": 1,
+  "exported_at": "2026-06-19T00:00:00Z",
+  "source": "nworth-dummy-data",
+  "holdings": [
+    {
+      "ticker": "AAPL",
+      "security_name": "Apple Inc.",
+      "security_type": "stock",
+      "shares": 40,
+      "average_cost": 150.0,
+      "current_price": 230.0,
+      "current_value": 9200.0,
+      "total_gain_loss": 3200.0,
+      "total_gain_loss_percent": 53.33,
+      "sector": "Technology",
+      "industry": "Technology",
+      "purchase_date": "2025-08-23",
+      "account_name": "Fidelity"
+    },
+    {
+      "ticker": "MSFT",
+      "security_name": "Microsoft Corp.",
+      "security_type": "stock",
+      "shares": 25,
+      "average_cost": 300.0,
+      "current_price": 440.0,
+      "current_value": 11000.0,
+      "total_gain_loss": 3500.0,
+      "total_gain_loss_percent": 46.67,
+      "sector": "Technology",
+      "industry": "Technology",
+      "purchase_date": "2025-08-05",
+      "account_name": "Schwab"
+    },
+    {
+      "ticker": "NVDA",
+      "security_name": "NVIDIA Corp.",
+      "security_type": "stock",
+      "shares": 60,
+      "average_cost": 45.0,
+      "current_price": 130.0,
+      "current_value": 7800.0,
+      "total_gain_loss": 5100.0,
+      "total_gain_loss_percent": 188.89,
+      "sector": "Technology",
+      "industry": "Technology",
+      "purchase_date": "2025-07-18",
+      "account_name": "Robinhood"
+    },
+    {
+      "ticker": "GOOGL",
+      "security_name": "Alphabet Inc.",
+      "security_type": "stock",
+      "shares": 30,
+      "average_cost": 120.0,
+      "current_price": 175.0,
+      "current_value": 5250.0,
+      "total_gain_loss": 1650.0,
+      "total_gain_loss_percent": 45.83,
+      "sector": "Communication Services",
+      "industry": "Communication Services",
+      "purchase_date": "2025-06-30",
+      "account_name": "Fidelity"
+    },
+    {
+      "ticker": "AMZN",
+      "security_name": "Amazon.com Inc.",
+      "security_type": "stock",
+      "shares": 35,
+      "average_cost": 140.0,
+      "current_price": 185.0,
+      "current_value": 6475.0,
+      "total_gain_loss": 1575.0,
+      "total_gain_loss_percent": 32.14,
+      "sector": "Consumer Discretionary",
+      "industry": "Consumer Discretionary",
+      "purchase_date": "2025-06-12",
+      "account_name": "Schwab"
+    },
+    {
+      "ticker": "META",
+      "security_name": "Meta Platforms Inc.",
+      "security_type": "stock",
+      "shares": 15,
+      "average_cost": 330.0,
+      "current_price": 560.0,
+      "current_value": 8400.0,
+      "total_gain_loss": 3450.0,
+      "total_gain_loss_percent": 69.7,
+      "sector": "Communication Services",
+      "industry": "Communication Services",
+      "purchase_date": "2025-05-25",
+      "account_name": "Robinhood"
+    },
+    {
+      "ticker": "TSLA",
+      "security_name": "Tesla Inc.",
+      "security_type": "stock",
+      "shares": 20,
+      "average_cost": 280.0,
+      "current_price": 250.0,
+      "current_value": 5000.0,
+      "total_gain_loss": -600.0,
+      "total_gain_loss_percent": -10.71,
+      "sector": "Consumer Discretionary",
+      "industry": "Consumer Discretionary",
+      "purchase_date": "2025-05-07",
+      "account_name": "Fidelity"
+    },
+    {
+      "ticker": "JPM",
+      "security_name": "JPMorgan Chase & Co.",
+      "security_type": "stock",
+      "shares": 18,
+      "average_cost": 150.0,
+      "current_price": 215.0,
+      "current_value": 3870.0,
+      "total_gain_loss": 1170.0,
+      "total_gain_loss_percent": 43.33,
+      "sector": "Financials",
+      "industry": "Financials",
+      "purchase_date": "2025-04-19",
+      "account_name": "Schwab"
+    },
+    {
+      "ticker": "V",
+      "security_name": "Visa Inc.",
+      "security_type": "stock",
+      "shares": 22,
+      "average_cost": 210.0,
+      "current_price": 280.0,
+      "current_value": 6160.0,
+      "total_gain_loss": 1540.0,
+      "total_gain_loss_percent": 33.33,
+      "sector": "Financials",
+      "industry": "Financials",
+      "purchase_date": "2025-04-01",
+      "account_name": "Robinhood"
+    },
+    {
+      "ticker": "JNJ",
+      "security_name": "Johnson & Johnson",
+      "security_type": "stock",
+      "shares": 16,
+      "average_cost": 165.0,
+      "current_price": 155.0,
+      "current_value": 2480.0,
+      "total_gain_loss": -160.0,
+      "total_gain_loss_percent": -6.06,
+      "sector": "Healthcare",
+      "industry": "Healthcare",
+      "purchase_date": "2025-03-14",
+      "account_name": "Fidelity"
+    },
+    {
+      "ticker": "UNH",
+      "security_name": "UnitedHealth Group",
+      "security_type": "stock",
+      "shares": 8,
+      "average_cost": 480.0,
+      "current_price": 520.0,
+      "current_value": 4160.0,
+      "total_gain_loss": 320.0,
+      "total_gain_loss_percent": 8.33,
+      "sector": "Healthcare",
+      "industry": "Healthcare",
+      "purchase_date": "2025-02-24",
+      "account_name": "Schwab"
+    },
+    {
+      "ticker": "XOM",
+      "security_name": "Exxon Mobil Corp.",
+      "security_type": "stock",
+      "shares": 45,
+      "average_cost": 95.0,
+      "current_price": 115.0,
+      "current_value": 5175.0,
+      "total_gain_loss": 900.0,
+      "total_gain_loss_percent": 21.05,
+      "sector": "Energy",
+      "industry": "Energy",
+      "purchase_date": "2025-02-06",
+      "account_name": "Robinhood"
+    },
+    {
+      "ticker": "PG",
+      "security_name": "Procter & Gamble Co.",
+      "security_type": "stock",
+      "shares": 20,
+      "average_cost": 145.0,
+      "current_price": 170.0,
+      "current_value": 3400.0,
+      "total_gain_loss": 500.0,
+      "total_gain_loss_percent": 17.24,
+      "sector": "Consumer Staples",
+      "industry": "Consumer Staples",
+      "purchase_date": "2025-01-19",
+      "account_name": "Fidelity"
+    },
+    {
+      "ticker": "HD",
+      "security_name": "Home Depot Inc.",
+      "security_type": "stock",
+      "shares": 10,
+      "average_cost": 320.0,
+      "current_price": 390.0,
+      "current_value": 3900.0,
+      "total_gain_loss": 700.0,
+      "total_gain_loss_percent": 21.88,
+      "sector": "Consumer Discretionary",
+      "industry": "Consumer Discretionary",
+      "purchase_date": "2025-01-01",
+      "account_name": "Schwab"
+    },
+    {
+      "ticker": "DIS",
+      "security_name": "Walt Disney Co.",
+      "security_type": "stock",
+      "shares": 30,
+      "average_cost": 120.0,
+      "current_price": 95.0,
+      "current_value": 2850.0,
+      "total_gain_loss": -750.0,
+      "total_gain_loss_percent": -20.83,
+      "sector": "Communication Services",
+      "industry": "Communication Services",
+      "purchase_date": "2024-12-14",
+      "account_name": "Robinhood"
+    },
+    {
+      "ticker": "SPY",
+      "security_name": "SPDR S&P 500 ETF",
+      "security_type": "etf",
+      "shares": 25,
+      "average_cost": 400.0,
+      "current_price": 560.0,
+      "current_value": 14000.0,
+      "total_gain_loss": 4000.0,
+      "total_gain_loss_percent": 40.0,
+      "sector": "Index Fund",
+      "industry": "Index Fund",
+      "purchase_date": "2024-11-26",
+      "account_name": "Fidelity"
+    },
+    {
+      "ticker": "QQQ",
+      "security_name": "Invesco QQQ Trust",
+      "security_type": "etf",
+      "shares": 20,
+      "average_cost": 330.0,
+      "current_price": 480.0,
+      "current_value": 9600.0,
+      "total_gain_loss": 3000.0,
+      "total_gain_loss_percent": 45.45,
+      "sector": "Index Fund",
+      "industry": "Index Fund",
+      "purchase_date": "2024-11-08",
+      "account_name": "Schwab"
+    },
+    {
+      "ticker": "VTI",
+      "security_name": "Vanguard Total Market ETF",
+      "security_type": "etf",
+      "shares": 30,
+      "average_cost": 210.0,
+      "current_price": 280.0,
+      "current_value": 8400.0,
+      "total_gain_loss": 2100.0,
+      "total_gain_loss_percent": 33.33,
+      "sector": "Index Fund",
+      "industry": "Index Fund",
+      "purchase_date": "2024-10-21",
+      "account_name": "Robinhood"
+    },
+    {
+      "ticker": "SCHD",
+      "security_name": "Schwab US Dividend ETF",
+      "security_type": "etf",
+      "shares": 150,
+      "average_cost": 72.0,
+      "current_price": 28.0,
+      "current_value": 4200.0,
+      "total_gain_loss": -6600.0,
+      "total_gain_loss_percent": -61.11,
+      "sector": "Dividend",
+      "industry": "Dividend",
+      "purchase_date": "2024-10-03",
+      "account_name": "Fidelity"
+    },
+    {
+      "ticker": "BND",
+      "security_name": "Vanguard Total Bond ETF",
+      "security_type": "bond",
+      "shares": 100,
+      "average_cost": 78.0,
+      "current_price": 73.0,
+      "current_value": 7300.0,
+      "total_gain_loss": -500.0,
+      "total_gain_loss_percent": -6.41,
+      "sector": "Fixed Income",
+      "industry": "Fixed Income",
+      "purchase_date": "2024-09-15",
+      "account_name": "Schwab"
+    },
+    {
+      "ticker": "O",
+      "security_name": "Realty Income Corp.",
+      "security_type": "reit",
+      "shares": 80,
+      "average_cost": 62.0,
+      "current_price": 58.0,
+      "current_value": 4640.0,
+      "total_gain_loss": -320.0,
+      "total_gain_loss_percent": -6.45,
+      "sector": "Real Estate",
+      "industry": "Real Estate",
+      "purchase_date": "2024-08-28",
+      "account_name": "Robinhood"
+    },
+    {
+      "ticker": "PLD",
+      "security_name": "Prologis Inc.",
+      "security_type": "reit",
+      "shares": 25,
+      "average_cost": 110.0,
+      "current_price": 120.0,
+      "current_value": 3000.0,
+      "total_gain_loss": 250.0,
+      "total_gain_loss_percent": 9.09,
+      "sector": "Real Estate",
+      "industry": "Real Estate",
+      "purchase_date": "2024-08-10",
+      "account_name": "Fidelity"
+    },
+    {
+      "ticker": "BTC-USD",
+      "security_name": "Bitcoin",
+      "security_type": "crypto",
+      "shares": 0.5,
+      "average_cost": 38000.0,
+      "current_price": 65000.0,
+      "current_value": 32500.0,
+      "total_gain_loss": 13500.0,
+      "total_gain_loss_percent": 71.05,
+      "sector": "Cryptocurrency",
+      "industry": "Cryptocurrency",
+      "purchase_date": "2024-07-23",
+      "account_name": "Coinbase"
+    },
+    {
+      "ticker": "ETH-USD",
+      "security_name": "Ethereum",
+      "security_type": "crypto",
+      "shares": 4.0,
+      "average_cost": 2200.0,
+      "current_price": 3200.0,
+      "current_value": 12800.0,
+      "total_gain_loss": 4000.0,
+      "total_gain_loss_percent": 45.45,
+      "sector": "Cryptocurrency",
+      "industry": "Cryptocurrency",
+      "purchase_date": "2024-07-05",
+      "account_name": "Coinbase"
+    }
+  ],
+  "accounts": [
+    {
+      "account_name": "Fidelity",
+      "account_type": "brokerage",
+      "institution_name": "Fidelity",
+      "balance": 0,
+      "currency": "USD"
+    },
+    {
+      "account_name": "Schwab",
+      "account_type": "brokerage",
+      "institution_name": "Charles Schwab",
+      "balance": 0,
+      "currency": "USD"
+    },
+    {
+      "account_name": "Robinhood",
+      "account_type": "brokerage",
+      "institution_name": "Robinhood",
+      "balance": 0,
+      "currency": "USD"
+    },
+    {
+      "account_name": "Coinbase",
+      "account_type": "brokerage",
+      "institution_name": "Coinbase",
+      "balance": 0,
+      "currency": "USD"
+    },
+    {
+      "account_name": "Chase Checking",
+      "account_type": "checking",
+      "institution_name": "Chase",
+      "balance": 12500,
+      "currency": "USD"
+    },
+    {
+      "account_name": "Ally Savings",
+      "account_type": "savings",
+      "institution_name": "Ally Bank",
+      "balance": 48000,
+      "currency": "USD"
+    },
+    {
+      "account_name": "Fidelity 401k",
+      "account_type": "retirement",
+      "institution_name": "Fidelity",
+      "balance": 95000,
+      "currency": "USD"
+    }
+  ],
+  "transactions": [
+    {
+      "transaction_type": "buy",
+      "transaction_date": "2025-12-01",
+      "ticker": "AAPL",
+      "shares": 5,
+      "price_per_share": 207.0,
+      "total_amount": 1035.0,
+      "commission": 0,
+      "fees": 0,
+      "account_name": "Fidelity",
+      "description": "Bought 5 AAPL"
+    },
+    {
+      "transaction_type": "buy",
+      "transaction_date": "2025-12-26",
+      "ticker": "MSFT",
+      "shares": 5,
+      "price_per_share": 396.0,
+      "total_amount": 1980.0,
+      "commission": 0,
+      "fees": 0,
+      "account_name": "Fidelity",
+      "description": "Bought 5 MSFT"
+    },
+    {
+      "transaction_type": "buy",
+      "transaction_date": "2026-01-20",
+      "ticker": "NVDA",
+      "shares": 5,
+      "price_per_share": 117.0,
+      "total_amount": 585.0,
+      "commission": 0,
+      "fees": 0,
+      "account_name": "Schwab",
+      "description": "Bought 5 NVDA"
+    },
+    {
+      "transaction_type": "buy",
+      "transaction_date": "2026-02-14",
+      "ticker": "SPY",
+      "shares": 5,
+      "price_per_share": 504.0,
+      "total_amount": 2520.0,
+      "commission": 0,
+      "fees": 0,
+      "account_name": "Schwab",
+      "description": "Bought 5 SPY"
+    },
+    {
+      "transaction_type": "buy",
+      "transaction_date": "2026-03-11",
+      "ticker": "TSLA",
+      "shares": 5,
+      "price_per_share": 225.0,
+      "total_amount": 1125.0,
+      "commission": 0,
+      "fees": 0,
+      "account_name": "Robinhood",
+      "description": "Bought 5 TSLA"
+    },
+    {
+      "transaction_type": "buy",
+      "transaction_date": "2026-04-05",
+      "ticker": "BTC-USD",
+      "shares": 0.1,
+      "price_per_share": 58500.0,
+      "total_amount": 5850.0,
+      "commission": 0,
+      "fees": 0,
+      "account_name": "Coinbase",
+      "description": "Bought 0.1 BTC-USD"
+    },
+    {
+      "transaction_type": "dividend",
+      "transaction_date": "2026-05-10",
+      "ticker": "SCHD",
+      "shares": null,
+      "price_per_share": null,
+      "total_amount": 110.25,
+      "commission": 0,
+      "fees": 0,
+      "account_name": "Fidelity",
+      "description": "SCHD quarterly dividend"
+    },
+    {
+      "transaction_type": "dividend",
+      "transaction_date": "2026-06-07",
+      "ticker": "O",
+      "shares": null,
+      "price_per_share": null,
+      "total_amount": 21.4,
+      "commission": 0,
+      "fees": 0,
+      "account_name": "Fidelity",
+      "description": "Realty Income monthly dividend"
+    },
+    {
+      "transaction_type": "sell",
+      "transaction_date": "2026-05-20",
+      "ticker": "DIS",
+      "shares": 10,
+      "price_per_share": 98.0,
+      "total_amount": 980.0,
+      "commission": 0,
+      "fees": 0,
+      "account_name": "Robinhood",
+      "description": "Trimmed DIS position"
+    }
+  ],
+  "watchlist": [
+    {
+      "ticker": "AMD",
+      "company_name": "Advanced Micro Devices",
+      "target_price": 130,
+      "target_direction": "above",
+      "notification_method": "in_app",
+      "notes": "Buy on dip"
+    },
+    {
+      "ticker": "CRM",
+      "company_name": "Salesforce Inc.",
+      "target_price": 240,
+      "target_direction": "below",
+      "notification_method": "in_app",
+      "notes": ""
+    },
+    {
+      "ticker": "COST",
+      "company_name": "Costco Wholesale",
+      "target_price": 800,
+      "target_direction": "below",
+      "notification_method": "in_app",
+      "notes": "Wait for pullback"
+    },
+    {
+      "ticker": "KO",
+      "company_name": "Coca-Cola Co.",
+      "target_price": 60,
+      "target_direction": "below",
+      "notification_method": "in_app",
+      "notes": ""
+    },
+    {
+      "ticker": "NFLX",
+      "company_name": "Netflix Inc.",
+      "target_price": 500,
+      "target_direction": "below",
+      "notification_method": "in_app",
+      "notes": ""
+    },
+    {
+      "ticker": "PYPL",
+      "company_name": "PayPal Holdings",
+      "target_price": 60,
+      "target_direction": "above",
+      "notification_method": "in_app",
+      "notes": "Turnaround play"
+    }
+  ],
+  "loans": [
+    {
+      "loan_name": "Home Mortgage",
+      "loan_type": "mortgage",
+      "original_balance": 450000,
+      "current_balance": 382000,
+      "interest_rate": 3.5,
+      "monthly_payment": 2100,
+      "lender_name": "Wells Fargo",
+      "due_day": 1,
+      "status": "active"
+    },
+    {
+      "loan_name": "Auto Loan",
+      "loan_type": "auto",
+      "original_balance": 35000,
+      "current_balance": 17800,
+      "interest_rate": 4.2,
+      "monthly_payment": 600,
+      "lender_name": "Toyota Financial",
+      "due_day": 15,
+      "status": "active"
+    },
+    {
+      "loan_name": "Student Loan",
+      "loan_type": "student",
+      "original_balance": 60000,
+      "current_balance": 21500,
+      "interest_rate": 5.0,
+      "monthly_payment": 450,
+      "lender_name": "Sallie Mae",
+      "due_day": 20,
+      "status": "active"
+    },
+    {
+      "loan_name": "Amex Platinum",
+      "loan_type": "credit_card",
+      "original_balance": 8000,
+      "current_balance": 3200,
+      "interest_rate": 19.99,
+      "monthly_payment": 250,
+      "lender_name": "American Express",
+      "due_day": 10,
+      "status": "active"
+    }
+  ],
+  "properties": [
+    {
+      "property_type": "single_family",
+      "nickname": "Primary Home",
+      "address": "123 Maple Ave",
+      "city": "Austin",
+      "state": "TX",
+      "zip_code": "78704",
+      "country": "US",
+      "manual_value": 625000,
+      "purchase_price": 450000,
+      "purchase_date": "2019-06-15",
+      "notes": "Primary residence"
+    },
+    {
+      "property_type": "condo",
+      "nickname": "Rental Condo",
+      "address": "88 Lakeview Dr",
+      "city": "Denver",
+      "state": "CO",
+      "zip_code": "80202",
+      "country": "US",
+      "manual_value": 315000,
+      "purchase_price": 250000,
+      "purchase_date": "2021-03-01",
+      "notes": "Rented out, ~$2k/mo"
+    }
+  ],
+  "portfolio_history": [
+    {
+      "history_date": "2024-12-21",
+      "total_assets": 1104918.94,
+      "total_liabilities": 500910.0,
+      "total_net_worth": 604008.94,
+      "total_investments": 123873.93,
+      "total_cash": 116245.01
+    },
+    {
+      "history_date": "2024-12-22",
+      "total_assets": 1104441.78,
+      "total_liabilities": 500769.8,
+      "total_net_worth": 603671.98,
+      "total_investments": 123028.9,
+      "total_cash": 116474.9
+    },
+    {
+      "history_date": "2024-12-23",
+      "total_assets": 1106615.82,
+      "total_liabilities": 500629.6,
+      "total_net_worth": 605986.23,
+      "total_investments": 124630.84,
+      "total_cash": 116909.02
+    },
+    {
+      "history_date": "2024-12-24",
+      "total_assets": 1107049.28,
+      "total_liabilities": 500489.39,
+      "total_net_worth": 606559.89,
+      "total_investments": 125326.8,
+      "total_cash": 116508.54
+    },
+    {
+      "history_date": "2024-12-25",
+      "total_assets": 1106053.95,
+      "total_liabilities": 500349.19,
+      "total_net_worth": 605704.76,
+      "total_investments": 124167.86,
+      "total_cash": 116534.16
+    },
+    {
+      "history_date": "2024-12-26",
+      "total_assets": 1106275.68,
+      "total_liabilities": 500208.99,
+      "total_net_worth": 606066.69,
+      "total_investments": 123799.84,
+      "total_cash": 116985.94
+    },
+    {
+      "history_date": "2024-12-27",
+      "total_assets": 1105904.7,
+      "total_liabilities": 500068.79,
+      "total_net_worth": 605835.91,
+      "total_investments": 123464.75,
+      "total_cash": 116812.05
+    },
+    {
+      "history_date": "2024-12-28",
+      "total_assets": 1108471.81,
+      "total_liabilities": 499928.59,
+      "total_net_worth": 608543.22,
+      "total_investments": 125545.67,
+      "total_cash": 117160.27
+    },
+    {
+      "history_date": "2024-12-29",
+      "total_assets": 1107677.74,
+      "total_liabilities": 499788.39,
+      "total_net_worth": 607889.35,
+      "total_investments": 124506.83,
+      "total_cash": 117267.05
+    },
+    {
+      "history_date": "2024-12-30",
+      "total_assets": 1109399.37,
+      "total_liabilities": 499648.18,
+      "total_net_worth": 609751.19,
+      "total_investments": 126485.36,
+      "total_cash": 116872.17
+    },
+    {
+      "history_date": "2024-12-31",
+      "total_assets": 1110384.27,
+      "total_liabilities": 499507.98,
+      "total_net_worth": 610876.29,
+      "total_investments": 126707.64,
+      "total_cash": 117496.81
+    },
+    {
+      "history_date": "2025-01-01",
+      "total_assets": 1109012.55,
+      "total_liabilities": 499367.78,
+      "total_net_worth": 609644.77,
+      "total_investments": 125560.73,
+      "total_cash": 117134.02
+    },
+    {
+      "history_date": "2025-01-02",
+      "total_assets": 1111427.03,
+      "total_liabilities": 499227.58,
+      "total_net_worth": 612199.45,
+      "total_investments": 127621.01,
+      "total_cash": 117350.24
+    },
+    {
+      "history_date": "2025-01-03",
+      "total_assets": 1109114.69,
+      "total_liabilities": 499087.38,
+      "total_net_worth": 610027.32,
+      "total_investments": 125291.26,
+      "total_cash": 117229.67
+    },
+    {
+      "history_date": "2025-01-04",
+      "total_assets": 1112197.21,
+      "total_liabilities": 498947.17,
+      "total_net_worth": 613250.03,
+      "total_investments": 127758.86,
+      "total_cash": 117706.6
+    },
+    {
+      "history_date": "2025-01-05",
+      "total_assets": 1112618.41,
+      "total_liabilities": 498806.97,
+      "total_net_worth": 613811.44,
+      "total_investments": 127869.95,
+      "total_cash": 117878.74
+    },
+    {
+      "history_date": "2025-01-06",
+      "total_assets": 1112449.87,
+      "total_liabilities": 498666.77,
+      "total_net_worth": 613783.1,
+      "total_investments": 127297.39,
+      "total_cash": 118144.78
+    },
+    {
+      "history_date": "2025-01-07",
+      "total_assets": 1112084.59,
+      "total_liabilities": 498526.57,
+      "total_net_worth": 613558.02,
+      "total_investments": 127059.65,
+      "total_cash": 117879.25
+    },
+    {
+      "history_date": "2025-01-08",
+      "total_assets": 1113911.92,
+      "total_liabilities": 498386.37,
+      "total_net_worth": 615525.56,
+      "total_investments": 128624.49,
+      "total_cash": 118003.76
+    },
+    {
+      "history_date": "2025-01-09",
+      "total_assets": 1114412.22,
+      "total_liabilities": 498246.17,
+      "total_net_worth": 616166.05,
+      "total_investments": 128948.41,
+      "total_cash": 118042.16
+    },
+    {
+      "history_date": "2025-01-10",
+      "total_assets": 1113958.2,
+      "total_liabilities": 498105.96,
+      "total_net_worth": 615852.23,
+      "total_investments": 128710.3,
+      "total_cash": 117688.27
+    },
+    {
+      "history_date": "2025-01-11",
+      "total_assets": 1113176.69,
+      "total_liabilities": 497965.76,
+      "total_net_worth": 615210.93,
+      "total_investments": 127524.63,
+      "total_cash": 117954.45
+    },
+    {
+      "history_date": "2025-01-12",
+      "total_assets": 1113127.82,
+      "total_liabilities": 497825.56,
+      "total_net_worth": 615302.26,
+      "total_investments": 127311.73,
+      "total_cash": 117980.5
+    },
+    {
+      "history_date": "2025-01-13",
+      "total_assets": 1113661.26,
+      "total_liabilities": 497685.36,
+      "total_net_worth": 615975.9,
+      "total_investments": 127599.7,
+      "total_cash": 118087.98
+    },
+    {
+      "history_date": "2025-01-14",
+      "total_assets": 1115748.62,
+      "total_liabilities": 497545.16,
+      "total_net_worth": 618203.47,
+      "total_investments": 129408.27,
+      "total_cash": 118228.79
+    },
+    {
+      "history_date": "2025-01-15",
+      "total_assets": 1115270.35,
+      "total_liabilities": 497404.95,
+      "total_net_worth": 617865.4,
+      "total_investments": 128844.95,
+      "total_cash": 118175.86
+    },
+    {
+      "history_date": "2025-01-16",
+      "total_assets": 1115978.03,
+      "total_liabilities": 497264.75,
+      "total_net_worth": 618713.28,
+      "total_investments": 128761.6,
+      "total_cash": 118828.91
+    },
+    {
+      "history_date": "2025-01-17",
+      "total_assets": 1117275.91,
+      "total_liabilities": 497124.55,
+      "total_net_worth": 620151.36,
+      "total_investments": 130112.18,
+      "total_cash": 118638.22
+    },
+    {
+      "history_date": "2025-01-18",
+      "total_assets": 1116388.63,
+      "total_liabilities": 496984.35,
+      "total_net_worth": 619404.29,
+      "total_investments": 128919.6,
+      "total_cash": 118805.55
+    },
+    {
+      "history_date": "2025-01-19",
+      "total_assets": 1116514.74,
+      "total_liabilities": 496844.15,
+      "total_net_worth": 619670.6,
+      "total_investments": 129116.13,
+      "total_cash": 118597.14
+    },
+    {
+      "history_date": "2025-01-20",
+      "total_assets": 1119598.73,
+      "total_liabilities": 496703.94,
+      "total_net_worth": 622894.79,
+      "total_investments": 131782.37,
+      "total_cash": 118876.91
+    },
+    {
+      "history_date": "2025-01-21",
+      "total_assets": 1118779.29,
+      "total_liabilities": 496563.74,
+      "total_net_worth": 622215.54,
+      "total_investments": 130717.93,
+      "total_cash": 118983.93
+    },
+    {
+      "history_date": "2025-01-22",
+      "total_assets": 1120125.02,
+      "total_liabilities": 496423.54,
+      "total_net_worth": 623701.48,
+      "total_investments": 131781.24,
+      "total_cash": 119128.37
+    },
+    {
+      "history_date": "2025-01-23",
+      "total_assets": 1118135.47,
+      "total_liabilities": 496283.34,
+      "total_net_worth": 621852.13,
+      "total_investments": 130177.5,
+      "total_cash": 118604.58
+    },
+    {
+      "history_date": "2025-01-24",
+      "total_assets": 1119003.12,
+      "total_liabilities": 496143.14,
+      "total_net_worth": 622859.98,
+      "total_investments": 130647.32,
+      "total_cash": 118864.42
+    },
+    {
+      "history_date": "2025-01-25",
+      "total_assets": 1119655.59,
+      "total_liabilities": 496002.94,
+      "total_net_worth": 623652.65,
+      "total_investments": 130550.35,
+      "total_cash": 119475.89
+    },
+    {
+      "history_date": "2025-01-26",
+      "total_assets": 1121545.21,
+      "total_liabilities": 495862.73,
+      "total_net_worth": 625682.47,
+      "total_investments": 132733.23,
+      "total_cash": 119044.63
+    },
+    {
+      "history_date": "2025-01-27",
+      "total_assets": 1121374.68,
+      "total_liabilities": 495722.53,
+      "total_net_worth": 625652.14,
+      "total_investments": 132288.63,
+      "total_cash": 119180.73
+    },
+    {
+      "history_date": "2025-01-28",
+      "total_assets": 1122611.02,
+      "total_liabilities": 495582.33,
+      "total_net_worth": 627028.69,
+      "total_investments": 133265.08,
+      "total_cash": 119302.63
+    },
+    {
+      "history_date": "2025-01-29",
+      "total_assets": 1120932.89,
+      "total_liabilities": 495442.13,
+      "total_net_worth": 625490.77,
+      "total_investments": 131547.43,
+      "total_cash": 119204.18
+    },
+    {
+      "history_date": "2025-01-30",
+      "total_assets": 1122239.57,
+      "total_liabilities": 495301.93,
+      "total_net_worth": 626937.64,
+      "total_investments": 132631.9,
+      "total_cash": 119288.4
+    },
+    {
+      "history_date": "2025-01-31",
+      "total_assets": 1123230.29,
+      "total_liabilities": 495161.72,
+      "total_net_worth": 628068.57,
+      "total_investments": 132905.25,
+      "total_cash": 119867.8
+    },
+    {
+      "history_date": "2025-02-01",
+      "total_assets": 1122551.2,
+      "total_liabilities": 495021.52,
+      "total_net_worth": 627529.67,
+      "total_investments": 132559.64,
+      "total_cash": 119396.33
+    },
+    {
+      "history_date": "2025-02-02",
+      "total_assets": 1124966.62,
+      "total_liabilities": 494881.32,
+      "total_net_worth": 630085.3,
+      "total_investments": 134533.59,
+      "total_cash": 119699.82
+    },
+    {
+      "history_date": "2025-02-03",
+      "total_assets": 1122319.75,
+      "total_liabilities": 494741.12,
+      "total_net_worth": 627578.63,
+      "total_investments": 132047.33,
+      "total_cash": 119401.23
+    },
+    {
+      "history_date": "2025-02-04",
+      "total_assets": 1123247.46,
+      "total_liabilities": 494600.92,
+      "total_net_worth": 628646.55,
+      "total_investments": 132301.47,
+      "total_cash": 119936.82
+    },
+    {
+      "history_date": "2025-02-05",
+      "total_assets": 1125511.68,
+      "total_liabilities": 494460.72,
+      "total_net_worth": 631050.97,
+      "total_investments": 134520.6,
+      "total_cash": 119843.92
+    },
+    {
+      "history_date": "2025-02-06",
+      "total_assets": 1123725.29,
+      "total_liabilities": 494320.51,
+      "total_net_worth": 629404.78,
+      "total_investments": 132557.33,
+      "total_cash": 119882.82
+    },
+    {
+      "history_date": "2025-02-07",
+      "total_assets": 1127009.79,
+      "total_liabilities": 494180.31,
+      "total_net_worth": 632829.48,
+      "total_investments": 135514.53,
+      "total_cash": 120072.14
+    },
+    {
+      "history_date": "2025-02-08",
+      "total_assets": 1127602.46,
+      "total_liabilities": 494040.11,
+      "total_net_worth": 633562.35,
+      "total_investments": 135632.55,
+      "total_cash": 120408.81
+    },
+    {
+      "history_date": "2025-02-09",
+      "total_assets": 1125046.95,
+      "total_liabilities": 493899.91,
+      "total_net_worth": 631147.04,
+      "total_investments": 132979.78,
+      "total_cash": 120368.09
+    },
+    {
+      "history_date": "2025-02-10",
+      "total_assets": 1127284.07,
+      "total_liabilities": 493759.71,
+      "total_net_worth": 633524.37,
+      "total_investments": 135154.59,
+      "total_cash": 120292.42
+    },
+    {
+      "history_date": "2025-02-11",
+      "total_assets": 1126534.42,
+      "total_liabilities": 493619.5,
+      "total_net_worth": 632914.92,
+      "total_investments": 134112.43,
+      "total_cash": 120446.94
+    },
+    {
+      "history_date": "2025-02-12",
+      "total_assets": 1126304.13,
+      "total_liabilities": 493479.3,
+      "total_net_worth": 632824.83,
+      "total_investments": 133837.79,
+      "total_cash": 120353.32
+    },
+    {
+      "history_date": "2025-02-13",
+      "total_assets": 1128126.24,
+      "total_liabilities": 493339.1,
+      "total_net_worth": 634787.14,
+      "total_investments": 135035.34,
+      "total_cash": 120839.89
+    },
+    {
+      "history_date": "2025-02-14",
+      "total_assets": 1129215.9,
+      "total_liabilities": 493198.9,
+      "total_net_worth": 636017.0,
+      "total_investments": 136468.03,
+      "total_cash": 120358.88
+    },
+    {
+      "history_date": "2025-02-15",
+      "total_assets": 1128425.58,
+      "total_liabilities": 493058.7,
+      "total_net_worth": 635366.88,
+      "total_investments": 135536.19,
+      "total_cash": 120362.42
+    },
+    {
+      "history_date": "2025-02-16",
+      "total_assets": 1130587.56,
+      "total_liabilities": 492918.5,
+      "total_net_worth": 637669.07,
+      "total_investments": 136935.37,
+      "total_cash": 120987.24
+    },
+    {
+      "history_date": "2025-02-17",
+      "total_assets": 1128968.18,
+      "total_liabilities": 492778.29,
+      "total_net_worth": 636189.89,
+      "total_investments": 135291.93,
+      "total_cash": 120873.32
+    },
+    {
+      "history_date": "2025-02-18",
+      "total_assets": 1129883.27,
+      "total_liabilities": 492638.09,
+      "total_net_worth": 637245.17,
+      "total_investments": 136386.59,
+      "total_cash": 120555.76
+    },
+    {
+      "history_date": "2025-02-19",
+      "total_assets": 1131029.43,
+      "total_liabilities": 492497.89,
+      "total_net_worth": 638531.54,
+      "total_investments": 137014.21,
+      "total_cash": 120936.32
+    },
+    {
+      "history_date": "2025-02-20",
+      "total_assets": 1131450.03,
+      "total_liabilities": 492357.69,
+      "total_net_worth": 639092.34,
+      "total_investments": 137232.72,
+      "total_cash": 121000.43
+    },
+    {
+      "history_date": "2025-02-21",
+      "total_assets": 1129357.8,
+      "total_liabilities": 492217.49,
+      "total_net_worth": 637140.31,
+      "total_investments": 135096.13,
+      "total_cash": 120906.8
+    },
+    {
+      "history_date": "2025-02-22",
+      "total_assets": 1130273.97,
+      "total_liabilities": 492077.28,
+      "total_net_worth": 638196.68,
+      "total_investments": 135319.04,
+      "total_cash": 121462.09
+    },
+    {
+      "history_date": "2025-02-23",
+      "total_assets": 1133116.25,
+      "total_liabilities": 491937.08,
+      "total_net_worth": 641179.17,
+      "total_investments": 138029.96,
+      "total_cash": 121455.47
+    },
+    {
+      "history_date": "2025-02-24",
+      "total_assets": 1131176.99,
+      "total_liabilities": 491796.88,
+      "total_net_worth": 639380.11,
+      "total_investments": 136500.38,
+      "total_cash": 120907.81
+    },
+    {
+      "history_date": "2025-02-25",
+      "total_assets": 1133948.88,
+      "total_liabilities": 491656.68,
+      "total_net_worth": 642292.2,
+      "total_investments": 138351.74,
+      "total_cash": 121690.36
+    },
+    {
+      "history_date": "2025-02-26",
+      "total_assets": 1131600.56,
+      "total_liabilities": 491516.48,
+      "total_net_worth": 640084.08,
+      "total_investments": 136162.87,
+      "total_cash": 121392.92
+    },
+    {
+      "history_date": "2025-02-27",
+      "total_assets": 1132137.75,
+      "total_liabilities": 491376.28,
+      "total_net_worth": 640761.47,
+      "total_investments": 136271.06,
+      "total_cash": 121683.94
+    },
+    {
+      "history_date": "2025-02-28",
+      "total_assets": 1134060.28,
+      "total_liabilities": 491236.07,
+      "total_net_worth": 642824.21,
+      "total_investments": 138490.05,
+      "total_cash": 121249.5
+    },
+    {
+      "history_date": "2025-03-01",
+      "total_assets": 1133898.6,
+      "total_liabilities": 491095.87,
+      "total_net_worth": 642802.73,
+      "total_investments": 137781.92,
+      "total_cash": 121657.96
+    },
+    {
+      "history_date": "2025-03-02",
+      "total_assets": 1133893.83,
+      "total_liabilities": 490955.67,
+      "total_net_worth": 642938.16,
+      "total_investments": 137309.73,
+      "total_cash": 121987.4
+    },
+    {
+      "history_date": "2025-03-03",
+      "total_assets": 1134191.67,
+      "total_liabilities": 490815.47,
+      "total_net_worth": 643376.21,
+      "total_investments": 137926.78,
+      "total_cash": 121530.22
+    },
+    {
+      "history_date": "2025-03-04",
+      "total_assets": 1135306.22,
+      "total_liabilities": 490675.27,
+      "total_net_worth": 644630.95,
+      "total_investments": 138417.5,
+      "total_cash": 122016.05
+    },
+    {
+      "history_date": "2025-03-05",
+      "total_assets": 1134323.44,
+      "total_liabilities": 490535.06,
+      "total_net_worth": 643788.38,
+      "total_investments": 137559.99,
+      "total_cash": 121752.81
+    },
+    {
+      "history_date": "2025-03-06",
+      "total_assets": 1137298.26,
+      "total_liabilities": 490394.86,
+      "total_net_worth": 646903.39,
+      "total_investments": 140054.96,
+      "total_cash": 122094.67
+    },
+    {
+      "history_date": "2025-03-07",
+      "total_assets": 1135891.33,
+      "total_liabilities": 490254.66,
+      "total_net_worth": 645636.67,
+      "total_investments": 138544.56,
+      "total_cash": 122060.16
+    },
+    {
+      "history_date": "2025-03-08",
+      "total_assets": 1135064.8,
+      "total_liabilities": 490114.46,
+      "total_net_worth": 644950.34,
+      "total_investments": 137743.02,
+      "total_cash": 121897.19
+    },
+    {
+      "history_date": "2025-03-09",
+      "total_assets": 1136344.1,
+      "total_liabilities": 489974.26,
+      "total_net_worth": 646369.85,
+      "total_investments": 138522.13,
+      "total_cash": 122259.41
+    },
+    {
+      "history_date": "2025-03-10",
+      "total_assets": 1136072.74,
+      "total_liabilities": 489834.06,
+      "total_net_worth": 646238.68,
+      "total_investments": 138335.92,
+      "total_cash": 122036.27
+    },
+    {
+      "history_date": "2025-03-11",
+      "total_assets": 1136270.82,
+      "total_liabilities": 489693.85,
+      "total_net_worth": 646576.97,
+      "total_investments": 137995.98,
+      "total_cash": 122436.3
+    },
+    {
+      "history_date": "2025-03-12",
+      "total_assets": 1137296.97,
+      "total_liabilities": 489553.65,
+      "total_net_worth": 647743.32,
+      "total_investments": 138593.37,
+      "total_cash": 122727.09
+    },
+    {
+      "history_date": "2025-03-13",
+      "total_assets": 1138834.6,
+      "total_liabilities": 489413.45,
+      "total_net_worth": 649421.16,
+      "total_investments": 140589.34,
+      "total_cash": 122130.77
+    },
+    {
+      "history_date": "2025-03-14",
+      "total_assets": 1137805.49,
+      "total_liabilities": 489273.25,
+      "total_net_worth": 648532.24,
+      "total_investments": 138872.41,
+      "total_cash": 122680.6
+    },
+    {
+      "history_date": "2025-03-15",
+      "total_assets": 1137637.84,
+      "total_liabilities": 489133.05,
+      "total_net_worth": 648504.8,
+      "total_investments": 138924.79,
+      "total_cash": 122322.59
+    },
+    {
+      "history_date": "2025-03-16",
+      "total_assets": 1140455.94,
+      "total_liabilities": 488992.84,
+      "total_net_worth": 651463.09,
+      "total_investments": 141182.59,
+      "total_cash": 122744.91
+    },
+    {
+      "history_date": "2025-03-17",
+      "total_assets": 1139583.08,
+      "total_liabilities": 488852.64,
+      "total_net_worth": 650730.44,
+      "total_investments": 139929.56,
+      "total_cash": 122987.1
+    },
+    {
+      "history_date": "2025-03-18",
+      "total_assets": 1140425.33,
+      "total_liabilities": 488712.44,
+      "total_net_worth": 651712.89,
+      "total_investments": 141037.86,
+      "total_cash": 122583.06
+    },
+    {
+      "history_date": "2025-03-19",
+      "total_assets": 1138835.69,
+      "total_liabilities": 488572.24,
+      "total_net_worth": 650263.45,
+      "total_investments": 139046.4,
+      "total_cash": 122846.91
+    },
+    {
+      "history_date": "2025-03-20",
+      "total_assets": 1140153.42,
+      "total_liabilities": 488432.04,
+      "total_net_worth": 651721.39,
+      "total_investments": 140126.04,
+      "total_cash": 122947.01
+    },
+    {
+      "history_date": "2025-03-21",
+      "total_assets": 1141542.57,
+      "total_liabilities": 488291.83,
+      "total_net_worth": 653250.74,
+      "total_investments": 141140.81,
+      "total_cash": 123183.42
+    },
+    {
+      "history_date": "2025-03-22",
+      "total_assets": 1142155.11,
+      "total_liabilities": 488151.63,
+      "total_net_worth": 654003.48,
+      "total_investments": 142003.99,
+      "total_cash": 122794.79
+    },
+    {
+      "history_date": "2025-03-23",
+      "total_assets": 1140939.11,
+      "total_liabilities": 488011.43,
+      "total_net_worth": 652927.68,
+      "total_investments": 140385.97,
+      "total_cash": 123058.83
+    },
+    {
+      "history_date": "2025-03-24",
+      "total_assets": 1142539.02,
+      "total_liabilities": 487871.23,
+      "total_net_worth": 654667.79,
+      "total_investments": 141849.08,
+      "total_cash": 123057.64
+    },
+    {
+      "history_date": "2025-03-25",
+      "total_assets": 1141019.41,
+      "total_liabilities": 487731.03,
+      "total_net_worth": 653288.38,
+      "total_investments": 139960.19,
+      "total_cash": 123288.94
+    },
+    {
+      "history_date": "2025-03-26",
+      "total_assets": 1141877.61,
+      "total_liabilities": 487590.83,
+      "total_net_worth": 654286.78,
+      "total_investments": 140745.14,
+      "total_cash": 123224.21
+    },
+    {
+      "history_date": "2025-03-27",
+      "total_assets": 1142189.11,
+      "total_liabilities": 487450.62,
+      "total_net_worth": 654738.48,
+      "total_investments": 140331.55,
+      "total_cash": 123811.32
+    },
+    {
+      "history_date": "2025-03-28",
+      "total_assets": 1143015.79,
+      "total_liabilities": 487310.42,
+      "total_net_worth": 655705.37,
+      "total_investments": 140998.45,
+      "total_cash": 123833.12
+    },
+    {
+      "history_date": "2025-03-29",
+      "total_assets": 1142985.98,
+      "total_liabilities": 487170.22,
+      "total_net_worth": 655815.76,
+      "total_investments": 141407.94,
+      "total_cash": 123255.84
+    },
+    {
+      "history_date": "2025-03-30",
+      "total_assets": 1145243.6,
+      "total_liabilities": 487030.02,
+      "total_net_worth": 658213.58,
+      "total_investments": 142827.9,
+      "total_cash": 123955.52
+    },
+    {
+      "history_date": "2025-03-31",
+      "total_assets": 1145522.92,
+      "total_liabilities": 486889.82,
+      "total_net_worth": 658633.11,
+      "total_investments": 142825.64,
+      "total_cash": 124099.12
+    },
+    {
+      "history_date": "2025-04-01",
+      "total_assets": 1144853.02,
+      "total_liabilities": 486749.61,
+      "total_net_worth": 658103.41,
+      "total_investments": 142554.47,
+      "total_cash": 123562.41
+    },
+    {
+      "history_date": "2025-04-02",
+      "total_assets": 1144107.64,
+      "total_liabilities": 486609.41,
+      "total_net_worth": 657498.23,
+      "total_investments": 141561.83,
+      "total_cash": 123671.69
+    },
+    {
+      "history_date": "2025-04-03",
+      "total_assets": 1144023.12,
+      "total_liabilities": 486469.21,
+      "total_net_worth": 657553.91,
+      "total_investments": 141392.08,
+      "total_cash": 123618.93
+    },
+    {
+      "history_date": "2025-04-04",
+      "total_assets": 1144987.15,
+      "total_liabilities": 486329.01,
+      "total_net_worth": 658658.14,
+      "total_investments": 141405.46,
+      "total_cash": 124431.6
+    },
+    {
+      "history_date": "2025-04-05",
+      "total_assets": 1144774.98,
+      "total_liabilities": 486188.81,
+      "total_net_worth": 658586.17,
+      "total_investments": 141144.97,
+      "total_cash": 124341.94
+    },
+    {
+      "history_date": "2025-04-06",
+      "total_assets": 1145332.3,
+      "total_liabilities": 486048.61,
+      "total_net_worth": 659283.7,
+      "total_investments": 141781.83,
+      "total_cash": 124124.42
+    },
+    {
+      "history_date": "2025-04-07",
+      "total_assets": 1147560.24,
+      "total_liabilities": 485908.4,
+      "total_net_worth": 661651.84,
+      "total_investments": 143342.53,
+      "total_cash": 124653.68
+    },
+    {
+      "history_date": "2025-04-08",
+      "total_assets": 1146428.32,
+      "total_liabilities": 485768.2,
+      "total_net_worth": 660660.12,
+      "total_investments": 142222.9,
+      "total_cash": 124503.4
+    },
+    {
+      "history_date": "2025-04-09",
+      "total_assets": 1145180.24,
+      "total_liabilities": 485628.0,
+      "total_net_worth": 659552.24,
+      "total_investments": 141102.87,
+      "total_cash": 124237.37
+    },
+    {
+      "history_date": "2025-04-10",
+      "total_assets": 1148093.17,
+      "total_liabilities": 485487.8,
+      "total_net_worth": 662605.37,
+      "total_investments": 143580.51,
+      "total_cash": 124534.67
+    },
+    {
+      "history_date": "2025-04-11",
+      "total_assets": 1147237.6,
+      "total_liabilities": 485347.6,
+      "total_net_worth": 661890.01,
+      "total_investments": 142380.6,
+      "total_cash": 124741.04
+    },
+    {
+      "history_date": "2025-04-12",
+      "total_assets": 1145940.49,
+      "total_liabilities": 485207.39,
+      "total_net_worth": 660733.1,
+      "total_investments": 141005.22,
+      "total_cash": 124681.33
+    },
+    {
+      "history_date": "2025-04-13",
+      "total_assets": 1147744.95,
+      "total_liabilities": 485067.19,
+      "total_net_worth": 662677.76,
+      "total_investments": 142385.53,
+      "total_cash": 124967.5
+    },
+    {
+      "history_date": "2025-04-14",
+      "total_assets": 1147074.89,
+      "total_liabilities": 484926.99,
+      "total_net_worth": 662147.9,
+      "total_investments": 141419.7,
+      "total_cash": 125125.27
+    },
+    {
+      "history_date": "2025-04-15",
+      "total_assets": 1146490.76,
+      "total_liabilities": 484786.79,
+      "total_net_worth": 661703.97,
+      "total_investments": 141246.22,
+      "total_cash": 124576.64
+    },
+    {
+      "history_date": "2025-04-16",
+      "total_assets": 1148670.93,
+      "total_liabilities": 484646.59,
+      "total_net_worth": 664024.34,
+      "total_investments": 142825.58,
+      "total_cash": 125039.48
+    },
+    {
+      "history_date": "2025-04-17",
+      "total_assets": 1147421.37,
+      "total_liabilities": 484506.39,
+      "total_net_worth": 662914.99,
+      "total_investments": 141810.97,
+      "total_cash": 124666.55
+    },
+    {
+      "history_date": "2025-04-18",
+      "total_assets": 1149722.4,
+      "total_liabilities": 484366.18,
+      "total_net_worth": 665356.22,
+      "total_investments": 143801.62,
+      "total_cash": 124838.94
+    },
+    {
+      "history_date": "2025-04-19",
+      "total_assets": 1149401.5,
+      "total_liabilities": 484225.98,
+      "total_net_worth": 665175.51,
+      "total_investments": 142972.87,
+      "total_cash": 125208.81
+    },
+    {
+      "history_date": "2025-04-20",
+      "total_assets": 1149108.5,
+      "total_liabilities": 484085.78,
+      "total_net_worth": 665022.72,
+      "total_investments": 142499.13,
+      "total_cash": 125251.57
+    },
+    {
+      "history_date": "2025-04-21",
+      "total_assets": 1149949.22,
+      "total_liabilities": 483945.58,
+      "total_net_worth": 666003.64,
+      "total_investments": 142849.71,
+      "total_cash": 125603.73
+    },
+    {
+      "history_date": "2025-04-22",
+      "total_assets": 1149081.73,
+      "total_liabilities": 483805.38,
+      "total_net_worth": 665276.35,
+      "total_investments": 141947.72,
+      "total_cash": 125500.25
+    },
+    {
+      "history_date": "2025-04-23",
+      "total_assets": 1149176.63,
+      "total_liabilities": 483665.17,
+      "total_net_worth": 665511.45,
+      "total_investments": 142089.63,
+      "total_cash": 125315.25
+    },
+    {
+      "history_date": "2025-04-24",
+      "total_assets": 1150630.35,
+      "total_liabilities": 483524.97,
+      "total_net_worth": 667105.38,
+      "total_investments": 143410.68,
+      "total_cash": 125309.95
+    },
+    {
+      "history_date": "2025-04-25",
+      "total_assets": 1150183.92,
+      "total_liabilities": 483384.77,
+      "total_net_worth": 666799.15,
+      "total_investments": 142393.44,
+      "total_cash": 125742.78
+    },
+    {
+      "history_date": "2025-04-26",
+      "total_assets": 1149470.79,
+      "total_liabilities": 483244.57,
+      "total_net_worth": 666226.22,
+      "total_investments": 141705.86,
+      "total_cash": 125579.24
+    },
+    {
+      "history_date": "2025-04-27",
+      "total_assets": 1152886.39,
+      "total_liabilities": 483104.37,
+      "total_net_worth": 669782.03,
+      "total_investments": 144481.9,
+      "total_cash": 126080.82
+    },
+    {
+      "history_date": "2025-04-28",
+      "total_assets": 1149758.66,
+      "total_liabilities": 482964.17,
+      "total_net_worth": 666794.49,
+      "total_investments": 141771.21,
+      "total_cash": 125525.8
+    },
+    {
+      "history_date": "2025-04-29",
+      "total_assets": 1151141.72,
+      "total_liabilities": 482823.96,
+      "total_net_worth": 668317.76,
+      "total_investments": 142368.88,
+      "total_cash": 126173.21
+    },
+    {
+      "history_date": "2025-04-30",
+      "total_assets": 1153159.28,
+      "total_liabilities": 482683.76,
+      "total_net_worth": 670475.52,
+      "total_investments": 144220.31,
+      "total_cash": 126201.35
+    },
+    {
+      "history_date": "2025-05-01",
+      "total_assets": 1151301.72,
+      "total_liabilities": 482543.56,
+      "total_net_worth": 668758.16,
+      "total_investments": 142730.66,
+      "total_cash": 125695.46
+    },
+    {
+      "history_date": "2025-05-02",
+      "total_assets": 1153346.93,
+      "total_liabilities": 482403.36,
+      "total_net_worth": 670943.57,
+      "total_investments": 144129.92,
+      "total_cash": 126203.43
+    },
+    {
+      "history_date": "2025-05-03",
+      "total_assets": 1153147.28,
+      "total_liabilities": 482263.16,
+      "total_net_worth": 670884.12,
+      "total_investments": 143494.01,
+      "total_cash": 126501.71
+    },
+    {
+      "history_date": "2025-05-04",
+      "total_assets": 1152718.83,
+      "total_liabilities": 482122.95,
+      "total_net_worth": 670595.88,
+      "total_investments": 143639.77,
+      "total_cash": 125789.52
+    },
+    {
+      "history_date": "2025-05-05",
+      "total_assets": 1153663.55,
+      "total_liabilities": 481982.75,
+      "total_net_worth": 671680.8,
+      "total_investments": 144141.94,
+      "total_cash": 126094.09
+    },
+    {
+      "history_date": "2025-05-06",
+      "total_assets": 1153946.24,
+      "total_liabilities": 481842.55,
+      "total_net_worth": 672103.69,
+      "total_investments": 143703.67,
+      "total_cash": 126677.06
+    },
+    {
+      "history_date": "2025-05-07",
+      "total_assets": 1151944.64,
+      "total_liabilities": 481702.35,
+      "total_net_worth": 670242.29,
+      "total_investments": 142151.56,
+      "total_cash": 126089.59
+    },
+    {
+      "history_date": "2025-05-08",
+      "total_assets": 1152437.51,
+      "total_liabilities": 481562.15,
+      "total_net_worth": 670875.37,
+      "total_investments": 142084.89,
+      "total_cash": 126511.16
+    },
+    {
+      "history_date": "2025-05-09",
+      "total_assets": 1153190.51,
+      "total_liabilities": 481421.94,
+      "total_net_worth": 671768.56,
+      "total_investments": 142587.29,
+      "total_cash": 126623.77
+    },
+    {
+      "history_date": "2025-05-10",
+      "total_assets": 1154409.26,
+      "total_liabilities": 481281.74,
+      "total_net_worth": 673127.51,
+      "total_investments": 143917.71,
+      "total_cash": 126374.12
+    },
+    {
+      "history_date": "2025-05-11",
+      "total_assets": 1154429.45,
+      "total_liabilities": 481141.54,
+      "total_net_worth": 673287.91,
+      "total_investments": 143680.28,
+      "total_cash": 126493.76
+    },
+    {
+      "history_date": "2025-05-12",
+      "total_assets": 1154728.29,
+      "total_liabilities": 481001.34,
+      "total_net_worth": 673726.95,
+      "total_investments": 143256.73,
+      "total_cash": 127078.17
+    },
+    {
+      "history_date": "2025-05-13",
+      "total_assets": 1155353.46,
+      "total_liabilities": 480861.14,
+      "total_net_worth": 674492.32,
+      "total_investments": 144323.02,
+      "total_cash": 126499.07
+    },
+    {
+      "history_date": "2025-05-14",
+      "total_assets": 1154463.71,
+      "total_liabilities": 480720.94,
+      "total_net_worth": 673742.78,
+      "total_investments": 143076.45,
+      "total_cash": 126717.9
+    },
+    {
+      "history_date": "2025-05-15",
+      "total_assets": 1153828.07,
+      "total_liabilities": 480580.73,
+      "total_net_worth": 673247.33,
+      "total_investments": 141835.94,
+      "total_cash": 127184.79
+    },
+    {
+      "history_date": "2025-05-16",
+      "total_assets": 1155510.1,
+      "total_liabilities": 480440.53,
+      "total_net_worth": 675069.57,
+      "total_investments": 143715.99,
+      "total_cash": 126848.78
+    },
+    {
+      "history_date": "2025-05-17",
+      "total_assets": 1156261.17,
+      "total_liabilities": 480300.33,
+      "total_net_worth": 675960.84,
+      "total_investments": 144025.97,
+      "total_cash": 127151.89
+    },
+    {
+      "history_date": "2025-05-18",
+      "total_assets": 1155108.04,
+      "total_liabilities": 480160.13,
+      "total_net_worth": 674947.91,
+      "total_investments": 143097.14,
+      "total_cash": 126789.62
+    },
+    {
+      "history_date": "2025-05-19",
+      "total_assets": 1154970.8,
+      "total_liabilities": 480019.93,
+      "total_net_worth": 674950.87,
+      "total_investments": 142051.83,
+      "total_cash": 127559.7
+    },
+    {
+      "history_date": "2025-05-20",
+      "total_assets": 1157363.35,
+      "total_liabilities": 479879.72,
+      "total_net_worth": 677483.63,
+      "total_investments": 144505.09,
+      "total_cash": 127361.01
+    },
+    {
+      "history_date": "2025-05-21",
+      "total_assets": 1157393.43,
+      "total_liabilities": 479739.52,
+      "total_net_worth": 677653.9,
+      "total_investments": 144296.32,
+      "total_cash": 127461.88
+    },
+    {
+      "history_date": "2025-05-22",
+      "total_assets": 1155200.09,
+      "total_liabilities": 479599.32,
+      "total_net_worth": 675600.76,
+      "total_investments": 142257.72,
+      "total_cash": 127169.16
+    },
+    {
+      "history_date": "2025-05-23",
+      "total_assets": 1156495.66,
+      "total_liabilities": 479459.12,
+      "total_net_worth": 677036.54,
+      "total_investments": 142726.75,
+      "total_cash": 127857.72
+    },
+    {
+      "history_date": "2025-05-24",
+      "total_assets": 1158113.32,
+      "total_liabilities": 479318.92,
+      "total_net_worth": 678794.4,
+      "total_investments": 144165.72,
+      "total_cash": 127898.42
+    },
+    {
+      "history_date": "2025-05-25",
+      "total_assets": 1158099.12,
+      "total_liabilities": 479178.72,
+      "total_net_worth": 678920.41,
+      "total_investments": 144462.71,
+      "total_cash": 127449.25
+    },
+    {
+      "history_date": "2025-05-26",
+      "total_assets": 1156289.81,
+      "total_liabilities": 479038.51,
+      "total_net_worth": 677251.3,
+      "total_investments": 142529.91,
+      "total_cash": 127434.76
+    },
+    {
+      "history_date": "2025-05-27",
+      "total_assets": 1158686.8,
+      "total_liabilities": 478898.31,
+      "total_net_worth": 679788.49,
+      "total_investments": 144092.52,
+      "total_cash": 128131.16
+    },
+    {
+      "history_date": "2025-05-28",
+      "total_assets": 1157567.45,
+      "total_liabilities": 478758.11,
+      "total_net_worth": 678809.34,
+      "total_investments": 142974.64,
+      "total_cash": 127991.71
+    },
+    {
+      "history_date": "2025-05-29",
+      "total_assets": 1157266.62,
+      "total_liabilities": 478617.91,
+      "total_net_worth": 678648.71,
+      "total_investments": 142217.12,
+      "total_cash": 128310.42
+    },
+    {
+      "history_date": "2025-05-30",
+      "total_assets": 1159604.72,
+      "total_liabilities": 478477.71,
+      "total_net_worth": 681127.01,
+      "total_investments": 144308.84,
+      "total_cash": 128418.81
+    },
+    {
+      "history_date": "2025-05-31",
+      "total_assets": 1159565.67,
+      "total_liabilities": 478337.5,
+      "total_net_worth": 681228.17,
+      "total_investments": 144136.32,
+      "total_cash": 128414.31
+    },
+    {
+      "history_date": "2025-06-01",
+      "total_assets": 1157316.4,
+      "total_liabilities": 478197.3,
+      "total_net_worth": 679119.1,
+      "total_investments": 141793.61,
+      "total_cash": 128369.76
+    },
+    {
+      "history_date": "2025-06-02",
+      "total_assets": 1158577.43,
+      "total_liabilities": 478057.1,
+      "total_net_worth": 680520.33,
+      "total_investments": 142689.93,
+      "total_cash": 128596.49
+    },
+    {
+      "history_date": "2025-06-03",
+      "total_assets": 1160110.9,
+      "total_liabilities": 477916.9,
+      "total_net_worth": 682194.0,
+      "total_investments": 144067.49,
+      "total_cash": 128614.42
+    },
+    {
+      "history_date": "2025-06-04",
+      "total_assets": 1159851.74,
+      "total_liabilities": 477776.7,
+      "total_net_worth": 682075.04,
+      "total_investments": 144076.83,
+      "total_cash": 128207.94
+    },
+    {
+      "history_date": "2025-06-05",
+      "total_assets": 1159848.3,
+      "total_liabilities": 477636.5,
+      "total_net_worth": 682211.8,
+      "total_investments": 143991.04,
+      "total_cash": 128152.3
+    },
+    {
+      "history_date": "2025-06-06",
+      "total_assets": 1160892.14,
+      "total_liabilities": 477496.29,
+      "total_net_worth": 683395.84,
+      "total_investments": 144225.17,
+      "total_cash": 128824.03
+    },
+    {
+      "history_date": "2025-06-07",
+      "total_assets": 1159124.98,
+      "total_liabilities": 477356.09,
+      "total_net_worth": 681768.88,
+      "total_investments": 142282.3,
+      "total_cash": 128861.76
+    },
+    {
+      "history_date": "2025-06-08",
+      "total_assets": 1159611.8,
+      "total_liabilities": 477215.89,
+      "total_net_worth": 682395.91,
+      "total_investments": 142968.94,
+      "total_cash": 128523.97
+    },
+    {
+      "history_date": "2025-06-09",
+      "total_assets": 1160733.12,
+      "total_liabilities": 477075.69,
+      "total_net_worth": 683657.43,
+      "total_investments": 143943.01,
+      "total_cash": 128533.22
+    },
+    {
+      "history_date": "2025-06-10",
+      "total_assets": 1158609.21,
+      "total_liabilities": 476935.49,
+      "total_net_worth": 681673.72,
+      "total_investments": 141637.36,
+      "total_cash": 128576.98
+    },
+    {
+      "history_date": "2025-06-11",
+      "total_assets": 1160238.52,
+      "total_liabilities": 476795.28,
+      "total_net_worth": 683443.23,
+      "total_investments": 142520.38,
+      "total_cash": 129185.29
+    },
+    {
+      "history_date": "2025-06-12",
+      "total_assets": 1161852.04,
+      "total_liabilities": 476655.08,
+      "total_net_worth": 685196.96,
+      "total_investments": 144392.78,
+      "total_cash": 128788.44
+    },
+    {
+      "history_date": "2025-06-13",
+      "total_assets": 1161173.38,
+      "total_liabilities": 476514.88,
+      "total_net_worth": 684658.5,
+      "total_investments": 143408.36,
+      "total_cash": 128956.21
+    },
+    {
+      "history_date": "2025-06-14",
+      "total_assets": 1162477.86,
+      "total_liabilities": 476374.68,
+      "total_net_worth": 686103.18,
+      "total_investments": 144394.3,
+      "total_cash": 129136.77
+    },
+    {
+      "history_date": "2025-06-15",
+      "total_assets": 1162205.52,
+      "total_liabilities": 476234.48,
+      "total_net_worth": 685971.04,
+      "total_investments": 144249.34,
+      "total_cash": 128871.4
+    },
+    {
+      "history_date": "2025-06-16",
+      "total_assets": 1162536.76,
+      "total_liabilities": 476094.28,
+      "total_net_worth": 686442.49,
+      "total_investments": 144320.7,
+      "total_cash": 128993.31
+    },
+    {
+      "history_date": "2025-06-17",
+      "total_assets": 1162771.12,
+      "total_liabilities": 475954.07,
+      "total_net_worth": 686817.05,
+      "total_investments": 144276.23,
+      "total_cash": 129134.16
+    },
+    {
+      "history_date": "2025-06-18",
+      "total_assets": 1160563.57,
+      "total_liabilities": 475813.87,
+      "total_net_worth": 684749.69,
+      "total_investments": 141724.08,
+      "total_cash": 129340.77
+    },
+    {
+      "history_date": "2025-06-19",
+      "total_assets": 1162492.28,
+      "total_liabilities": 475673.67,
+      "total_net_worth": 686818.61,
+      "total_investments": 143540.19,
+      "total_cash": 129315.39
+    },
+    {
+      "history_date": "2025-06-20",
+      "total_assets": 1162475.83,
+      "total_liabilities": 475533.47,
+      "total_net_worth": 686942.36,
+      "total_investments": 143156.23,
+      "total_cash": 129544.92
+    },
+    {
+      "history_date": "2025-06-21",
+      "total_assets": 1162060.9,
+      "total_liabilities": 475393.27,
+      "total_net_worth": 686667.64,
+      "total_investments": 142479.86,
+      "total_cash": 129668.38
+    },
+    {
+      "history_date": "2025-06-22",
+      "total_assets": 1161967.89,
+      "total_liabilities": 475253.06,
+      "total_net_worth": 686714.83,
+      "total_investments": 142071.78,
+      "total_cash": 129845.47
+    },
+    {
+      "history_date": "2025-06-23",
+      "total_assets": 1161579.46,
+      "total_liabilities": 475112.86,
+      "total_net_worth": 686466.59,
+      "total_investments": 141300.6,
+      "total_cash": 130090.23
+    },
+    {
+      "history_date": "2025-06-24",
+      "total_assets": 1163192.96,
+      "total_liabilities": 474972.66,
+      "total_net_worth": 688220.3,
+      "total_investments": 142869.71,
+      "total_cash": 129996.64
+    },
+    {
+      "history_date": "2025-06-25",
+      "total_assets": 1163945.0,
+      "total_liabilities": 474832.46,
+      "total_net_worth": 689112.54,
+      "total_investments": 143451.48,
+      "total_cash": 130028.93
+    },
+    {
+      "history_date": "2025-06-26",
+      "total_assets": 1162533.5,
+      "total_liabilities": 474692.26,
+      "total_net_worth": 687841.25,
+      "total_investments": 142311.19,
+      "total_cash": 129619.74
+    },
+    {
+      "history_date": "2025-06-27",
+      "total_assets": 1163819.12,
+      "total_liabilities": 474552.06,
+      "total_net_worth": 689267.06,
+      "total_investments": 143179.32,
+      "total_cash": 129899.25
+    },
+    {
+      "history_date": "2025-06-28",
+      "total_assets": 1163384.05,
+      "total_liabilities": 474411.85,
+      "total_net_worth": 688972.2,
+      "total_investments": 142120.69,
+      "total_cash": 130384.83
+    },
+    {
+      "history_date": "2025-06-29",
+      "total_assets": 1164337.41,
+      "total_liabilities": 474271.65,
+      "total_net_worth": 690065.76,
+      "total_investments": 143302.89,
+      "total_cash": 130018.01
+    },
+    {
+      "history_date": "2025-06-30",
+      "total_assets": 1163396.93,
+      "total_liabilities": 474131.45,
+      "total_net_worth": 689265.48,
+      "total_investments": 142066.64,
+      "total_cash": 130175.8
+    },
+    {
+      "history_date": "2025-07-01",
+      "total_assets": 1163772.31,
+      "total_liabilities": 473991.25,
+      "total_net_worth": 689781.06,
+      "total_investments": 142322.9,
+      "total_cash": 130156.94
+    },
+    {
+      "history_date": "2025-07-02",
+      "total_assets": 1163247.03,
+      "total_liabilities": 473851.05,
+      "total_net_worth": 689395.98,
+      "total_investments": 141488.47,
+      "total_cash": 130328.1
+    },
+    {
+      "history_date": "2025-07-03",
+      "total_assets": 1166052.2,
+      "total_liabilities": 473710.84,
+      "total_net_worth": 692341.36,
+      "total_investments": 143878.84,
+      "total_cash": 130604.93
+    },
+    {
+      "history_date": "2025-07-04",
+      "total_assets": 1166082.43,
+      "total_liabilities": 473570.64,
+      "total_net_worth": 692511.79,
+      "total_investments": 143749.2,
+      "total_cash": 130626.82
+    },
+    {
+      "history_date": "2025-07-05",
+      "total_assets": 1164436.5,
+      "total_liabilities": 473430.44,
+      "total_net_worth": 691006.06,
+      "total_investments": 141948.01,
+      "total_cash": 130644.08
+    },
+    {
+      "history_date": "2025-07-06",
+      "total_assets": 1163529.16,
+      "total_liabilities": 473290.24,
+      "total_net_worth": 690238.92,
+      "total_investments": 141040.18,
+      "total_cash": 130506.6
+    },
+    {
+      "history_date": "2025-07-07",
+      "total_assets": 1165228.79,
+      "total_liabilities": 473150.04,
+      "total_net_worth": 692078.75,
+      "total_investments": 142296.04,
+      "total_cash": 130812.38
+    },
+    {
+      "history_date": "2025-07-08",
+      "total_assets": 1165996.14,
+      "total_liabilities": 473009.83,
+      "total_net_worth": 692986.31,
+      "total_investments": 142946.08,
+      "total_cash": 130791.72
+    },
+    {
+      "history_date": "2025-07-09",
+      "total_assets": 1165359.18,
+      "total_liabilities": 472869.63,
+      "total_net_worth": 692489.55,
+      "total_investments": 142300.84,
+      "total_cash": 130662.02
+    },
+    {
+      "history_date": "2025-07-10",
+      "total_assets": 1166195.65,
+      "total_liabilities": 472729.43,
+      "total_net_worth": 693466.22,
+      "total_investments": 142378.01,
+      "total_cash": 131283.33
+    },
+    {
+      "history_date": "2025-07-11",
+      "total_assets": 1166762.33,
+      "total_liabilities": 472589.23,
+      "total_net_worth": 694173.1,
+      "total_investments": 143320.56,
+      "total_cash": 130769.47
+    },
+    {
+      "history_date": "2025-07-12",
+      "total_assets": 1165127.56,
+      "total_liabilities": 472449.03,
+      "total_net_worth": 692678.53,
+      "total_investments": 141199.88,
+      "total_cash": 131117.41
+    },
+    {
+      "history_date": "2025-07-13",
+      "total_assets": 1166804.38,
+      "total_liabilities": 472308.83,
+      "total_net_worth": 694495.55,
+      "total_investments": 142811.59,
+      "total_cash": 131044.53
+    },
+    {
+      "history_date": "2025-07-14",
+      "total_assets": 1167884.4,
+      "total_liabilities": 472168.62,
+      "total_net_worth": 695715.78,
+      "total_investments": 143349.55,
+      "total_cash": 131448.62
+    },
+    {
+      "history_date": "2025-07-15",
+      "total_assets": 1167230.25,
+      "total_liabilities": 472028.42,
+      "total_net_worth": 695201.82,
+      "total_investments": 142907.28,
+      "total_cash": 131098.75
+    },
+    {
+      "history_date": "2025-07-16",
+      "total_assets": 1165866.02,
+      "total_liabilities": 471888.22,
+      "total_net_worth": 693977.8,
+      "total_investments": 141493.91,
+      "total_cash": 131009.91
+    },
+    {
+      "history_date": "2025-07-17",
+      "total_assets": 1166562.43,
+      "total_liabilities": 471748.02,
+      "total_net_worth": 694814.41,
+      "total_investments": 141620.44,
+      "total_cash": 131441.81
+    },
+    {
+      "history_date": "2025-07-18",
+      "total_assets": 1168234.28,
+      "total_liabilities": 471607.82,
+      "total_net_worth": 696626.47,
+      "total_investments": 143404.83,
+      "total_cash": 131191.29
+    },
+    {
+      "history_date": "2025-07-19",
+      "total_assets": 1167592.39,
+      "total_liabilities": 471467.61,
+      "total_net_worth": 696124.78,
+      "total_investments": 142108.08,
+      "total_cash": 131708.17
+    },
+    {
+      "history_date": "2025-07-20",
+      "total_assets": 1167197.19,
+      "total_liabilities": 471327.41,
+      "total_net_worth": 695869.77,
+      "total_investments": 141450.29,
+      "total_cash": 131832.77
+    },
+    {
+      "history_date": "2025-07-21",
+      "total_assets": 1167928.53,
+      "total_liabilities": 471187.21,
+      "total_net_worth": 696741.31,
+      "total_investments": 142334.21,
+      "total_cash": 131542.21
+    },
+    {
+      "history_date": "2025-07-22",
+      "total_assets": 1168422.44,
+      "total_liabilities": 471047.01,
+      "total_net_worth": 697375.43,
+      "total_investments": 142809.57,
+      "total_cash": 131422.78
+    },
+    {
+      "history_date": "2025-07-23",
+      "total_assets": 1169522.0,
+      "total_liabilities": 470906.81,
+      "total_net_worth": 698615.19,
+      "total_investments": 143088.21,
+      "total_cash": 132105.72
+    },
+    {
+      "history_date": "2025-07-24",
+      "total_assets": 1167544.67,
+      "total_liabilities": 470766.61,
+      "total_net_worth": 696778.06,
+      "total_investments": 141177.48,
+      "total_cash": 131901.13
+    },
+    {
+      "history_date": "2025-07-25",
+      "total_assets": 1168385.38,
+      "total_liabilities": 470626.4,
+      "total_net_worth": 697758.98,
+      "total_investments": 141382.63,
+      "total_cash": 132398.71
+    },
+    {
+      "history_date": "2025-07-26",
+      "total_assets": 1168883.12,
+      "total_liabilities": 470486.2,
+      "total_net_worth": 698396.92,
+      "total_investments": 142397.26,
+      "total_cash": 131743.84
+    },
+    {
+      "history_date": "2025-07-27",
+      "total_assets": 1168936.9,
+      "total_liabilities": 470346.0,
+      "total_net_worth": 698590.9,
+      "total_investments": 141603.23,
+      "total_cash": 132453.67
+    },
+    {
+      "history_date": "2025-07-28",
+      "total_assets": 1169726.44,
+      "total_liabilities": 470205.8,
+      "total_net_worth": 699520.64,
+      "total_investments": 142220.99,
+      "total_cash": 132487.46
+    },
+    {
+      "history_date": "2025-07-29",
+      "total_assets": 1170715.43,
+      "total_liabilities": 470065.6,
+      "total_net_worth": 700649.84,
+      "total_investments": 142851.5,
+      "total_cash": 132707.97
+    },
+    {
+      "history_date": "2025-07-30",
+      "total_assets": 1170687.07,
+      "total_liabilities": 469925.39,
+      "total_net_worth": 700761.68,
+      "total_investments": 142644.1,
+      "total_cash": 132749.02
+    },
+    {
+      "history_date": "2025-07-31",
+      "total_assets": 1171511.18,
+      "total_liabilities": 469785.19,
+      "total_net_worth": 701725.98,
+      "total_investments": 143528.81,
+      "total_cash": 132550.44
+    },
+    {
+      "history_date": "2025-08-01",
+      "total_assets": 1171133.23,
+      "total_liabilities": 469644.99,
+      "total_net_worth": 701488.24,
+      "total_investments": 143027.85,
+      "total_cash": 132535.47
+    },
+    {
+      "history_date": "2025-08-02",
+      "total_assets": 1171717.38,
+      "total_liabilities": 469504.79,
+      "total_net_worth": 702212.59,
+      "total_investments": 143368.21,
+      "total_cash": 132641.28
+    },
+    {
+      "history_date": "2025-08-03",
+      "total_assets": 1172292.84,
+      "total_liabilities": 469364.59,
+      "total_net_worth": 702928.25,
+      "total_investments": 143577.73,
+      "total_cash": 132869.24
+    },
+    {
+      "history_date": "2025-08-04",
+      "total_assets": 1170876.17,
+      "total_liabilities": 469224.39,
+      "total_net_worth": 701651.78,
+      "total_investments": 142339.32,
+      "total_cash": 132553.0
+    },
+    {
+      "history_date": "2025-08-05",
+      "total_assets": 1170729.46,
+      "total_liabilities": 469084.18,
+      "total_net_worth": 701645.28,
+      "total_investments": 141680.53,
+      "total_cash": 132927.1
+    },
+    {
+      "history_date": "2025-08-06",
+      "total_assets": 1172398.93,
+      "total_liabilities": 468943.98,
+      "total_net_worth": 703454.95,
+      "total_investments": 143233.77,
+      "total_cash": 132905.34
+    },
+    {
+      "history_date": "2025-08-07",
+      "total_assets": 1172017.09,
+      "total_liabilities": 468803.78,
+      "total_net_worth": 703213.31,
+      "total_investments": 142839.98,
+      "total_cash": 132779.31
+    },
+    {
+      "history_date": "2025-08-08",
+      "total_assets": 1170627.69,
+      "total_liabilities": 468663.58,
+      "total_net_worth": 701964.11,
+      "total_investments": 141232.37,
+      "total_cash": 132859.55
+    },
+    {
+      "history_date": "2025-08-09",
+      "total_assets": 1171461.24,
+      "total_liabilities": 468523.38,
+      "total_net_worth": 702937.86,
+      "total_investments": 141829.42,
+      "total_cash": 132958.06
+    },
+    {
+      "history_date": "2025-08-10",
+      "total_assets": 1172344.08,
+      "total_liabilities": 468383.17,
+      "total_net_worth": 703960.9,
+      "total_investments": 142648.01,
+      "total_cash": 132884.32
+    },
+    {
+      "history_date": "2025-08-11",
+      "total_assets": 1172107.48,
+      "total_liabilities": 468242.97,
+      "total_net_worth": 703864.51,
+      "total_investments": 141757.64,
+      "total_cash": 133400.11
+    },
+    {
+      "history_date": "2025-08-12",
+      "total_assets": 1173247.55,
+      "total_liabilities": 468102.77,
+      "total_net_worth": 705144.78,
+      "total_investments": 143192.17,
+      "total_cash": 132967.67
+    },
+    {
+      "history_date": "2025-08-13",
+      "total_assets": 1172982.5,
+      "total_liabilities": 467962.57,
+      "total_net_worth": 705019.93,
+      "total_investments": 142335.11,
+      "total_cash": 133421.7
+    },
+    {
+      "history_date": "2025-08-14",
+      "total_assets": 1172977.53,
+      "total_liabilities": 467822.37,
+      "total_net_worth": 705155.16,
+      "total_investments": 142389.45,
+      "total_cash": 133224.41
+    },
+    {
+      "history_date": "2025-08-15",
+      "total_assets": 1173790.1,
+      "total_liabilities": 467682.17,
+      "total_net_worth": 706107.93,
+      "total_investments": 142434.3,
+      "total_cash": 133854.15
+    },
+    {
+      "history_date": "2025-08-16",
+      "total_assets": 1174351.43,
+      "total_liabilities": 467541.96,
+      "total_net_worth": 706809.47,
+      "total_investments": 142953.77,
+      "total_cash": 133758.02
+    },
+    {
+      "history_date": "2025-08-17",
+      "total_assets": 1175460.23,
+      "total_liabilities": 467401.76,
+      "total_net_worth": 708058.47,
+      "total_investments": 143797.21,
+      "total_cash": 133885.41
+    },
+    {
+      "history_date": "2025-08-18",
+      "total_assets": 1173687.74,
+      "total_liabilities": 467261.56,
+      "total_net_worth": 706426.18,
+      "total_investments": 142423.16,
+      "total_cash": 133348.98
+    },
+    {
+      "history_date": "2025-08-19",
+      "total_assets": 1174449.58,
+      "total_liabilities": 467121.36,
+      "total_net_worth": 707328.22,
+      "total_investments": 142377.63,
+      "total_cash": 134018.38
+    },
+    {
+      "history_date": "2025-08-20",
+      "total_assets": 1176346.56,
+      "total_liabilities": 466981.16,
+      "total_net_worth": 709365.41,
+      "total_investments": 143905.33,
+      "total_cash": 134249.67
+    },
+    {
+      "history_date": "2025-08-21",
+      "total_assets": 1175147.0,
+      "total_liabilities": 466840.95,
+      "total_net_worth": 708306.05,
+      "total_investments": 142661.19,
+      "total_cash": 134156.27
+    },
+    {
+      "history_date": "2025-08-22",
+      "total_assets": 1175662.56,
+      "total_liabilities": 466700.75,
+      "total_net_worth": 708961.81,
+      "total_investments": 143082.85,
+      "total_cash": 134112.19
+    },
+    {
+      "history_date": "2025-08-23",
+      "total_assets": 1174647.03,
+      "total_liabilities": 466560.55,
+      "total_net_worth": 708086.48,
+      "total_investments": 142165.07,
+      "total_cash": 133876.45
+    },
+    {
+      "history_date": "2025-08-24",
+      "total_assets": 1163044.82,
+      "total_liabilities": 466420.35,
+      "total_net_worth": 696624.47,
+      "total_investments": 130505.87,
+      "total_cash": 133795.47
+    },
+    {
+      "history_date": "2025-08-25",
+      "total_assets": 1163529.72,
+      "total_liabilities": 466280.15,
+      "total_net_worth": 697249.57,
+      "total_investments": 130261.36,
+      "total_cash": 134386.89
+    },
+    {
+      "history_date": "2025-08-26",
+      "total_assets": 1163582.73,
+      "total_liabilities": 466139.94,
+      "total_net_worth": 697442.78,
+      "total_investments": 130516.33,
+      "total_cash": 134046.94
+    },
+    {
+      "history_date": "2025-08-27",
+      "total_assets": 1164003.95,
+      "total_liabilities": 465999.74,
+      "total_net_worth": 698004.2,
+      "total_investments": 130758.18,
+      "total_cash": 134088.34
+    },
+    {
+      "history_date": "2025-08-28",
+      "total_assets": 1164648.6,
+      "total_liabilities": 465859.54,
+      "total_net_worth": 698789.05,
+      "total_investments": 131274.04,
+      "total_cash": 134079.14
+    },
+    {
+      "history_date": "2025-08-29",
+      "total_assets": 1164670.6,
+      "total_liabilities": 465719.34,
+      "total_net_worth": 698951.27,
+      "total_investments": 130656.8,
+      "total_cash": 134580.41
+    },
+    {
+      "history_date": "2025-08-30",
+      "total_assets": 1163916.5,
+      "total_liabilities": 465579.14,
+      "total_net_worth": 698337.36,
+      "total_investments": 129630.7,
+      "total_cash": 134714.43
+    },
+    {
+      "history_date": "2025-08-31",
+      "total_assets": 1164365.93,
+      "total_liabilities": 465438.94,
+      "total_net_worth": 698926.99,
+      "total_investments": 130015.65,
+      "total_cash": 134640.92
+    },
+    {
+      "history_date": "2025-09-01",
+      "total_assets": 1164321.34,
+      "total_liabilities": 465298.73,
+      "total_net_worth": 699022.61,
+      "total_investments": 129827.83,
+      "total_cash": 134646.17
+    },
+    {
+      "history_date": "2025-09-02",
+      "total_assets": 1165034.39,
+      "total_liabilities": 465158.53,
+      "total_net_worth": 699875.85,
+      "total_investments": 130373.37,
+      "total_cash": 134675.7
+    },
+    {
+      "history_date": "2025-09-03",
+      "total_assets": 1166983.41,
+      "total_liabilities": 465018.33,
+      "total_net_worth": 701965.08,
+      "total_investments": 132071.26,
+      "total_cash": 134788.85
+    },
+    {
+      "history_date": "2025-09-04",
+      "total_assets": 1167599.26,
+      "total_liabilities": 464878.13,
+      "total_net_worth": 702721.13,
+      "total_investments": 132115.55,
+      "total_cash": 135222.42
+    },
+    {
+      "history_date": "2025-09-05",
+      "total_assets": 1165801.55,
+      "total_liabilities": 464737.93,
+      "total_net_worth": 701063.62,
+      "total_investments": 130708.54,
+      "total_cash": 134693.74
+    },
+    {
+      "history_date": "2025-09-06",
+      "total_assets": 1165762.7,
+      "total_liabilities": 464597.72,
+      "total_net_worth": 701164.97,
+      "total_investments": 130094.37,
+      "total_cash": 135131.08
+    },
+    {
+      "history_date": "2025-09-07",
+      "total_assets": 1168803.84,
+      "total_liabilities": 464457.52,
+      "total_net_worth": 704346.32,
+      "total_investments": 133077.77,
+      "total_cash": 135050.84
+    },
+    {
+      "history_date": "2025-09-08",
+      "total_assets": 1168402.01,
+      "total_liabilities": 464317.32,
+      "total_net_worth": 704084.69,
+      "total_investments": 132121.61,
+      "total_cash": 135467.19
+    },
+    {
+      "history_date": "2025-09-09",
+      "total_assets": 1168676.88,
+      "total_liabilities": 464177.12,
+      "total_net_worth": 704499.76,
+      "total_investments": 132208.77,
+      "total_cash": 135516.92
+    },
+    {
+      "history_date": "2025-09-10",
+      "total_assets": 1169409.43,
+      "total_liabilities": 464036.92,
+      "total_net_worth": 705372.51,
+      "total_investments": 133175.9,
+      "total_cash": 135144.35
+    },
+    {
+      "history_date": "2025-09-11",
+      "total_assets": 1166914.53,
+      "total_liabilities": 463896.72,
+      "total_net_worth": 703017.82,
+      "total_investments": 130509.28,
+      "total_cash": 135178.1
+    },
+    {
+      "history_date": "2025-09-12",
+      "total_assets": 1167940.06,
+      "total_liabilities": 463756.51,
+      "total_net_worth": 704183.54,
+      "total_investments": 130911.83,
+      "total_cash": 135663.09
+    },
+    {
+      "history_date": "2025-09-13",
+      "total_assets": 1169176.38,
+      "total_liabilities": 463616.31,
+      "total_net_worth": 705560.07,
+      "total_investments": 132300.04,
+      "total_cash": 135373.22
+    },
+    {
+      "history_date": "2025-09-14",
+      "total_assets": 1170319.66,
+      "total_liabilities": 463476.11,
+      "total_net_worth": 706843.55,
+      "total_investments": 132794.86,
+      "total_cash": 135883.7
+    },
+    {
+      "history_date": "2025-09-15",
+      "total_assets": 1168921.41,
+      "total_liabilities": 463335.91,
+      "total_net_worth": 705585.5,
+      "total_investments": 131315.01,
+      "total_cash": 135827.31
+    },
+    {
+      "history_date": "2025-09-16",
+      "total_assets": 1170553.28,
+      "total_liabilities": 463195.71,
+      "total_net_worth": 707357.57,
+      "total_investments": 133131.74,
+      "total_cash": 135504.47
+    },
+    {
+      "history_date": "2025-09-17",
+      "total_assets": 1171754.19,
+      "total_liabilities": 463055.5,
+      "total_net_worth": 708698.68,
+      "total_investments": 133443.19,
+      "total_cash": 136255.95
+    },
+    {
+      "history_date": "2025-09-18",
+      "total_assets": 1169207.11,
+      "total_liabilities": 462915.3,
+      "total_net_worth": 706291.8,
+      "total_investments": 131438.03,
+      "total_cash": 135576.05
+    },
+    {
+      "history_date": "2025-09-19",
+      "total_assets": 1170646.19,
+      "total_liabilities": 462775.1,
+      "total_net_worth": 707871.09,
+      "total_investments": 132146.47,
+      "total_cash": 136168.71
+    },
+    {
+      "history_date": "2025-09-20",
+      "total_assets": 1172652.32,
+      "total_liabilities": 462634.9,
+      "total_net_worth": 710017.42,
+      "total_investments": 134167.84,
+      "total_cash": 136015.49
+    },
+    {
+      "history_date": "2025-09-21",
+      "total_assets": 1171993.44,
+      "total_liabilities": 462494.7,
+      "total_net_worth": 709498.74,
+      "total_investments": 133556.17,
+      "total_cash": 135830.29
+    },
+    {
+      "history_date": "2025-09-22",
+      "total_assets": 1172682.48,
+      "total_liabilities": 462354.5,
+      "total_net_worth": 710327.98,
+      "total_investments": 133594.91,
+      "total_cash": 136342.62
+    },
+    {
+      "history_date": "2025-09-23",
+      "total_assets": 1171376.84,
+      "total_liabilities": 462214.29,
+      "total_net_worth": 709162.54,
+      "total_investments": 131963.76,
+      "total_cash": 136530.14
+    },
+    {
+      "history_date": "2025-09-24",
+      "total_assets": 1173781.48,
+      "total_liabilities": 462074.09,
+      "total_net_worth": 711707.39,
+      "total_investments": 134296.75,
+      "total_cash": 136463.82
+    },
+    {
+      "history_date": "2025-09-25",
+      "total_assets": 1172254.43,
+      "total_liabilities": 461933.89,
+      "total_net_worth": 710320.54,
+      "total_investments": 132253.64,
+      "total_cash": 136841.89
+    },
+    {
+      "history_date": "2025-09-26",
+      "total_assets": 1174034.6,
+      "total_liabilities": 461793.69,
+      "total_net_worth": 712240.91,
+      "total_investments": 134333.81,
+      "total_cash": 136403.91
+    },
+    {
+      "history_date": "2025-09-27",
+      "total_assets": 1173335.0,
+      "total_liabilities": 461653.49,
+      "total_net_worth": 711681.51,
+      "total_investments": 133406.2,
+      "total_cash": 136493.93
+    },
+    {
+      "history_date": "2025-09-28",
+      "total_assets": 1173874.99,
+      "total_liabilities": 461513.28,
+      "total_net_worth": 712361.7,
+      "total_investments": 133760.35,
+      "total_cash": 136541.79
+    },
+    {
+      "history_date": "2025-09-29",
+      "total_assets": 1175613.79,
+      "total_liabilities": 461373.08,
+      "total_net_worth": 714240.71,
+      "total_investments": 134904.96,
+      "total_cash": 136998.0
+    },
+    {
+      "history_date": "2025-09-30",
+      "total_assets": 1173857.89,
+      "total_liabilities": 461232.88,
+      "total_net_worth": 712625.01,
+      "total_investments": 132828.99,
+      "total_cash": 137180.1
+    },
+    {
+      "history_date": "2025-10-01",
+      "total_assets": 1175662.92,
+      "total_liabilities": 461092.68,
+      "total_net_worth": 714570.24,
+      "total_investments": 134530.37,
+      "total_cash": 137145.76
+    },
+    {
+      "history_date": "2025-10-02",
+      "total_assets": 1175903.18,
+      "total_liabilities": 460952.48,
+      "total_net_worth": 714950.7,
+      "total_investments": 134875.89,
+      "total_cash": 136902.52
+    },
+    {
+      "history_date": "2025-10-03",
+      "total_assets": 1176750.12,
+      "total_liabilities": 460812.28,
+      "total_net_worth": 715937.84,
+      "total_investments": 135089.53,
+      "total_cash": 137397.84
+    },
+    {
+      "history_date": "2025-10-04",
+      "total_assets": 1175596.92,
+      "total_liabilities": 460672.07,
+      "total_net_worth": 714924.84,
+      "total_investments": 133852.84,
+      "total_cash": 137343.35
+    },
+    {
+      "history_date": "2025-10-05",
+      "total_assets": 1176480.3,
+      "total_liabilities": 460531.87,
+      "total_net_worth": 715948.43,
+      "total_investments": 134786.66,
+      "total_cash": 137154.92
+    },
+    {
+      "history_date": "2025-10-06",
+      "total_assets": 1176725.22,
+      "total_liabilities": 460391.67,
+      "total_net_worth": 716333.56,
+      "total_investments": 134624.26,
+      "total_cash": 137424.27
+    },
+    {
+      "history_date": "2025-10-07",
+      "total_assets": 1176679.45,
+      "total_liabilities": 460251.47,
+      "total_net_worth": 716427.98,
+      "total_investments": 134272.62,
+      "total_cash": 137592.15
+    },
+    {
+      "history_date": "2025-10-08",
+      "total_assets": 1178088.79,
+      "total_liabilities": 460111.27,
+      "total_net_worth": 717977.53,
+      "total_investments": 136084.69,
+      "total_cash": 137051.44
+    },
+    {
+      "history_date": "2025-10-09",
+      "total_assets": 1178722.62,
+      "total_liabilities": 459971.06,
+      "total_net_worth": 718751.56,
+      "total_investments": 136383.45,
+      "total_cash": 137248.53
+    },
+    {
+      "history_date": "2025-10-10",
+      "total_assets": 1178139.78,
+      "total_liabilities": 459830.86,
+      "total_net_worth": 718308.91,
+      "total_investments": 135298.12,
+      "total_cash": 137613.04
+    },
+    {
+      "history_date": "2025-10-11",
+      "total_assets": 1177781.9,
+      "total_liabilities": 459690.66,
+      "total_net_worth": 718091.24,
+      "total_investments": 135196.23,
+      "total_cash": 137219.06
+    },
+    {
+      "history_date": "2025-10-12",
+      "total_assets": 1179666.35,
+      "total_liabilities": 459550.46,
+      "total_net_worth": 720115.89,
+      "total_investments": 136748.86,
+      "total_cash": 137412.9
+    },
+    {
+      "history_date": "2025-10-13",
+      "total_assets": 1178631.78,
+      "total_liabilities": 459410.26,
+      "total_net_worth": 719221.52,
+      "total_investments": 135012.18,
+      "total_cash": 137977.03
+    },
+    {
+      "history_date": "2025-10-14",
+      "total_assets": 1179445.26,
+      "total_liabilities": 459270.06,
+      "total_net_worth": 720175.2,
+      "total_investments": 135550.36,
+      "total_cash": 138114.35
+    },
+    {
+      "history_date": "2025-10-15",
+      "total_assets": 1180400.81,
+      "total_liabilities": 459129.85,
+      "total_net_worth": 721270.96,
+      "total_investments": 136779.84,
+      "total_cash": 137702.44
+    },
+    {
+      "history_date": "2025-10-16",
+      "total_assets": 1179262.27,
+      "total_liabilities": 458989.65,
+      "total_net_worth": 720272.62,
+      "total_investments": 134894.55,
+      "total_cash": 138311.2
+    },
+    {
+      "history_date": "2025-10-17",
+      "total_assets": 1192023.13,
+      "total_liabilities": 458849.45,
+      "total_net_worth": 733173.68,
+      "total_investments": 147628.5,
+      "total_cash": 138200.14
+    },
+    {
+      "history_date": "2025-10-18",
+      "total_assets": 1193623.16,
+      "total_liabilities": 458709.25,
+      "total_net_worth": 734913.91,
+      "total_investments": 148988.74,
+      "total_cash": 138301.94
+    },
+    {
+      "history_date": "2025-10-19",
+      "total_assets": 1194509.48,
+      "total_liabilities": 458569.05,
+      "total_net_worth": 735940.44,
+      "total_investments": 149755.56,
+      "total_cash": 138283.47
+    },
+    {
+      "history_date": "2025-10-20",
+      "total_assets": 1194414.56,
+      "total_liabilities": 458428.84,
+      "total_net_worth": 735985.71,
+      "total_investments": 149333.7,
+      "total_cash": 138472.42
+    },
+    {
+      "history_date": "2025-10-21",
+      "total_assets": 1193160.22,
+      "total_liabilities": 458288.64,
+      "total_net_worth": 734871.58,
+      "total_investments": 148327.12,
+      "total_cash": 138086.68
+    },
+    {
+      "history_date": "2025-10-22",
+      "total_assets": 1195385.24,
+      "total_liabilities": 458148.44,
+      "total_net_worth": 737236.8,
+      "total_investments": 150275.13,
+      "total_cash": 138225.7
+    },
+    {
+      "history_date": "2025-10-23",
+      "total_assets": 1195577.37,
+      "total_liabilities": 458008.24,
+      "total_net_worth": 737569.13,
+      "total_investments": 150124.31,
+      "total_cash": 138430.67
+    },
+    {
+      "history_date": "2025-10-24",
+      "total_assets": 1195776.11,
+      "total_liabilities": 457868.04,
+      "total_net_worth": 737908.07,
+      "total_investments": 150151.94,
+      "total_cash": 138463.8
+    },
+    {
+      "history_date": "2025-10-25",
+      "total_assets": 1196726.24,
+      "total_liabilities": 457727.83,
+      "total_net_worth": 738998.4,
+      "total_investments": 150968.53,
+      "total_cash": 138459.36
+    },
+    {
+      "history_date": "2025-10-26",
+      "total_assets": 1196941.3,
+      "total_liabilities": 457587.63,
+      "total_net_worth": 739353.67,
+      "total_investments": 151022.18,
+      "total_cash": 138482.79
+    },
+    {
+      "history_date": "2025-10-27",
+      "total_assets": 1195875.81,
+      "total_liabilities": 457447.43,
+      "total_net_worth": 738428.38,
+      "total_investments": 149867.59,
+      "total_cash": 138433.91
+    },
+    {
+      "history_date": "2025-10-28",
+      "total_assets": 1196094.81,
+      "total_liabilities": 457307.23,
+      "total_net_worth": 738787.58,
+      "total_investments": 149878.16,
+      "total_cash": 138504.36
+    },
+    {
+      "history_date": "2025-10-29",
+      "total_assets": 1198021.99,
+      "total_liabilities": 457167.03,
+      "total_net_worth": 740854.96,
+      "total_investments": 151081.92,
+      "total_cash": 139089.8
+    },
+    {
+      "history_date": "2025-10-30",
+      "total_assets": 1196943.79,
+      "total_liabilities": 457026.83,
+      "total_net_worth": 739916.96,
+      "total_investments": 150231.04,
+      "total_cash": 138724.48
+    },
+    {
+      "history_date": "2025-10-31",
+      "total_assets": 1198635.77,
+      "total_liabilities": 456886.62,
+      "total_net_worth": 741749.14,
+      "total_investments": 151307.15,
+      "total_cash": 139202.37
+    },
+    {
+      "history_date": "2025-11-01",
+      "total_assets": 1200335.83,
+      "total_liabilities": 456746.42,
+      "total_net_worth": 743589.41,
+      "total_investments": 152957.87,
+      "total_cash": 139113.75
+    },
+    {
+      "history_date": "2025-11-02",
+      "total_assets": 1198343.97,
+      "total_liabilities": 456606.22,
+      "total_net_worth": 741737.75,
+      "total_investments": 151095.98,
+      "total_cash": 138845.79
+    },
+    {
+      "history_date": "2025-11-03",
+      "total_assets": 1198586.43,
+      "total_liabilities": 456466.02,
+      "total_net_worth": 742120.41,
+      "total_investments": 151027.56,
+      "total_cash": 139018.68
+    },
+    {
+      "history_date": "2025-11-04",
+      "total_assets": 1198778.12,
+      "total_liabilities": 456325.82,
+      "total_net_worth": 742452.3,
+      "total_investments": 151180.61,
+      "total_cash": 138919.35
+    },
+    {
+      "history_date": "2025-11-05",
+      "total_assets": 1200444.63,
+      "total_liabilities": 456185.61,
+      "total_net_worth": 744259.02,
+      "total_investments": 152429.68,
+      "total_cash": 139198.81
+    },
+    {
+      "history_date": "2025-11-06",
+      "total_assets": 1202381.03,
+      "total_liabilities": 456045.41,
+      "total_net_worth": 746335.62,
+      "total_investments": 153933.53,
+      "total_cash": 139493.38
+    },
+    {
+      "history_date": "2025-11-07",
+      "total_assets": 1201629.41,
+      "total_liabilities": 455905.21,
+      "total_net_worth": 745724.2,
+      "total_investments": 153314.26,
+      "total_cash": 139223.04
+    },
+    {
+      "history_date": "2025-11-08",
+      "total_assets": 1202839.84,
+      "total_liabilities": 455765.01,
+      "total_net_worth": 747074.83,
+      "total_investments": 154023.7,
+      "total_cash": 139586.05
+    },
+    {
+      "history_date": "2025-11-09",
+      "total_assets": 1203332.39,
+      "total_liabilities": 455624.81,
+      "total_net_worth": 747707.58,
+      "total_investments": 154240.39,
+      "total_cash": 139723.93
+    },
+    {
+      "history_date": "2025-11-10",
+      "total_assets": 1202445.25,
+      "total_liabilities": 455484.61,
+      "total_net_worth": 746960.64,
+      "total_investments": 153250.81,
+      "total_cash": 139688.38
+    },
+    {
+      "history_date": "2025-11-11",
+      "total_assets": 1201705.61,
+      "total_liabilities": 455344.4,
+      "total_net_worth": 746361.2,
+      "total_investments": 152613.13,
+      "total_cash": 139448.44
+    },
+    {
+      "history_date": "2025-11-12",
+      "total_assets": 1204706.4,
+      "total_liabilities": 455204.2,
+      "total_net_worth": 749502.2,
+      "total_investments": 155063.53,
+      "total_cash": 139860.85
+    },
+    {
+      "history_date": "2025-11-13",
+      "total_assets": 1204711.23,
+      "total_liabilities": 455064.0,
+      "total_net_worth": 749647.23,
+      "total_investments": 154920.66,
+      "total_cash": 139870.57
+    },
+    {
+      "history_date": "2025-11-14",
+      "total_assets": 1203097.95,
+      "total_liabilities": 454923.8,
+      "total_net_worth": 748174.15,
+      "total_investments": 152915.08,
+      "total_cash": 140124.89
+    },
+    {
+      "history_date": "2025-11-15",
+      "total_assets": 1203074.56,
+      "total_liabilities": 454783.6,
+      "total_net_worth": 748290.96,
+      "total_investments": 153066.57,
+      "total_cash": 139812.02
+    },
+    {
+      "history_date": "2025-11-16",
+      "total_assets": 1205129.86,
+      "total_liabilities": 454643.39,
+      "total_net_worth": 750486.46,
+      "total_investments": 154788.85,
+      "total_cash": 140007.06
+    },
+    {
+      "history_date": "2025-11-17",
+      "total_assets": 1206682.78,
+      "total_liabilities": 454503.19,
+      "total_net_worth": 752179.58,
+      "total_investments": 156280.77,
+      "total_cash": 139930.08
+    },
+    {
+      "history_date": "2025-11-18",
+      "total_assets": 1206818.21,
+      "total_liabilities": 454362.99,
+      "total_net_worth": 752455.22,
+      "total_investments": 155816.6,
+      "total_cash": 140391.71
+    },
+    {
+      "history_date": "2025-11-19",
+      "total_assets": 1207017.86,
+      "total_liabilities": 454222.79,
+      "total_net_worth": 752795.07,
+      "total_investments": 156111.44,
+      "total_cash": 140158.53
+    },
+    {
+      "history_date": "2025-11-20",
+      "total_assets": 1206830.47,
+      "total_liabilities": 454082.59,
+      "total_net_worth": 752747.88,
+      "total_investments": 155534.87,
+      "total_cash": 140409.72
+    },
+    {
+      "history_date": "2025-11-21",
+      "total_assets": 1207350.0,
+      "total_liabilities": 453942.39,
+      "total_net_worth": 753407.62,
+      "total_investments": 155517.38,
+      "total_cash": 140808.78
+    },
+    {
+      "history_date": "2025-11-22",
+      "total_assets": 1208957.35,
+      "total_liabilities": 453802.18,
+      "total_net_worth": 755155.17,
+      "total_investments": 157359.24,
+      "total_cash": 140436.28
+    },
+    {
+      "history_date": "2025-11-23",
+      "total_assets": 1208537.84,
+      "total_liabilities": 453661.98,
+      "total_net_worth": 754875.86,
+      "total_investments": 156487.02,
+      "total_cash": 140751.01
+    },
+    {
+      "history_date": "2025-11-24",
+      "total_assets": 1209592.44,
+      "total_liabilities": 453521.78,
+      "total_net_worth": 756070.66,
+      "total_investments": 157061.94,
+      "total_cash": 141092.71
+    },
+    {
+      "history_date": "2025-11-25",
+      "total_assets": 1207858.33,
+      "total_liabilities": 453381.58,
+      "total_net_worth": 754476.75,
+      "total_investments": 155707.77,
+      "total_cash": 140574.78
+    },
+    {
+      "history_date": "2025-11-26",
+      "total_assets": 1209589.65,
+      "total_liabilities": 453241.38,
+      "total_net_worth": 756348.27,
+      "total_investments": 157272.94,
+      "total_cash": 140602.94
+    },
+    {
+      "history_date": "2025-11-27",
+      "total_assets": 1208516.34,
+      "total_liabilities": 453101.17,
+      "total_net_worth": 755415.17,
+      "total_investments": 156055.92,
+      "total_cash": 140608.68
+    },
+    {
+      "history_date": "2025-11-28",
+      "total_assets": 1208744.6,
+      "total_liabilities": 452960.97,
+      "total_net_worth": 755783.62,
+      "total_investments": 155774.51,
+      "total_cash": 140980.36
+    },
+    {
+      "history_date": "2025-11-29",
+      "total_assets": 1210804.56,
+      "total_liabilities": 452820.77,
+      "total_net_worth": 757983.79,
+      "total_investments": 157752.56,
+      "total_cash": 140924.29
+    },
+    {
+      "history_date": "2025-11-30",
+      "total_assets": 1210500.05,
+      "total_liabilities": 452680.57,
+      "total_net_worth": 757819.48,
+      "total_investments": 156906.19,
+      "total_cash": 141328.18
+    },
+    {
+      "history_date": "2025-12-01",
+      "total_assets": 1212132.11,
+      "total_liabilities": 452540.37,
+      "total_net_worth": 759591.74,
+      "total_investments": 158531.27,
+      "total_cash": 141197.17
+    },
+    {
+      "history_date": "2025-12-02",
+      "total_assets": 1212899.76,
+      "total_liabilities": 452400.17,
+      "total_net_worth": 760499.59,
+      "total_investments": 158713.7,
+      "total_cash": 141644.4
+    },
+    {
+      "history_date": "2025-12-03",
+      "total_assets": 1213396.92,
+      "total_liabilities": 452259.96,
+      "total_net_worth": 761136.96,
+      "total_investments": 159240.63,
+      "total_cash": 141476.65
+    },
+    {
+      "history_date": "2025-12-04",
+      "total_assets": 1213707.8,
+      "total_liabilities": 452119.76,
+      "total_net_worth": 761588.03,
+      "total_investments": 159095.31,
+      "total_cash": 141794.87
+    },
+    {
+      "history_date": "2025-12-05",
+      "total_assets": 1213136.92,
+      "total_liabilities": 451979.56,
+      "total_net_worth": 761157.36,
+      "total_investments": 158626.41,
+      "total_cash": 141554.92
+    },
+    {
+      "history_date": "2025-12-06",
+      "total_assets": 1214527.64,
+      "total_liabilities": 451839.36,
+      "total_net_worth": 762688.28,
+      "total_investments": 159516.73,
+      "total_cash": 141917.33
+    },
+    {
+      "history_date": "2025-12-07",
+      "total_assets": 1214829.29,
+      "total_liabilities": 451699.16,
+      "total_net_worth": 763130.13,
+      "total_investments": 160278.67,
+      "total_cash": 141319.05
+    },
+    {
+      "history_date": "2025-12-08",
+      "total_assets": 1213501.88,
+      "total_liabilities": 451558.95,
+      "total_net_worth": 761942.92,
+      "total_investments": 158552.99,
+      "total_cash": 141579.35
+    },
+    {
+      "history_date": "2025-12-09",
+      "total_assets": 1215880.49,
+      "total_liabilities": 451418.75,
+      "total_net_worth": 764461.74,
+      "total_investments": 160513.02,
+      "total_cash": 141859.95
+    },
+    {
+      "history_date": "2025-12-10",
+      "total_assets": 1214602.74,
+      "total_liabilities": 451278.55,
+      "total_net_worth": 763324.19,
+      "total_investments": 159381.84,
+      "total_cash": 141575.4
+    },
+    {
+      "history_date": "2025-12-11",
+      "total_assets": 1216690.99,
+      "total_liabilities": 451138.35,
+      "total_net_worth": 765552.65,
+      "total_investments": 160800.47,
+      "total_cash": 142107.03
+    },
+    {
+      "history_date": "2025-12-12",
+      "total_assets": 1217727.04,
+      "total_liabilities": 450998.15,
+      "total_net_worth": 766728.89,
+      "total_investments": 161786.62,
+      "total_cash": 142018.96
+    },
+    {
+      "history_date": "2025-12-13",
+      "total_assets": 1216504.08,
+      "total_liabilities": 450857.94,
+      "total_net_worth": 765646.13,
+      "total_investments": 160690.37,
+      "total_cash": 141754.26
+    },
+    {
+      "history_date": "2025-12-14",
+      "total_assets": 1215883.68,
+      "total_liabilities": 450717.74,
+      "total_net_worth": 765165.93,
+      "total_investments": 159579.38,
+      "total_cash": 142106.86
+    },
+    {
+      "history_date": "2025-12-15",
+      "total_assets": 1217018.87,
+      "total_liabilities": 450577.54,
+      "total_net_worth": 766441.32,
+      "total_investments": 160650.59,
+      "total_cash": 142032.86
+    },
+    {
+      "history_date": "2025-12-16",
+      "total_assets": 1217347.38,
+      "total_liabilities": 450437.34,
+      "total_net_worth": 766910.04,
+      "total_investments": 160200.56,
+      "total_cash": 142673.43
+    },
+    {
+      "history_date": "2025-12-17",
+      "total_assets": 1219688.26,
+      "total_liabilities": 450297.14,
+      "total_net_worth": 769391.13,
+      "total_investments": 162641.5,
+      "total_cash": 142435.39
+    },
+    {
+      "history_date": "2025-12-18",
+      "total_assets": 1220811.96,
+      "total_liabilities": 450156.94,
+      "total_net_worth": 770655.02,
+      "total_investments": 163216.38,
+      "total_cash": 142846.22
+    },
+    {
+      "history_date": "2025-12-19",
+      "total_assets": 1219846.68,
+      "total_liabilities": 450016.73,
+      "total_net_worth": 769829.95,
+      "total_investments": 162625.85,
+      "total_cash": 142333.5
+    },
+    {
+      "history_date": "2025-12-20",
+      "total_assets": 1218807.3,
+      "total_liabilities": 449876.53,
+      "total_net_worth": 768930.77,
+      "total_investments": 160987.75,
+      "total_cash": 142794.24
+    },
+    {
+      "history_date": "2025-12-21",
+      "total_assets": 1220442.4,
+      "total_liabilities": 449736.33,
+      "total_net_worth": 770706.07,
+      "total_investments": 162497.34,
+      "total_cash": 142781.76
+    },
+    {
+      "history_date": "2025-12-22",
+      "total_assets": 1221830.57,
+      "total_liabilities": 449596.13,
+      "total_net_worth": 772234.44,
+      "total_investments": 164052.21,
+      "total_cash": 142477.07
+    },
+    {
+      "history_date": "2025-12-23",
+      "total_assets": 1221657.01,
+      "total_liabilities": 449455.93,
+      "total_net_worth": 772201.09,
+      "total_investments": 163306.71,
+      "total_cash": 142911.04
+    },
+    {
+      "history_date": "2025-12-24",
+      "total_assets": 1221388.51,
+      "total_liabilities": 449315.72,
+      "total_net_worth": 772072.79,
+      "total_investments": 163263.73,
+      "total_cash": 142547.54
+    },
+    {
+      "history_date": "2025-12-25",
+      "total_assets": 1221599.69,
+      "total_liabilities": 449175.52,
+      "total_net_worth": 772424.16,
+      "total_investments": 163071.94,
+      "total_cash": 142812.52
+    },
+    {
+      "history_date": "2025-12-26",
+      "total_assets": 1223417.13,
+      "total_liabilities": 449035.32,
+      "total_net_worth": 774381.81,
+      "total_investments": 164260.53,
+      "total_cash": 143303.39
+    },
+    {
+      "history_date": "2025-12-27",
+      "total_assets": 1222720.5,
+      "total_liabilities": 448895.12,
+      "total_net_worth": 773825.38,
+      "total_investments": 163485.83,
+      "total_cash": 143243.47
+    },
+    {
+      "history_date": "2025-12-28",
+      "total_assets": 1223241.23,
+      "total_liabilities": 448754.92,
+      "total_net_worth": 774486.32,
+      "total_investments": 163596.04,
+      "total_cash": 143516.02
+    },
+    {
+      "history_date": "2025-12-29",
+      "total_assets": 1224924.2,
+      "total_liabilities": 448614.72,
+      "total_net_worth": 776309.49,
+      "total_investments": 165385.78,
+      "total_cash": 143271.27
+    },
+    {
+      "history_date": "2025-12-30",
+      "total_assets": 1224114.81,
+      "total_liabilities": 448474.51,
+      "total_net_worth": 775640.3,
+      "total_investments": 164555.54,
+      "total_cash": 143154.14
+    },
+    {
+      "history_date": "2025-12-31",
+      "total_assets": 1224691.19,
+      "total_liabilities": 448334.31,
+      "total_net_worth": 776356.87,
+      "total_investments": 164398.07,
+      "total_cash": 143750.0
+    },
+    {
+      "history_date": "2026-01-01",
+      "total_assets": 1225007.62,
+      "total_liabilities": 448194.11,
+      "total_net_worth": 776813.51,
+      "total_investments": 164869.66,
+      "total_cash": 143456.86
+    },
+    {
+      "history_date": "2026-01-02",
+      "total_assets": 1227293.04,
+      "total_liabilities": 448053.91,
+      "total_net_worth": 779239.14,
+      "total_investments": 166831.32,
+      "total_cash": 143642.64
+    },
+    {
+      "history_date": "2026-01-03",
+      "total_assets": 1226217.59,
+      "total_liabilities": 447913.71,
+      "total_net_worth": 778303.88,
+      "total_investments": 165742.08,
+      "total_cash": 143518.44
+    },
+    {
+      "history_date": "2026-01-04",
+      "total_assets": 1225564.13,
+      "total_liabilities": 447773.5,
+      "total_net_worth": 777790.62,
+      "total_investments": 164920.48,
+      "total_cash": 143548.6
+    },
+    {
+      "history_date": "2026-01-05",
+      "total_assets": 1227899.64,
+      "total_liabilities": 447633.3,
+      "total_net_worth": 780266.34,
+      "total_investments": 166835.78,
+      "total_cash": 143830.83
+    },
+    {
+      "history_date": "2026-01-06",
+      "total_assets": 1228011.08,
+      "total_liabilities": 447493.1,
+      "total_net_worth": 780517.98,
+      "total_investments": 167075.39,
+      "total_cash": 143564.68
+    },
+    {
+      "history_date": "2026-01-07",
+      "total_assets": 1228403.6,
+      "total_liabilities": 447352.9,
+      "total_net_worth": 781050.7,
+      "total_investments": 166679.3,
+      "total_cash": 144215.3
+    },
+    {
+      "history_date": "2026-01-08",
+      "total_assets": 1228327.89,
+      "total_liabilities": 447212.7,
+      "total_net_worth": 781115.2,
+      "total_investments": 166577.83,
+      "total_cash": 144103.1
+    },
+    {
+      "history_date": "2026-01-09",
+      "total_assets": 1228045.75,
+      "total_liabilities": 447072.5,
+      "total_net_worth": 780973.25,
+      "total_investments": 165866.45,
+      "total_cash": 144394.34
+    },
+    {
+      "history_date": "2026-01-10",
+      "total_assets": 1229338.53,
+      "total_liabilities": 446932.29,
+      "total_net_worth": 782406.23,
+      "total_investments": 167537.0,
+      "total_cash": 143878.59
+    },
+    {
+      "history_date": "2026-01-11",
+      "total_assets": 1228687.64,
+      "total_liabilities": 446792.09,
+      "total_net_worth": 781895.55,
+      "total_investments": 166427.56,
+      "total_cash": 144199.16
+    },
+    {
+      "history_date": "2026-01-12",
+      "total_assets": 1229922.48,
+      "total_liabilities": 446651.89,
+      "total_net_worth": 783270.59,
+      "total_investments": 167819.2,
+      "total_cash": 143904.38
+    },
+    {
+      "history_date": "2026-01-13",
+      "total_assets": 1232315.01,
+      "total_liabilities": 446511.69,
+      "total_net_worth": 785803.32,
+      "total_investments": 169346.64,
+      "total_cash": 144631.49
+    },
+    {
+      "history_date": "2026-01-14",
+      "total_assets": 1230537.89,
+      "total_liabilities": 446371.49,
+      "total_net_worth": 784166.41,
+      "total_investments": 167996.58,
+      "total_cash": 144066.45
+    },
+    {
+      "history_date": "2026-01-15",
+      "total_assets": 1232372.14,
+      "total_liabilities": 446231.28,
+      "total_net_worth": 786140.85,
+      "total_investments": 169316.78,
+      "total_cash": 144442.51
+    },
+    {
+      "history_date": "2026-01-16",
+      "total_assets": 1232468.32,
+      "total_liabilities": 446091.08,
+      "total_net_worth": 786377.24,
+      "total_investments": 169195.26,
+      "total_cash": 144522.24
+    },
+    {
+      "history_date": "2026-01-17",
+      "total_assets": 1231844.96,
+      "total_liabilities": 445950.88,
+      "total_net_worth": 785894.07,
+      "total_investments": 168101.9,
+      "total_cash": 144854.25
+    },
+    {
+      "history_date": "2026-01-18",
+      "total_assets": 1233894.57,
+      "total_liabilities": 445810.68,
+      "total_net_worth": 788083.89,
+      "total_investments": 170415.0,
+      "total_cash": 144452.78
+    },
+    {
+      "history_date": "2026-01-19",
+      "total_assets": 1233162.34,
+      "total_liabilities": 445670.48,
+      "total_net_worth": 787491.87,
+      "total_investments": 169361.57,
+      "total_cash": 144636.0
+    },
+    {
+      "history_date": "2026-01-20",
+      "total_assets": 1234786.04,
+      "total_liabilities": 445530.28,
+      "total_net_worth": 789255.77,
+      "total_investments": 170676.24,
+      "total_cash": 144807.05
+    },
+    {
+      "history_date": "2026-01-21",
+      "total_assets": 1235369.32,
+      "total_liabilities": 445390.07,
+      "total_net_worth": 789979.25,
+      "total_investments": 170765.57,
+      "total_cash": 145163.01
+    },
+    {
+      "history_date": "2026-01-22",
+      "total_assets": 1233946.66,
+      "total_liabilities": 445249.87,
+      "total_net_worth": 788696.79,
+      "total_investments": 169192.82,
+      "total_cash": 145175.12
+    },
+    {
+      "history_date": "2026-01-23",
+      "total_assets": 1234895.32,
+      "total_liabilities": 445109.67,
+      "total_net_worth": 789785.65,
+      "total_investments": 169816.77,
+      "total_cash": 145361.85
+    },
+    {
+      "history_date": "2026-01-24",
+      "total_assets": 1235500.36,
+      "total_liabilities": 444969.47,
+      "total_net_worth": 790530.9,
+      "total_investments": 170303.47,
+      "total_cash": 145342.22
+    },
+    {
+      "history_date": "2026-01-25",
+      "total_assets": 1234836.15,
+      "total_liabilities": 444829.27,
+      "total_net_worth": 790006.88,
+      "total_investments": 169847.53,
+      "total_cash": 144995.95
+    },
+    {
+      "history_date": "2026-01-26",
+      "total_assets": 1236715.94,
+      "total_liabilities": 444689.06,
+      "total_net_worth": 792026.88,
+      "total_investments": 170957.74,
+      "total_cash": 145627.56
+    },
+    {
+      "history_date": "2026-01-27",
+      "total_assets": 1236164.51,
+      "total_liabilities": 444548.86,
+      "total_net_worth": 791615.65,
+      "total_investments": 170877.24,
+      "total_cash": 145018.65
+    },
+    {
+      "history_date": "2026-01-28",
+      "total_assets": 1236882.49,
+      "total_liabilities": 444408.66,
+      "total_net_worth": 792473.83,
+      "total_investments": 171228.68,
+      "total_cash": 145247.2
+    },
+    {
+      "history_date": "2026-01-29",
+      "total_assets": 1237494.99,
+      "total_liabilities": 444268.46,
+      "total_net_worth": 793226.53,
+      "total_investments": 171473.22,
+      "total_cash": 145477.18
+    },
+    {
+      "history_date": "2026-01-30",
+      "total_assets": 1237444.42,
+      "total_liabilities": 444128.26,
+      "total_net_worth": 793316.16,
+      "total_investments": 171390.66,
+      "total_cash": 145371.18
+    },
+    {
+      "history_date": "2026-01-31",
+      "total_assets": 1237366.21,
+      "total_liabilities": 443988.06,
+      "total_net_worth": 793378.15,
+      "total_investments": 170802.57,
+      "total_cash": 145743.09
+    },
+    {
+      "history_date": "2026-02-01",
+      "total_assets": 1238540.29,
+      "total_liabilities": 443847.85,
+      "total_net_worth": 794692.44,
+      "total_investments": 172138.49,
+      "total_cash": 145443.27
+    },
+    {
+      "history_date": "2026-02-02",
+      "total_assets": 1239400.51,
+      "total_liabilities": 443707.65,
+      "total_net_worth": 795692.86,
+      "total_investments": 172941.32,
+      "total_cash": 145362.67
+    },
+    {
+      "history_date": "2026-02-03",
+      "total_assets": 1240245.28,
+      "total_liabilities": 443567.45,
+      "total_net_worth": 796677.83,
+      "total_investments": 173047.52,
+      "total_cash": 145963.26
+    },
+    {
+      "history_date": "2026-02-04",
+      "total_assets": 1240592.92,
+      "total_liabilities": 443427.25,
+      "total_net_worth": 797165.68,
+      "total_investments": 173441.17,
+      "total_cash": 145779.28
+    },
+    {
+      "history_date": "2026-02-05",
+      "total_assets": 1240906.67,
+      "total_liabilities": 443287.05,
+      "total_net_worth": 797619.62,
+      "total_investments": 173197.87,
+      "total_cash": 146198.34
+    },
+    {
+      "history_date": "2026-02-06",
+      "total_assets": 1241988.1,
+      "total_liabilities": 443146.84,
+      "total_net_worth": 798841.25,
+      "total_investments": 174330.32,
+      "total_cash": 146009.34
+    },
+    {
+      "history_date": "2026-02-07",
+      "total_assets": 1239597.57,
+      "total_liabilities": 443006.64,
+      "total_net_worth": 796590.93,
+      "total_investments": 171724.91,
+      "total_cash": 146086.24
+    },
+    {
+      "history_date": "2026-02-08",
+      "total_assets": 1241929.3,
+      "total_liabilities": 442866.44,
+      "total_net_worth": 799062.86,
+      "total_investments": 173553.41,
+      "total_cash": 146451.49
+    },
+    {
+      "history_date": "2026-02-09",
+      "total_assets": 1242824.38,
+      "total_liabilities": 442726.24,
+      "total_net_worth": 800098.15,
+      "total_investments": 174582.69,
+      "total_cash": 146179.31
+    },
+    {
+      "history_date": "2026-02-10",
+      "total_assets": 1242201.16,
+      "total_liabilities": 442586.04,
+      "total_net_worth": 799615.12,
+      "total_investments": 173736.86,
+      "total_cash": 146263.94
+    },
+    {
+      "history_date": "2026-02-11",
+      "total_assets": 1243139.4,
+      "total_liabilities": 442445.83,
+      "total_net_worth": 800693.57,
+      "total_investments": 174503.34,
+      "total_cash": 146297.71
+    },
+    {
+      "history_date": "2026-02-12",
+      "total_assets": 1243126.23,
+      "total_liabilities": 442305.63,
+      "total_net_worth": 800820.59,
+      "total_investments": 174485.35,
+      "total_cash": 146164.54
+    },
+    {
+      "history_date": "2026-02-13",
+      "total_assets": 1243619.08,
+      "total_liabilities": 442165.43,
+      "total_net_worth": 801453.65,
+      "total_investments": 174117.02,
+      "total_cash": 146887.75
+    },
+    {
+      "history_date": "2026-02-14",
+      "total_assets": 1243398.13,
+      "total_liabilities": 442025.23,
+      "total_net_worth": 801372.9,
+      "total_investments": 173907.95,
+      "total_cash": 146737.88
+    },
+    {
+      "history_date": "2026-02-15",
+      "total_assets": 1244834.06,
+      "total_liabilities": 441885.03,
+      "total_net_worth": 802949.03,
+      "total_investments": 175007.32,
+      "total_cash": 146936.46
+    },
+    {
+      "history_date": "2026-02-16",
+      "total_assets": 1245824.64,
+      "total_liabilities": 441744.83,
+      "total_net_worth": 804079.82,
+      "total_investments": 175782.54,
+      "total_cash": 147013.85
+    },
+    {
+      "history_date": "2026-02-17",
+      "total_assets": 1244373.56,
+      "total_liabilities": 441604.62,
+      "total_net_worth": 802768.94,
+      "total_investments": 174556.29,
+      "total_cash": 146651.04
+    },
+    {
+      "history_date": "2026-02-18",
+      "total_assets": 1246112.08,
+      "total_liabilities": 441464.42,
+      "total_net_worth": 804647.66,
+      "total_investments": 175731.3,
+      "total_cash": 147076.56
+    },
+    {
+      "history_date": "2026-02-19",
+      "total_assets": 1246367.39,
+      "total_liabilities": 441324.22,
+      "total_net_worth": 805043.17,
+      "total_investments": 176356.1,
+      "total_cash": 146569.09
+    },
+    {
+      "history_date": "2026-02-20",
+      "total_assets": 1244838.26,
+      "total_liabilities": 441184.02,
+      "total_net_worth": 803654.24,
+      "total_investments": 174141.45,
+      "total_cash": 147116.63
+    },
+    {
+      "history_date": "2026-02-21",
+      "total_assets": 1248032.2,
+      "total_liabilities": 441043.82,
+      "total_net_worth": 806988.38,
+      "total_investments": 176833.06,
+      "total_cash": 147480.97
+    },
+    {
+      "history_date": "2026-02-22",
+      "total_assets": 1247438.3,
+      "total_liabilities": 440903.61,
+      "total_net_worth": 806534.68,
+      "total_investments": 176480.62,
+      "total_cash": 147101.53
+    },
+    {
+      "history_date": "2026-02-23",
+      "total_assets": 1246048.02,
+      "total_liabilities": 440763.41,
+      "total_net_worth": 805284.61,
+      "total_investments": 174721.21,
+      "total_cash": 147332.69
+    },
+    {
+      "history_date": "2026-02-24",
+      "total_assets": 1248558.7,
+      "total_liabilities": 440623.21,
+      "total_net_worth": 807935.49,
+      "total_investments": 177174.62,
+      "total_cash": 147251.96
+    },
+    {
+      "history_date": "2026-02-25",
+      "total_assets": 1248764.25,
+      "total_liabilities": 440483.01,
+      "total_net_worth": 808281.24,
+      "total_investments": 176803.07,
+      "total_cash": 147691.09
+    },
+    {
+      "history_date": "2026-02-26",
+      "total_assets": 1247123.18,
+      "total_liabilities": 440342.81,
+      "total_net_worth": 806780.38,
+      "total_investments": 175038.52,
+      "total_cash": 147676.59
+    },
+    {
+      "history_date": "2026-02-27",
+      "total_assets": 1247881.93,
+      "total_liabilities": 440202.61,
+      "total_net_worth": 807679.33,
+      "total_investments": 175924.99,
+      "total_cash": 147410.88
+    },
+    {
+      "history_date": "2026-02-28",
+      "total_assets": 1247929.79,
+      "total_liabilities": 440062.4,
+      "total_net_worth": 807867.38,
+      "total_investments": 175638.48,
+      "total_cash": 147607.27
+    },
+    {
+      "history_date": "2026-03-01",
+      "total_assets": 1249743.06,
+      "total_liabilities": 439922.2,
+      "total_net_worth": 809820.86,
+      "total_investments": 177033.36,
+      "total_cash": 147887.69
+    },
+    {
+      "history_date": "2026-03-02",
+      "total_assets": 1248355.57,
+      "total_liabilities": 439782.0,
+      "total_net_worth": 808573.57,
+      "total_investments": 176007.39,
+      "total_cash": 147388.17
+    },
+    {
+      "history_date": "2026-03-03",
+      "total_assets": 1251219.29,
+      "total_liabilities": 439641.8,
+      "total_net_worth": 811577.49,
+      "total_investments": 178229.21,
+      "total_cash": 147892.1
+    },
+    {
+      "history_date": "2026-03-04",
+      "total_assets": 1249939.35,
+      "total_liabilities": 439501.6,
+      "total_net_worth": 810437.76,
+      "total_investments": 176505.47,
+      "total_cash": 148197.92
+    },
+    {
+      "history_date": "2026-03-05",
+      "total_assets": 1249638.68,
+      "total_liabilities": 439361.39,
+      "total_net_worth": 810277.29,
+      "total_investments": 176356.83,
+      "total_cash": 147907.91
+    },
+    {
+      "history_date": "2026-03-06",
+      "total_assets": 1250150.57,
+      "total_liabilities": 439221.19,
+      "total_net_worth": 810929.37,
+      "total_investments": 176824.06,
+      "total_cash": 147814.58
+    },
+    {
+      "history_date": "2026-03-07",
+      "total_assets": 1250211.22,
+      "total_liabilities": 439080.99,
+      "total_net_worth": 811130.23,
+      "total_investments": 176235.95,
+      "total_cash": 148325.36
+    },
+    {
+      "history_date": "2026-03-08",
+      "total_assets": 1253095.84,
+      "total_liabilities": 438940.79,
+      "total_net_worth": 814155.05,
+      "total_investments": 179012.88,
+      "total_cash": 148295.07
+    },
+    {
+      "history_date": "2026-03-09",
+      "total_assets": 1251046.48,
+      "total_liabilities": 438800.59,
+      "total_net_worth": 812245.89,
+      "total_investments": 176942.91,
+      "total_cash": 148177.7
+    },
+    {
+      "history_date": "2026-03-10",
+      "total_assets": 1252058.4,
+      "total_liabilities": 438660.39,
+      "total_net_worth": 813398.02,
+      "total_investments": 177628.85,
+      "total_cash": 148365.7
+    },
+    {
+      "history_date": "2026-03-11",
+      "total_assets": 1253134.3,
+      "total_liabilities": 438520.18,
+      "total_net_worth": 814614.12,
+      "total_investments": 178626.05,
+      "total_cash": 148306.42
+    },
+    {
+      "history_date": "2026-03-12",
+      "total_assets": 1252653.99,
+      "total_liabilities": 438379.98,
+      "total_net_worth": 814274.0,
+      "total_investments": 177599.62,
+      "total_cash": 148714.55
+    },
+    {
+      "history_date": "2026-03-13",
+      "total_assets": 1252467.58,
+      "total_liabilities": 438239.78,
+      "total_net_worth": 814227.8,
+      "total_investments": 177572.4,
+      "total_cash": 148417.39
+    },
+    {
+      "history_date": "2026-03-14",
+      "total_assets": 1253521.73,
+      "total_liabilities": 438099.58,
+      "total_net_worth": 815422.15,
+      "total_investments": 178535.22,
+      "total_cash": 148370.73
+    },
+    {
+      "history_date": "2026-03-15",
+      "total_assets": 1254383.13,
+      "total_liabilities": 437959.38,
+      "total_net_worth": 816423.75,
+      "total_investments": 178917.22,
+      "total_cash": 148712.14
+    },
+    {
+      "history_date": "2026-03-16",
+      "total_assets": 1255732.47,
+      "total_liabilities": 437819.17,
+      "total_net_worth": 817913.3,
+      "total_investments": 180280.92,
+      "total_cash": 148559.81
+    },
+    {
+      "history_date": "2026-03-17",
+      "total_assets": 1256303.2,
+      "total_liabilities": 437678.97,
+      "total_net_worth": 818624.23,
+      "total_investments": 180351.94,
+      "total_cash": 148921.54
+    },
+    {
+      "history_date": "2026-03-18",
+      "total_assets": 1254466.78,
+      "total_liabilities": 437538.77,
+      "total_net_worth": 816928.01,
+      "total_investments": 178380.05,
+      "total_cash": 148919.03
+    },
+    {
+      "history_date": "2026-03-19",
+      "total_assets": 1256148.14,
+      "total_liabilities": 437398.57,
+      "total_net_worth": 818749.57,
+      "total_investments": 179709.1,
+      "total_cash": 149133.35
+    },
+    {
+      "history_date": "2026-03-20",
+      "total_assets": 1254468.18,
+      "total_liabilities": 437258.37,
+      "total_net_worth": 817209.81,
+      "total_investments": 177930.44,
+      "total_cash": 149094.07
+    },
+    {
+      "history_date": "2026-03-21",
+      "total_assets": 1256348.07,
+      "total_liabilities": 437118.17,
+      "total_net_worth": 819229.9,
+      "total_investments": 179362.82,
+      "total_cash": 149403.6
+    },
+    {
+      "history_date": "2026-03-22",
+      "total_assets": 1255952.97,
+      "total_liabilities": 436977.96,
+      "total_net_worth": 818975.01,
+      "total_investments": 178842.65,
+      "total_cash": 149390.69
+    },
+    {
+      "history_date": "2026-03-23",
+      "total_assets": 1256857.25,
+      "total_liabilities": 436837.76,
+      "total_net_worth": 820019.49,
+      "total_investments": 179894.84,
+      "total_cash": 149104.79
+    },
+    {
+      "history_date": "2026-03-24",
+      "total_assets": 1257468.21,
+      "total_liabilities": 436697.56,
+      "total_net_worth": 820770.65,
+      "total_investments": 180081.63,
+      "total_cash": 149390.98
+    },
+    {
+      "history_date": "2026-03-25",
+      "total_assets": 1257976.48,
+      "total_liabilities": 436557.36,
+      "total_net_worth": 821419.13,
+      "total_investments": 180300.57,
+      "total_cash": 149542.34
+    },
+    {
+      "history_date": "2026-03-26",
+      "total_assets": 1258319.47,
+      "total_liabilities": 436417.16,
+      "total_net_worth": 821902.31,
+      "total_investments": 180340.31,
+      "total_cash": 149707.6
+    },
+    {
+      "history_date": "2026-03-27",
+      "total_assets": 1258581.78,
+      "total_liabilities": 436276.95,
+      "total_net_worth": 822304.82,
+      "total_investments": 180341.26,
+      "total_cash": 149830.98
+    },
+    {
+      "history_date": "2026-03-28",
+      "total_assets": 1258459.52,
+      "total_liabilities": 436136.75,
+      "total_net_worth": 822322.77,
+      "total_investments": 180485.27,
+      "total_cash": 149426.73
+    },
+    {
+      "history_date": "2026-03-29",
+      "total_assets": 1258364.59,
+      "total_liabilities": 435996.55,
+      "total_net_worth": 822368.04,
+      "total_investments": 179964.51,
+      "total_cash": 149714.58
+    },
+    {
+      "history_date": "2026-03-30",
+      "total_assets": 1259132.21,
+      "total_liabilities": 435856.35,
+      "total_net_worth": 823275.86,
+      "total_investments": 180914.37,
+      "total_cash": 149394.35
+    },
+    {
+      "history_date": "2026-03-31",
+      "total_assets": 1258655.64,
+      "total_liabilities": 435716.15,
+      "total_net_worth": 822939.49,
+      "total_investments": 179702.61,
+      "total_cash": 149991.56
+    },
+    {
+      "history_date": "2026-04-01",
+      "total_assets": 1258100.36,
+      "total_liabilities": 435575.94,
+      "total_net_worth": 822524.41,
+      "total_investments": 179430.27,
+      "total_cash": 149570.64
+    },
+    {
+      "history_date": "2026-04-02",
+      "total_assets": 1260138.49,
+      "total_liabilities": 435435.74,
+      "total_net_worth": 824702.74,
+      "total_investments": 180587.63,
+      "total_cash": 150313.43
+    },
+    {
+      "history_date": "2026-04-03",
+      "total_assets": 1260353.38,
+      "total_liabilities": 435295.54,
+      "total_net_worth": 825057.83,
+      "total_investments": 180639.6,
+      "total_cash": 150338.36
+    },
+    {
+      "history_date": "2026-04-04",
+      "total_assets": 1261000.44,
+      "total_liabilities": 435155.34,
+      "total_net_worth": 825845.1,
+      "total_investments": 181602.57,
+      "total_cash": 149884.48
+    },
+    {
+      "history_date": "2026-04-05",
+      "total_assets": 1261445.55,
+      "total_liabilities": 435015.14,
+      "total_net_worth": 826430.42,
+      "total_investments": 181658.47,
+      "total_cash": 150135.71
+    },
+    {
+      "history_date": "2026-04-06",
+      "total_assets": 1261883.61,
+      "total_liabilities": 434874.94,
+      "total_net_worth": 827008.67,
+      "total_investments": 181675.44,
+      "total_cash": 150418.81
+    },
+    {
+      "history_date": "2026-04-07",
+      "total_assets": 1260270.54,
+      "total_liabilities": 434734.73,
+      "total_net_worth": 825535.81,
+      "total_investments": 180358.18,
+      "total_cash": 149985.03
+    },
+    {
+      "history_date": "2026-04-08",
+      "total_assets": 1262416.47,
+      "total_liabilities": 434594.53,
+      "total_net_worth": 827821.94,
+      "total_investments": 182274.32,
+      "total_cash": 150076.83
+    },
+    {
+      "history_date": "2026-04-09",
+      "total_assets": 1263276.55,
+      "total_liabilities": 434454.33,
+      "total_net_worth": 828822.22,
+      "total_investments": 182349.58,
+      "total_cash": 150723.66
+    },
+    {
+      "history_date": "2026-04-10",
+      "total_assets": 1262926.28,
+      "total_liabilities": 434314.13,
+      "total_net_worth": 828612.15,
+      "total_investments": 181694.16,
+      "total_cash": 150890.83
+    },
+    {
+      "history_date": "2026-04-11",
+      "total_assets": 1263775.9,
+      "total_liabilities": 434173.93,
+      "total_net_worth": 829601.97,
+      "total_investments": 182474.75,
+      "total_cash": 150821.88
+    },
+    {
+      "history_date": "2026-04-12",
+      "total_assets": 1262250.17,
+      "total_liabilities": 434033.72,
+      "total_net_worth": 828216.45,
+      "total_investments": 180750.84,
+      "total_cash": 150882.09
+    },
+    {
+      "history_date": "2026-04-13",
+      "total_assets": 1261269.93,
+      "total_liabilities": 433893.52,
+      "total_net_worth": 827376.41,
+      "total_investments": 179764.57,
+      "total_cash": 150750.13
+    },
+    {
+      "history_date": "2026-04-14",
+      "total_assets": 1262948.84,
+      "total_liabilities": 433753.32,
+      "total_net_worth": 829195.52,
+      "total_investments": 181125.17,
+      "total_cash": 150930.46
+    },
+    {
+      "history_date": "2026-04-15",
+      "total_assets": 1263784.43,
+      "total_liabilities": 433613.12,
+      "total_net_worth": 830171.31,
+      "total_investments": 181822.06,
+      "total_cash": 150931.18
+    },
+    {
+      "history_date": "2026-04-16",
+      "total_assets": 1264773.28,
+      "total_liabilities": 433472.92,
+      "total_net_worth": 831300.36,
+      "total_investments": 182317.01,
+      "total_cash": 151287.1
+    },
+    {
+      "history_date": "2026-04-17",
+      "total_assets": 1262349.86,
+      "total_liabilities": 433332.72,
+      "total_net_worth": 829017.15,
+      "total_investments": 180249.45,
+      "total_cash": 150793.25
+    },
+    {
+      "history_date": "2026-04-18",
+      "total_assets": 1262878.94,
+      "total_liabilities": 433192.51,
+      "total_net_worth": 829686.42,
+      "total_investments": 180048.89,
+      "total_cash": 151384.91
+    },
+    {
+      "history_date": "2026-04-19",
+      "total_assets": 1264746.77,
+      "total_liabilities": 433052.31,
+      "total_net_worth": 831694.46,
+      "total_investments": 181682.6,
+      "total_cash": 151481.06
+    },
+    {
+      "history_date": "2026-04-20",
+      "total_assets": 1263309.34,
+      "total_liabilities": 432912.11,
+      "total_net_worth": 830397.23,
+      "total_investments": 180717.48,
+      "total_cash": 150870.76
+    },
+    {
+      "history_date": "2026-04-21",
+      "total_assets": 1266021.34,
+      "total_liabilities": 432771.91,
+      "total_net_worth": 833249.43,
+      "total_investments": 182543.23,
+      "total_cash": 151619.02
+    },
+    {
+      "history_date": "2026-04-22",
+      "total_assets": 1264322.7,
+      "total_liabilities": 432631.71,
+      "total_net_worth": 831691.0,
+      "total_investments": 181036.16,
+      "total_cash": 151289.48
+    },
+    {
+      "history_date": "2026-04-23",
+      "total_assets": 1264517.93,
+      "total_liabilities": 432491.5,
+      "total_net_worth": 832026.43,
+      "total_investments": 180591.7,
+      "total_cash": 151791.18
+    },
+    {
+      "history_date": "2026-04-24",
+      "total_assets": 1264886.96,
+      "total_liabilities": 432351.3,
+      "total_net_worth": 832535.65,
+      "total_investments": 181114.32,
+      "total_cash": 151499.6
+    },
+    {
+      "history_date": "2026-04-25",
+      "total_assets": 1264831.22,
+      "total_liabilities": 432211.1,
+      "total_net_worth": 832620.12,
+      "total_investments": 180533.57,
+      "total_cash": 151886.64
+    },
+    {
+      "history_date": "2026-04-26",
+      "total_assets": 1264838.95,
+      "total_liabilities": 432070.9,
+      "total_net_worth": 832768.05,
+      "total_investments": 180678.87,
+      "total_cash": 151611.08
+    },
+    {
+      "history_date": "2026-04-27",
+      "total_assets": 1266894.09,
+      "total_liabilities": 431930.7,
+      "total_net_worth": 834963.39,
+      "total_investments": 182293.11,
+      "total_cash": 151914.01
+    },
+    {
+      "history_date": "2026-04-28",
+      "total_assets": 1267688.25,
+      "total_liabilities": 431790.5,
+      "total_net_worth": 835897.75,
+      "total_investments": 183137.17,
+      "total_cash": 151726.13
+    },
+    {
+      "history_date": "2026-04-29",
+      "total_assets": 1267108.32,
+      "total_liabilities": 431650.29,
+      "total_net_worth": 835458.03,
+      "total_investments": 182559.61,
+      "total_cash": 151585.77
+    },
+    {
+      "history_date": "2026-04-30",
+      "total_assets": 1266327.5,
+      "total_liabilities": 431510.09,
+      "total_net_worth": 834817.41,
+      "total_investments": 181613.88,
+      "total_cash": 151612.7
+    },
+    {
+      "history_date": "2026-05-01",
+      "total_assets": 1267027.37,
+      "total_liabilities": 431369.89,
+      "total_net_worth": 835657.48,
+      "total_investments": 181857.16,
+      "total_cash": 151931.31
+    },
+    {
+      "history_date": "2026-05-02",
+      "total_assets": 1268326.79,
+      "total_liabilities": 431229.69,
+      "total_net_worth": 837097.1,
+      "total_investments": 183247.59,
+      "total_cash": 151702.32
+    },
+    {
+      "history_date": "2026-05-03",
+      "total_assets": 1267162.47,
+      "total_liabilities": 431089.49,
+      "total_net_worth": 836072.98,
+      "total_investments": 181545.42,
+      "total_cash": 152102.18
+    },
+    {
+      "history_date": "2026-05-04",
+      "total_assets": 1269437.82,
+      "total_liabilities": 430949.28,
+      "total_net_worth": 838488.53,
+      "total_investments": 183281.81,
+      "total_cash": 152503.17
+    },
+    {
+      "history_date": "2026-05-05",
+      "total_assets": 1267005.31,
+      "total_liabilities": 430809.08,
+      "total_net_worth": 836196.23,
+      "total_investments": 180775.8,
+      "total_cash": 152438.68
+    },
+    {
+      "history_date": "2026-05-06",
+      "total_assets": 1268781.84,
+      "total_liabilities": 430668.88,
+      "total_net_worth": 838112.96,
+      "total_investments": 182109.29,
+      "total_cash": 152743.74
+    },
+    {
+      "history_date": "2026-05-07",
+      "total_assets": 1267989.95,
+      "total_liabilities": 430528.68,
+      "total_net_worth": 837461.27,
+      "total_investments": 181571.85,
+      "total_cash": 152351.31
+    },
+    {
+      "history_date": "2026-05-08",
+      "total_assets": 1267489.69,
+      "total_liabilities": 430388.48,
+      "total_net_worth": 837101.22,
+      "total_investments": 181083.07,
+      "total_cash": 152201.86
+    },
+    {
+      "history_date": "2026-05-09",
+      "total_assets": 1269925.51,
+      "total_liabilities": 430248.28,
+      "total_net_worth": 839677.23,
+      "total_investments": 183043.52,
+      "total_cash": 152539.23
+    },
+    {
+      "history_date": "2026-05-10",
+      "total_assets": 1269744.12,
+      "total_liabilities": 430108.07,
+      "total_net_worth": 839636.05,
+      "total_investments": 182503.23,
+      "total_cash": 152760.15
+    },
+    {
+      "history_date": "2026-05-11",
+      "total_assets": 1269269.96,
+      "total_liabilities": 429967.87,
+      "total_net_worth": 839302.08,
+      "total_investments": 182316.04,
+      "total_cash": 152335.21
+    },
+    {
+      "history_date": "2026-05-12",
+      "total_assets": 1270224.84,
+      "total_liabilities": 429827.67,
+      "total_net_worth": 840397.17,
+      "total_investments": 182883.84,
+      "total_cash": 152584.3
+    },
+    {
+      "history_date": "2026-05-13",
+      "total_assets": 1268737.27,
+      "total_liabilities": 429687.47,
+      "total_net_worth": 839049.8,
+      "total_investments": 180930.15,
+      "total_cash": 152912.44
+    },
+    {
+      "history_date": "2026-05-14",
+      "total_assets": 1268940.41,
+      "total_liabilities": 429547.27,
+      "total_net_worth": 839393.14,
+      "total_investments": 180763.51,
+      "total_cash": 153144.24
+    },
+    {
+      "history_date": "2026-05-15",
+      "total_assets": 1269122.77,
+      "total_liabilities": 429407.06,
+      "total_net_worth": 839715.71,
+      "total_investments": 181175.93,
+      "total_cash": 152776.2
+    },
+    {
+      "history_date": "2026-05-16",
+      "total_assets": 1271385.94,
+      "total_liabilities": 429266.86,
+      "total_net_worth": 842119.08,
+      "total_investments": 183139.7,
+      "total_cash": 152937.62
+    },
+    {
+      "history_date": "2026-05-17",
+      "total_assets": 1269912.49,
+      "total_liabilities": 429126.66,
+      "total_net_worth": 840785.83,
+      "total_investments": 180999.36,
+      "total_cash": 153466.53
+    },
+    {
+      "history_date": "2026-05-18",
+      "total_assets": 1269657.5,
+      "total_liabilities": 428986.46,
+      "total_net_worth": 840671.04,
+      "total_investments": 180568.76,
+      "total_cash": 153504.16
+    },
+    {
+      "history_date": "2026-05-19",
+      "total_assets": 1269701.44,
+      "total_liabilities": 428846.26,
+      "total_net_worth": 840855.19,
+      "total_investments": 180986.12,
+      "total_cash": 152992.76
+    },
+    {
+      "history_date": "2026-05-20",
+      "total_assets": 1270256.26,
+      "total_liabilities": 428706.06,
+      "total_net_worth": 841550.2,
+      "total_investments": 181296.02,
+      "total_cash": 153099.69
+    },
+    {
+      "history_date": "2026-05-21",
+      "total_assets": 1271557.46,
+      "total_liabilities": 428565.85,
+      "total_net_worth": 842991.61,
+      "total_investments": 182506.88,
+      "total_cash": 153052.05
+    },
+    {
+      "history_date": "2026-05-22",
+      "total_assets": 1270457.16,
+      "total_liabilities": 428425.65,
+      "total_net_worth": 842031.51,
+      "total_investments": 180585.91,
+      "total_cash": 153734.74
+    },
+    {
+      "history_date": "2026-05-23",
+      "total_assets": 1270947.2,
+      "total_liabilities": 428285.45,
+      "total_net_worth": 842661.75,
+      "total_investments": 181239.6,
+      "total_cash": 153433.1
+    },
+    {
+      "history_date": "2026-05-24",
+      "total_assets": 1270742.43,
+      "total_liabilities": 428145.25,
+      "total_net_worth": 842597.18,
+      "total_investments": 181042.62,
+      "total_cash": 153287.33
+    },
+    {
+      "history_date": "2026-05-25",
+      "total_assets": 1273002.9,
+      "total_liabilities": 428005.05,
+      "total_net_worth": 844997.86,
+      "total_investments": 182714.83,
+      "total_cash": 153737.61
+    },
+    {
+      "history_date": "2026-05-26",
+      "total_assets": 1273173.87,
+      "total_liabilities": 427864.84,
+      "total_net_worth": 845309.02,
+      "total_investments": 182716.36,
+      "total_cash": 153769.07
+    },
+    {
+      "history_date": "2026-05-27",
+      "total_assets": 1273497.57,
+      "total_liabilities": 427724.64,
+      "total_net_worth": 845772.93,
+      "total_investments": 182801.15,
+      "total_cash": 153869.99
+    },
+    {
+      "history_date": "2026-05-28",
+      "total_assets": 1271705.27,
+      "total_liabilities": 427584.44,
+      "total_net_worth": 844120.83,
+      "total_investments": 180807.06,
+      "total_cash": 153933.8
+    },
+    {
+      "history_date": "2026-05-29",
+      "total_assets": 1274011.64,
+      "total_liabilities": 427444.24,
+      "total_net_worth": 846567.41,
+      "total_investments": 183272.5,
+      "total_cash": 153636.76
+    },
+    {
+      "history_date": "2026-05-30",
+      "total_assets": 1274385.74,
+      "total_liabilities": 427304.04,
+      "total_net_worth": 847081.71,
+      "total_investments": 182778.4,
+      "total_cash": 154366.98
+    },
+    {
+      "history_date": "2026-05-31",
+      "total_assets": 1273477.97,
+      "total_liabilities": 427163.83,
+      "total_net_worth": 846314.13,
+      "total_investments": 181988.46,
+      "total_cash": 154111.16
+    },
+    {
+      "history_date": "2026-06-01",
+      "total_assets": 1274665.88,
+      "total_liabilities": 427023.63,
+      "total_net_worth": 847642.25,
+      "total_investments": 183284.84,
+      "total_cash": 153864.72
+    },
+    {
+      "history_date": "2026-06-02",
+      "total_assets": 1273694.94,
+      "total_liabilities": 426883.43,
+      "total_net_worth": 846811.51,
+      "total_investments": 181831.95,
+      "total_cash": 154208.68
+    },
+    {
+      "history_date": "2026-06-03",
+      "total_assets": 1274572.55,
+      "total_liabilities": 426743.23,
+      "total_net_worth": 847829.32,
+      "total_investments": 182429.33,
+      "total_cash": 154350.93
+    },
+    {
+      "history_date": "2026-06-04",
+      "total_assets": 1275094.07,
+      "total_liabilities": 426603.03,
+      "total_net_worth": 848491.04,
+      "total_investments": 183074.96,
+      "total_cash": 154088.84
+    },
+    {
+      "history_date": "2026-06-05",
+      "total_assets": 1273257.63,
+      "total_liabilities": 426462.83,
+      "total_net_worth": 846794.8,
+      "total_investments": 180601.36,
+      "total_cash": 154588.01
+    },
+    {
+      "history_date": "2026-06-06",
+      "total_assets": 1273137.53,
+      "total_liabilities": 426322.62,
+      "total_net_worth": 846814.9,
+      "total_investments": 180538.57,
+      "total_cash": 154392.72
+    },
+    {
+      "history_date": "2026-06-07",
+      "total_assets": 1275228.22,
+      "total_liabilities": 426182.42,
+      "total_net_worth": 849045.8,
+      "total_investments": 182201.28,
+      "total_cash": 154682.72
+    },
+    {
+      "history_date": "2026-06-08",
+      "total_assets": 1274863.28,
+      "total_liabilities": 426042.22,
+      "total_net_worth": 848821.06,
+      "total_investments": 181270.01,
+      "total_cash": 155111.07
+    },
+    {
+      "history_date": "2026-06-09",
+      "total_assets": 1275229.0,
+      "total_liabilities": 425902.02,
+      "total_net_worth": 849326.98,
+      "total_investments": 181859.14,
+      "total_cash": 154749.67
+    },
+    {
+      "history_date": "2026-06-10",
+      "total_assets": 1275356.75,
+      "total_liabilities": 425761.82,
+      "total_net_worth": 849594.93,
+      "total_investments": 182061.22,
+      "total_cash": 154537.37
+    },
+    {
+      "history_date": "2026-06-11",
+      "total_assets": 1276434.34,
+      "total_liabilities": 425621.61,
+      "total_net_worth": 850812.72,
+      "total_investments": 182326.6,
+      "total_cash": 155211.59
+    },
+    {
+      "history_date": "2026-06-12",
+      "total_assets": 1276405.46,
+      "total_liabilities": 425481.41,
+      "total_net_worth": 850924.04,
+      "total_investments": 182155.47,
+      "total_cash": 155215.86
+    },
+    {
+      "history_date": "2026-06-13",
+      "total_assets": 1276358.12,
+      "total_liabilities": 425341.21,
+      "total_net_worth": 851016.91,
+      "total_investments": 182341.97,
+      "total_cash": 154844.04
+    },
+    {
+      "history_date": "2026-06-14",
+      "total_assets": 1275759.38,
+      "total_liabilities": 425201.01,
+      "total_net_worth": 850558.37,
+      "total_investments": 181523.14,
+      "total_cash": 154926.14
+    },
+    {
+      "history_date": "2026-06-15",
+      "total_assets": 1275793.88,
+      "total_liabilities": 425060.81,
+      "total_net_worth": 850733.07,
+      "total_investments": 181168.33,
+      "total_cash": 155177.48
+    },
+    {
+      "history_date": "2026-06-16",
+      "total_assets": 1275923.53,
+      "total_liabilities": 424920.61,
+      "total_net_worth": 851002.92,
+      "total_investments": 181375.39,
+      "total_cash": 154962.08
+    },
+    {
+      "history_date": "2026-06-17",
+      "total_assets": 1276599.4,
+      "total_liabilities": 424780.4,
+      "total_net_worth": 851819.0,
+      "total_investments": 181385.94,
+      "total_cash": 155489.43
+    },
+    {
+      "history_date": "2026-06-18",
+      "total_assets": 1276221.84,
+      "total_liabilities": 424640.2,
+      "total_net_worth": 851581.64,
+      "total_investments": 181209.04,
+      "total_cash": 155150.78
+    },
+    {
+      "history_date": "2026-06-19",
+      "total_assets": 1277060.0,
+      "total_liabilities": 424500,
+      "total_net_worth": 852560.0,
+      "total_investments": 181560.0,
+      "total_cash": 155500
+    }
+  ]
+}

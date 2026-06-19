@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,6 +8,76 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn, formatCurrency } from '@/lib/utils'
 import { holdingsApi, accountsApi } from '@/lib/api'
 import { usePortfolioStore } from '@/lib/store'
+
+// ── Customizable columns ────────────────────────────────────────────────────
+// Every data column the desktop holdings table can show. The actions (edit /
+// delete) column is fixed and always rendered last, so it isn't listed here.
+type SortField =
+  | 'ticker' | 'shares' | 'price' | 'today_pct' | 'today_dollar' | 'day_change'
+  | 'avg_cost' | 'gain_dollar' | 'gain' | 'value' | 'allocation' | 'type'
+
+const COLUMN_DEFS: Record<SortField, { label: string; align: 'left' | 'right'; title?: string }> = {
+  ticker:       { label: 'Ticker',       align: 'left' },
+  shares:       { label: 'Shares',       align: 'right' },
+  price:        { label: 'Price',        align: 'right' },
+  today_pct:    { label: 'Today %',      align: 'right', title: "Today's % change in position value" },
+  today_dollar: { label: 'Today $',      align: 'right', title: "Today's $ change (shares × per-share change)" },
+  day_change:   { label: 'Day Δ',        align: 'right', title: "Per-share price change vs. yesterday's close" },
+  avg_cost:     { label: 'Avg Cost',     align: 'right' },
+  gain_dollar:  { label: 'Total G/L $',  align: 'right', title: 'Total gain/loss $ since purchase' },
+  gain:         { label: 'Total G/L %',  align: 'right', title: 'Total gain/loss % since purchase' },
+  value:        { label: 'Value',        align: 'right' },
+  allocation:   { label: 'Alloc',        align: 'right' },
+  type:         { label: 'Type',         align: 'left' },
+}
+
+// Default order requested by the user. New columns added to COLUMN_DEFS in
+// future are appended automatically by mergeColumnPrefs().
+const DEFAULT_COLUMN_ORDER: SortField[] = [
+  'ticker', 'shares', 'price', 'today_pct', 'today_dollar', 'day_change',
+  'avg_cost', 'gain_dollar', 'gain', 'value', 'allocation', 'type',
+]
+
+interface ColPref { id: SortField; visible: boolean }
+const DEFAULT_COLS: ColPref[] = DEFAULT_COLUMN_ORDER.map(id => ({ id, visible: true }))
+const COLS_STORAGE_KEY = 'holdings_columns_v1'
+
+// Merge a saved preference with the current registry: keep the saved order &
+// visibility, drop columns that no longer exist, and append any new ones. This
+// keeps the user's layout stable across app updates without losing new columns.
+function mergeColumnPrefs(saved: ColPref[]): ColPref[] {
+  const known = new Set(DEFAULT_COLUMN_ORDER)
+  const seen = new Set<SortField>()
+  const merged: ColPref[] = []
+  for (const c of saved) {
+    if (known.has(c.id) && !seen.has(c.id)) {
+      merged.push({ id: c.id, visible: c.visible !== false })
+      seen.add(c.id)
+    }
+  }
+  for (const id of DEFAULT_COLUMN_ORDER) {
+    if (!seen.has(id)) merged.push({ id, visible: true })
+  }
+  return merged
+}
+
+function loadColumnPrefs(): ColPref[] {
+  if (typeof window === 'undefined') return DEFAULT_COLS
+  try {
+    const raw = window.localStorage.getItem(COLS_STORAGE_KEY)
+    if (!raw) return DEFAULT_COLS
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return DEFAULT_COLS
+    return mergeColumnPrefs(parsed)
+  } catch {
+    return DEFAULT_COLS
+  }
+}
+
+function saveColumnPrefs(cols: ColPref[]) {
+  if (typeof window === 'undefined') return
+  try { window.localStorage.setItem(COLS_STORAGE_KEY, JSON.stringify(cols)) } catch {}
+}
 
 const BROKER_SUGGESTIONS = [
   'Robinhood', 'Fidelity', 'Schwab', 'TD Ameritrade', 'E*TRADE', 'Vanguard',
@@ -38,9 +108,29 @@ type FormState = typeof EMPTY_FORM
 export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: HoldingsTableProps) {
   const { accounts, totalValue } = usePortfolioStore()
 
-  type SortField = 'ticker' | 'type' | 'shares' | 'avg_cost' | 'price' | 'value' | 'today_pct' | 'today_dollar' | 'day_change' | 'gain' | 'allocation'
   const [sortBy, setSortBy] = useState<SortField>('ticker')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+
+  // Column layout (order + visibility), persisted to localStorage. Start from
+  // defaults so server prerender + first paint match, then hydrate the saved
+  // layout on mount to avoid an SSR/CSR mismatch.
+  const [cols, setColsState] = useState<ColPref[]>(DEFAULT_COLS)
+  const [showColPanel, setShowColPanel] = useState(false)
+  useEffect(() => { setColsState(loadColumnPrefs()) }, [])
+
+  const updateCols = (next: ColPref[]) => { setColsState(next); saveColumnPrefs(next) }
+  const toggleColVisible = (id: SortField) =>
+    updateCols(cols.map(c => c.id === id ? { ...c, visible: !c.visible } : c))
+  const moveCol = (index: number, dir: -1 | 1) => {
+    const j = index + dir
+    if (j < 0 || j >= cols.length) return
+    const next = cols.slice()
+    ;[next[index], next[j]] = [next[j], next[index]]
+    updateCols(next)
+  }
+  const resetCols = () => updateCols(DEFAULT_COLS)
+
+  const visibleCols = cols.filter(c => c.visible).map(c => c.id)
 
   // Modal state
   const [showModal, setShowModal] = useState(false)
@@ -77,7 +167,8 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
       case 'today_pct':    va = a.today_gain_loss_percent ?? 0;                            vb = b.today_gain_loss_percent ?? 0; break
       case 'today_dollar': va = a.today_gain_loss ?? 0;                                    vb = b.today_gain_loss ?? 0; break
       case 'day_change':   va = a.day_change ?? 0;                                         vb = b.day_change ?? 0; break
-      case 'gain':       va = a.total_gain_loss_percent ?? 0;                              vb = b.total_gain_loss_percent ?? 0; break
+      case 'gain':        va = a.total_gain_loss_percent ?? 0;                             vb = b.total_gain_loss_percent ?? 0; break
+      case 'gain_dollar': va = a.total_gain_loss ?? 0;                                    vb = b.total_gain_loss ?? 0; break
       case 'allocation': va = totalValue > 0 ? (a.current_value ?? 0) / totalValue : 0; vb = totalValue > 0 ? (b.current_value ?? 0) / totalValue : 0; break
     }
     if (va < vb) return sortOrder === 'asc' ? -1 : 1
@@ -92,21 +183,6 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
 
   const sortIcon = (field: SortField) =>
     sortBy === field ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''
-
-  const gainCell = (pct: number, dollar: number) => {
-    const colorClass = pct > 0
-      ? 'text-emerald-600 dark:text-emerald-400'
-      : pct < 0
-        ? 'text-red-600 dark:text-red-400'
-        : 'text-muted-foreground'
-    const sign = pct > 0 ? '+' : ''
-    return (
-      <div className={`text-right ${colorClass}`}>
-        <div className="text-sm font-medium">{sign}{pct.toFixed(2)}%</div>
-        <div className="text-xs opacity-75">{sign}{formatCurrency(dollar)}</div>
-      </div>
-    )
-  }
 
   // Single-value cell coloured by the value's sign.
   const signedCell = (value: number, formatter: (v: number) => string) => {
@@ -124,6 +200,38 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
   }
   const pctCell = (pct: number) => signedCell(pct, v => `${v.toFixed(2)}%`)
   const dollarCell = (n: number) => signedCell(n, formatCurrency)
+
+  // Render a single desktop-table cell for the given column + holding.
+  const renderCell = (id: SortField, h: any): React.ReactNode => {
+    switch (id) {
+      case 'ticker':       return <span className="font-medium">{h.ticker}</span>
+      case 'type':         return (
+        <span className="capitalize text-xs border border-border rounded-full px-2 py-0.5 text-muted-foreground">
+          {h.security_type || 'stock'}
+        </span>
+      )
+      case 'shares':       return h.shares ?? 0
+      case 'avg_cost':     return formatCurrency(h.average_cost ?? 0)
+      case 'price':        return h.current_price > 0 ? (
+        <span className={
+          (h.total_gain_loss_percent ?? 0) > 0 ? 'text-emerald-600 dark:text-emerald-400 font-medium'
+          : (h.total_gain_loss_percent ?? 0) < 0 ? 'text-red-600 dark:text-red-400 font-medium' : ''
+        }>{formatCurrency(h.current_price)}</span>
+      ) : <span className="text-muted-foreground text-xs">fetching…</span>
+      case 'value':        return <span className="font-medium">{formatCurrency(h.current_value ?? 0)}</span>
+      case 'today_pct':    return pctCell(h.today_gain_loss_percent ?? 0)
+      case 'today_dollar': return dollarCell(h.today_gain_loss ?? 0)
+      case 'day_change':   return dollarCell(h.day_change ?? 0)
+      case 'gain':         return pctCell(h.total_gain_loss_percent ?? 0)
+      case 'gain_dollar':  return dollarCell(h.total_gain_loss ?? 0)
+      case 'allocation':   return (
+        <span className="text-sm text-muted-foreground">
+          {totalValue > 0 ? ((h.current_value ?? 0) / totalValue * 100).toFixed(1) + '%' : '—'}
+        </span>
+      )
+      default:             return null
+    }
+  }
 
   // ── Modal open/close ─────────────────────────────────────────
   function openAdd() {
@@ -268,10 +376,14 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
                   value={form.ticker}
                   onChange={setField('ticker')}
                   className="uppercase"
-                  disabled={editingId !== null}
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
                 />
                 {editingId !== null && (
-                  <p className="text-xs text-muted-foreground mt-1">Ticker cannot be changed. Delete and re-add if needed.</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Changing the ticker re-links this holding; its price refreshes on save.
+                  </p>
                 )}
               </div>
 
@@ -519,123 +631,176 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
           </div>
 
           {/* ── Desktop table (md and up) ────────────────────────────── */}
-          <div className="hidden md:block rounded-md border">
-            {/* Tighter padding via the [&_th]/[&_td] arbitrary descendant selectors —
-                keeps the shared <Table> primitive while compacting this
-                12-column view enough to fit without horizontal scroll. Saves
-                ~16px per cell × 12 cells = ~190px vs. the default px-4 p-4. */}
-            <Table className="[&_th]:px-2 [&_th]:h-10 [&_th]:text-xs [&_td]:px-2 [&_td]:py-2.5">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('ticker')}>
-                    Ticker{sortIcon('ticker')}
-                  </TableHead>
-                  <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('type')}>
-                    Type{sortIcon('type')}
-                  </TableHead>
-                  <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('shares')}>
-                    Shares{sortIcon('shares')}
-                  </TableHead>
-                  <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('avg_cost')}>
-                    Avg Cost{sortIcon('avg_cost')}
-                  </TableHead>
-                  <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('price')}>
-                    Price{sortIcon('price')}
-                  </TableHead>
-                  <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('value')}>
-                    Value{sortIcon('value')}
-                  </TableHead>
-                  <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('today_pct')} title="Today's % change in position value">
-                    Today %{sortIcon('today_pct')}
-                  </TableHead>
-                  <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('today_dollar')} title="Today's $ change in position value (shares × per-share change)">
-                    Today ${sortIcon('today_dollar')}
-                  </TableHead>
-                  <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('day_change')} title="Per-share price change vs. yesterday's close">
-                    Day Δ{sortIcon('day_change')}
-                  </TableHead>
-                  <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('gain')} title="Total gain/loss since purchase">
-                    Total G/L{sortIcon('gain')}
-                  </TableHead>
-                  <TableHead className="text-right cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort('allocation')}>
-                    Alloc{sortIcon('allocation')}
-                  </TableHead>
-                  <TableHead className="w-14" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sorted.length === 0 ? (
+          <div className="hidden md:block">
+            {/* Column customization toolbar — small, right-aligned so it stays
+                out of the way until the user wants it. */}
+            <div className="relative flex justify-end mb-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowColPanel(s => !s)}
+                className="text-xs gap-1.5"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                  <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+                Columns
+              </Button>
+
+              {showColPanel && (
+                <>
+                  {/* click-away backdrop */}
+                  <div className="fixed inset-0 z-40" onClick={() => setShowColPanel(false)} />
+                  <div className="absolute right-0 top-9 z-50 w-64 rounded-lg border border-border bg-card shadow-xl p-2">
+                    <div className="flex items-center justify-between px-2 py-1.5">
+                      <span className="text-xs font-semibold">Customize columns</span>
+                      <button onClick={resetCols} className="text-xs text-primary hover:underline">Reset</button>
+                    </div>
+                    <p className="px-2 pb-1.5 text-[10px] text-muted-foreground">
+                      Toggle visibility · use ↑ ↓ to reorder.
+                    </p>
+                    <div className="max-h-72 overflow-y-auto">
+                      {cols.map((c, i) => (
+                        <div key={c.id} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent/50">
+                          <input
+                            type="checkbox"
+                            checked={c.visible}
+                            onChange={() => toggleColVisible(c.id)}
+                            className="shrink-0"
+                            aria-label={`Show ${COLUMN_DEFS[c.id].label}`}
+                          />
+                          <span className="flex-1 text-xs truncate">{COLUMN_DEFS[c.id].label}</span>
+                          <button
+                            onClick={() => moveCol(i, -1)}
+                            disabled={i === 0}
+                            className="text-muted-foreground hover:text-foreground disabled:opacity-25 text-xs px-1"
+                            aria-label={`Move ${COLUMN_DEFS[c.id].label} up`}
+                          >↑</button>
+                          <button
+                            onClick={() => moveCol(i, 1)}
+                            disabled={i === cols.length - 1}
+                            className="text-muted-foreground hover:text-foreground disabled:opacity-25 text-xs px-1"
+                            aria-label={`Move ${COLUMN_DEFS[c.id].label} down`}
+                          >↓</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="rounded-md border">
+              {/* Tighter padding via the [&_th]/[&_td] arbitrary descendant selectors
+                  keeps the shared <Table> primitive compact. Columns + order are
+                  driven by `visibleCols` (user-customizable, persisted). */}
+              <Table className="[&_th]:px-2 [&_th]:h-10 [&_th]:text-xs [&_td]:px-2 [&_td]:py-2.5">
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={12} className="text-center py-10 text-muted-foreground">
-                      {q ? `No holdings match "${searchQuery}".` : (
-                        <>No holdings yet.{' '}
-                          <button onClick={openAdd} className="underline text-primary hover:text-primary/80">
-                            Add your first holding
-                          </button>
-                        </>
-                      )}
-                    </TableCell>
+                    {visibleCols.map(id => {
+                      const def = COLUMN_DEFS[id]
+                      return (
+                        <TableHead
+                          key={id}
+                          className={cn('cursor-pointer select-none whitespace-nowrap', def.align === 'right' && 'text-right')}
+                          onClick={() => toggleSort(id)}
+                          title={def.title}
+                        >
+                          {def.label}{sortIcon(id)}
+                        </TableHead>
+                      )
+                    })}
+                    <TableHead className="w-14" />
                   </TableRow>
-                ) : (
-                  sorted.map(h => (
-                    <TableRow key={h.id ?? h.ticker}>
-                      <TableCell className="font-medium">{h.ticker}</TableCell>
-                      <TableCell>
-                        <span className="capitalize text-xs border border-border rounded-full px-2 py-0.5 text-muted-foreground">
-                          {h.security_type || 'stock'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">{h.shares ?? 0}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(h.average_cost ?? 0)}</TableCell>
-                      <TableCell className="text-right">
-                        {h.current_price > 0 ? (
-                          <span className={
-                            (h.total_gain_loss_percent ?? 0) > 0
-                              ? 'text-emerald-600 dark:text-emerald-400 font-medium'
-                              : (h.total_gain_loss_percent ?? 0) < 0
-                                ? 'text-red-600 dark:text-red-400 font-medium'
-                                : ''
-                          }>
-                            {formatCurrency(h.current_price)}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">fetching…</span>
+                </TableHeader>
+                <TableBody>
+                  {sorted.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={visibleCols.length + 1} className="text-center py-10 text-muted-foreground">
+                        {q ? `No holdings match "${searchQuery}".` : (
+                          <>No holdings yet.{' '}
+                            <button onClick={openAdd} className="underline text-primary hover:text-primary/80">
+                              Add your first holding
+                            </button>
+                          </>
                         )}
                       </TableCell>
-                      <TableCell className="text-right font-medium">{formatCurrency(h.current_value ?? 0)}</TableCell>
-                      <TableCell className="text-right">{pctCell(h.today_gain_loss_percent ?? 0)}</TableCell>
-                      <TableCell className="text-right">{dollarCell(h.today_gain_loss ?? 0)}</TableCell>
-                      <TableCell className="text-right">{dollarCell(h.day_change ?? 0)}</TableCell>
-                      <TableCell className="text-right">{gainCell(h.total_gain_loss_percent ?? 0, h.total_gain_loss ?? 0)}</TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground">
-                        {totalValue > 0 ? ((h.current_value ?? 0) / totalValue * 100).toFixed(1) + '%' : '—'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex gap-1 justify-end">
-                          <button
-                            onClick={() => openEdit(h)}
-                            className="px-2 py-0.5 text-xs border rounded hover:bg-accent"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => setConfirmDelete(h)}
-                            disabled={deletingId === h.id}
-                            className="text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-40 text-lg leading-none px-1"
-                            aria-label={`Delete ${h.ticker}`}
-                          >
-                            {deletingId === h.id ? '…' : '×'}
-                          </button>
-                        </div>
-                      </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    sorted.map(h => (
+                      <TableRow key={h.id ?? h.ticker}>
+                        {visibleCols.map(id => (
+                          <TableCell
+                            key={id}
+                            className={cn(COLUMN_DEFS[id].align === 'right' && 'text-right')}
+                          >
+                            {renderCell(id, h)}
+                          </TableCell>
+                        ))}
+                        <TableCell className="text-right">
+                          <div className="flex gap-1 justify-end">
+                            <button
+                              onClick={() => openEdit(h)}
+                              className="px-2 py-0.5 text-xs border rounded hover:bg-accent"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => setConfirmDelete(h)}
+                              disabled={deletingId === h.id}
+                              className="text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-40 text-lg leading-none px-1"
+                              aria-label={`Delete ${h.ticker}`}
+                            >
+                              {deletingId === h.id ? '…' : '×'}
+                            </button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         </CardContent>
       </Card>
+
+      <ScrollToTopButton />
     </>
+  )
+}
+
+// Floating "back to top" button — appears once the user has scrolled the
+// holdings list down a bit, so they don't have to scroll all the way back up.
+// Sits above the iOS home-indicator safe area.
+function ScrollToTopButton() {
+  const [show, setShow] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setShow(window.scrollY > 400)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  if (!show) return null
+  return (
+    <button
+      type="button"
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      aria-label="Scroll to top"
+      className="fixed right-4 z-40 h-11 w-11 rounded-full bg-primary text-primary-foreground
+        shadow-lg flex items-center justify-center hover:opacity-90 active:scale-95 transition"
+      style={{ bottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+        strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+        <line x1="12" y1="19" x2="12" y2="5" />
+        <polyline points="5 12 12 5 19 12" />
+      </svg>
+    </button>
   )
 }

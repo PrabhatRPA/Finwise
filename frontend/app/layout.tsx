@@ -4,6 +4,7 @@ import './globals.css'
 import { AuthProvider } from '@/lib/auth'
 import { ThemeProvider } from '@/lib/theme'
 import { Navbar } from '@/components/layout/navbar'
+import { KeyboardManager } from '@/components/keyboard-manager'
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' })
 
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${inter.className} flex flex-col min-h-screen`}>
         <ThemeProvider>
           <AuthProvider>
+            <KeyboardManager />
             <Navbar />
             <main className="flex-1">
               {children}

@@ -208,6 +208,11 @@ const remoteDataApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+  // Wipe all of the user's data (holdings, accounts, transactions, watchlist,
+  // loans, properties, trend history) but keep the account/login. Native impl
+  // lives in lib/native/data.ts; desktop would route to a backend endpoint.
+  clearAllData: (): Promise<{ data: { success: boolean; message?: string } }> =>
+    api.post('/data/clear-all'),
   createBackup: () => api.post('/backup/create'),
   listBackups: () => api.get('/backup/list'),
   downloadBackup: (filename: string) =>

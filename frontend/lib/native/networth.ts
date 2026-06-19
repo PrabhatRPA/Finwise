@@ -124,13 +124,23 @@ export const nativeNetWorthApi = {
       `SELECT history_date AS date,
               total_net_worth AS net_worth,
               total_assets, total_liabilities,
-              total_investments, total_cash
+              total_investments, total_cash,
+              -- NetWorthTrendChart keys on investments / liabilities / assets;
+              -- alias the total_* columns to those names so the Portfolio and
+              -- Total Debt lines actually plot (they were empty because the
+              -- field names did not match).
+              total_investments AS investments,
+              total_liabilities AS liabilities,
+              total_assets       AS assets,
+              total_cash         AS cash
        FROM portfolio_history
        WHERE user_id = ? AND history_date >= ?
        ORDER BY history_date ASC`,
       [userId, sinceIso],
     )
-    return { data: { trends: rows } }
+    // `trends` for GrowthChart / NetWorthTrendChart; `points` alias for
+    // BenchmarkChart which reads `res.data.points`.
+    return { data: { trends: rows, points: rows } }
   },
 
   getAllocations: async () => {

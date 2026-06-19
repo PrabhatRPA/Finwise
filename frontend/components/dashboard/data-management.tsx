@@ -18,6 +18,24 @@ function formatBytes(b: number) {
   return `${(b / 1048576).toFixed(1)} MB`
 }
 
+// ── Auto-backup frequency (per-device preference) ──────────────────────────
+// 0 = off. Stored in localStorage so it survives relaunch without needing a DB
+// round-trip on every dashboard load.
+const BACKUP_INTERVAL_KEY = 'auto_backup_interval_days'
+const BACKUP_INTERVAL_OPTIONS = [
+  { days: 1,  label: 'Daily' },
+  { days: 7,  label: 'Weekly' },
+  { days: 30, label: 'Monthly' },
+  { days: 0,  label: 'Off' },
+] as const
+
+function loadBackupIntervalDays(): number {
+  if (typeof window === 'undefined') return 7
+  const raw = window.localStorage.getItem(BACKUP_INTERVAL_KEY)
+  const n = raw == null ? 7 : Number(raw)
+  return [0, 1, 7, 30].includes(n) ? n : 7
+}
+
 type ImportResult = {
   message: string
   /** Real per-row errors (shown red). */
@@ -104,6 +122,71 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
   const [backupMsg, setBackupMsg] = useState('')
   const [exportBusy, setExportBusy] = useState<string | null>(null)
   const [importMode, setImportMode] = useState<'add' | 'update' | 'replace'>('update')
+  const [demoBusy, setDemoBusy] = useState(false)
+  const [demoMsg, setDemoMsg] = useState('')
+  const [clearBusy, setClearBusy] = useState(false)
+
+  // Wipe all data (demo or real) so the user can start fresh. Keeps the login.
+  const handleClearAll = async () => {
+    if (typeof window !== 'undefined' && !window.confirm(
+      'Remove ALL data and start fresh?\n\nThis deletes every holding, account, ' +
+      'transaction, watchlist entry, loan, property, and all trend history. ' +
+      'Your user account and login are preserved. This cannot be undone.'
+    )) return
+    setClearBusy(true)
+    setDemoMsg('')
+    try {
+      await dataApi.clearAllData()
+      // Drop the dashboard's cached net-worth snapshot so it doesn't show
+      // stale numbers after the wipe (see app/dashboard/page.tsx).
+      try { window.localStorage.removeItem('last_net_worth_snapshot') } catch {}
+      onDataChanged?.()
+      await loadBackups()
+      setDemoMsg('All data removed. You can start fresh.')
+    } catch (e: any) {
+      setDemoMsg(e?.response?.data?.detail ?? e?.message ?? 'Failed to remove data.')
+    } finally {
+      setClearBusy(false)
+    }
+  }
+  const [backupIntervalDays, setBackupIntervalDays] = useState<number>(7)
+
+  // Load the saved auto-backup frequency on mount (localStorage is client-only).
+  useEffect(() => { setBackupIntervalDays(loadBackupIntervalDays()) }, [])
+
+  const changeBackupInterval = (days: number) => {
+    setBackupIntervalDays(days)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(BACKUP_INTERVAL_KEY, String(days))
+    }
+  }
+
+  // One-tap loader for the bundled sample dataset (frontend/public/demo-data.json):
+  // 24 holdings across every asset type/sector, accounts, debts, properties,
+  // watchlist, transactions, and ~18 months of daily net-worth history so all
+  // charts (1W / 1M / 1Y ranges included) have data. Always a clean 'replace'.
+  const handleLoadDemo = async () => {
+    if (typeof window !== 'undefined' && !window.confirm(
+      'Load the demo dataset?\n\nThis REPLACES all current holdings, accounts, transactions, ' +
+      'watchlist, loans, properties, and trend history with sample data for testing. ' +
+      'Your user account and login are preserved. This cannot be undone.'
+    )) return
+    setDemoBusy(true)
+    setDemoMsg('')
+    try {
+      const res = await fetch('/demo-data.json', { cache: 'no-store' })
+      if (!res.ok) throw new Error(`Could not load demo file (HTTP ${res.status}).`)
+      const text = await res.text()
+      const file = new File([text], 'demo-data.json', { type: 'application/json' })
+      const out = await dataApi.importFullData(file, 'replace')
+      onDataChanged?.()
+      setDemoMsg(out.data.message ?? 'Demo data loaded.')
+    } catch (e: any) {
+      setDemoMsg(e?.response?.data?.detail ?? e?.message ?? 'Failed to load demo data.')
+    } finally {
+      setDemoBusy(false)
+    }
+  }
 
   const loadBackups = useCallback(async () => {
     try {
@@ -118,12 +201,15 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
 
   useEffect(() => {
     loadBackups()
-    // Weekly auto-backup: check if the newest backup is older than 7 days
+    // Auto-backup honoring the user's chosen frequency (0 = off): create a
+    // fresh snapshot if the newest one is older than the configured interval.
+    const intervalDays = loadBackupIntervalDays()
+    if (intervalDays <= 0) return
     dataApi.listBackups().then(res => {
       const list: BackupRecord[] = res.data.backups ?? []
       const newest = list[0]
-      const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
-      if (!newest || new Date(newest.created_at).getTime() < sevenDaysAgo) {
+      const cutoff = Date.now() - intervalDays * 24 * 60 * 60 * 1000
+      if (!newest || new Date(newest.created_at).getTime() < cutoff) {
         dataApi.createBackup().catch(() => {})
       }
     }).catch(() => {})
@@ -291,6 +377,40 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
               All sections (holdings, accounts, transactions, watchlist, loans,
               properties, portfolio history) are restored together.
             </p>
+
+            {/* Demo / sample data — one tap, no file picker needed */}
+            <div className="rounded-md border border-dashed border-border p-3 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Load demo data</p>
+                  <p className="text-xs text-muted-foreground">
+                    24 sample holdings + accounts, debts, properties, watchlist &amp;
+                    18 months of history. Replaces current data.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={demoBusy || clearBusy}
+                    onClick={handleLoadDemo}
+                    className="text-xs"
+                  >
+                    {demoBusy ? 'Loading…' : 'Load demo data'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={demoBusy || clearBusy}
+                    onClick={handleClearAll}
+                    className="text-xs text-red-600 hover:text-red-700 hover:border-red-300 dark:hover:bg-red-950/30"
+                  >
+                    {clearBusy ? 'Removing…' : 'Remove all data'}
+                  </Button>
+                </div>
+              </div>
+              {demoMsg && <p className="text-xs text-muted-foreground">{demoMsg}</p>}
+            </div>
           </div>
 
           <p className="text-xs font-semibold text-muted-foreground pt-1">Individual CSV import</p>
@@ -318,7 +438,9 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
           <div>
             <CardTitle className="text-base">Automatic Backups</CardTitle>
             <p className="text-sm text-muted-foreground mt-0.5">
-              A complete JSON snapshot is saved on your device every 7 days. Up to 10 backups are kept.
+              A complete JSON snapshot — holdings, accounts, debts, properties,
+              watchlist, transactions and net-worth history — is saved on your
+              device {backupIntervalDays > 0 ? `every ${backupIntervalDays === 1 ? 'day' : backupIntervalDays === 7 ? 'week' : 'month'}` : 'only when you tap Backup now'}. Up to 10 backups are kept.
             </p>
           </div>
           <Button
@@ -332,6 +454,26 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
           </Button>
         </CardHeader>
         <CardContent>
+          {/* Frequency selector */}
+          <div className="flex items-center justify-between gap-3 mb-3 pb-3 border-b border-border">
+            <span className="text-xs font-medium text-muted-foreground">Backup frequency</span>
+            <div className="flex items-center gap-1">
+              {BACKUP_INTERVAL_OPTIONS.map(opt => (
+                <button
+                  key={opt.days}
+                  type="button"
+                  onClick={() => changeBackupInterval(opt.days)}
+                  className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
+                    backupIntervalDays === opt.days
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
           {backupMsg && (
             <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2 mb-3">
               {backupMsg}

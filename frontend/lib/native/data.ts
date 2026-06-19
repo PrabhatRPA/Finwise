@@ -143,6 +143,16 @@ async function fetchProperties() {
   )
 }
 
+async function fetchPortfolioHistory() {
+  const userId = await requireSessionUserId()
+  return all<any>(
+    `SELECT history_date, total_assets, total_liabilities, total_net_worth,
+            total_investments, total_cash
+     FROM portfolio_history WHERE user_id = ? ORDER BY history_date ASC`,
+    [userId],
+  )
+}
+
 async function fetchWatchlist() {
   const userId = await requireSessionUserId()
   return all<any>(
@@ -184,9 +194,10 @@ export const nativeDataApi = {
     await exportFile('debts.csv', csv, 'text/csv')
   },
 
-  // Net-worth trend history isn't recorded daily yet on iOS — same pattern.
+  // Net-worth trend history (daily snapshots) → CSV for the Trends export.
   exportTrends: async () => {
-    const csv = toCsv([], [
+    const rows = await fetchPortfolioHistory()
+    const csv = toCsv(rows, [
       'history_date', 'total_assets', 'total_liabilities', 'total_net_worth',
       'total_investments', 'total_cash',
     ])
@@ -194,13 +205,14 @@ export const nativeDataApi = {
   },
 
   exportFullData: async () => {
-    const [holdings, accounts, transactions, watchlist, loans, properties] = await Promise.all([
+    const [holdings, accounts, transactions, watchlist, loans, properties, portfolio_history] = await Promise.all([
       fetchHoldings(),
       fetchAccounts(),
       fetchTransactions(),
       fetchWatchlist(),
       fetchLoans(),
       fetchProperties(),
+      fetchPortfolioHistory(),
     ])
     const payload = {
       version: 1,
@@ -212,6 +224,7 @@ export const nativeDataApi = {
       watchlist,
       loans,
       properties,
+      portfolio_history,
     }
     await exportFile('nworth_full_export.json', JSON.stringify(payload, null, 2), 'application/json')
   },
@@ -354,6 +367,7 @@ export const nativeDataApi = {
     const watchlist  = Array.isArray(payload.watchlist)    ? payload.watchlist    : []
     const loans      = Array.isArray(payload.loans)        ? payload.loans        : []
     const properties = Array.isArray(payload.properties)   ? payload.properties   : []
+    const history    = Array.isArray(payload.portfolio_history) ? payload.portfolio_history : []
 
     if (mode === 'replace') {
       // True restore: wipe the user's data first. User account is preserved.
@@ -363,6 +377,7 @@ export const nativeDataApi = {
       await run(`DELETE FROM accounts WHERE user_id = ?`, [userId])
       await run(`DELETE FROM loans WHERE user_id = ?`, [userId])
       await run(`DELETE FROM properties WHERE user_id = ?`, [userId])
+      await run(`DELETE FROM portfolio_history WHERE user_id = ?`, [userId])
     }
 
     // ── accounts: rebuild a name→id map so child rows can be re-linked ──
@@ -650,13 +665,44 @@ export const nativeDataApi = {
       counts.properties++
     }
 
+    // ── portfolio_history (net-worth snapshots) ─────────────────────────
+    // Powers the Growth chart and the Net Worth Trend chart. UPSERT on the
+    // (user_id, history_date) unique key so re-imports refresh in place.
+    let historyCount = 0
+    for (const s of history) {
+      const date = (s.history_date || s.date || '').toString().trim()
+      if (!date) { counts.skipped++; continue }
+      await run(
+        `INSERT INTO portfolio_history (
+           user_id, history_date, total_assets, total_liabilities,
+           total_net_worth, total_investments, total_cash
+         ) VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(user_id, history_date) DO UPDATE SET
+           total_assets      = excluded.total_assets,
+           total_liabilities = excluded.total_liabilities,
+           total_net_worth   = excluded.total_net_worth,
+           total_investments = excluded.total_investments,
+           total_cash        = excluded.total_cash`,
+        [
+          userId, date,
+          toNum(s.total_assets),
+          toNum(s.total_liabilities),
+          toNum(s.total_net_worth ?? s.net_worth),
+          toNum(s.total_investments),
+          toNum(s.total_cash),
+        ],
+      )
+      historyCount++
+    }
+
     // Summary shape the data-management UI expects (per-section created/skipped).
     const summary: Record<string, { created: number; skipped?: number }> = {
-      holdings:     { created: counts.holdings },
-      transactions: { created: counts.transactions },
-      watchlist:    { created: counts.watchlist },
-      loans:        { created: counts.loans },
-      properties:   { created: counts.properties },
+      holdings:        { created: counts.holdings },
+      transactions:    { created: counts.transactions },
+      watchlist:       { created: counts.watchlist },
+      loans:           { created: counts.loans },
+      properties:      { created: counts.properties },
+      portfolio_history: { created: historyCount },
     }
     if (counts.skipped > 0) summary.skipped = { created: 0, skipped: counts.skipped }
 
@@ -664,12 +710,32 @@ export const nativeDataApi = {
       data: {
         message:
           `Imported ${counts.holdings} holdings, ${counts.transactions} transactions, ` +
-          `${counts.watchlist} watchlist, ${counts.loans} loans, ${counts.properties} properties. ` +
-          `Skipped: ${counts.skipped}.`,
+          `${counts.watchlist} watchlist, ${counts.loans} loans, ${counts.properties} properties, ` +
+          `${historyCount} history snapshots. Skipped: ${counts.skipped}.`,
         summary,
         ...counts,
+        portfolio_history: historyCount,
       },
     }
+  },
+
+  // ── Start fresh ──────────────────────────────────────────────────────
+  // Wipe every data table for the current user (holdings, accounts, txns,
+  // watchlist, loans, properties, trend history) while preserving the user
+  // account/login. Used by the "Remove all data" button so a user can clear
+  // the demo dataset and start from scratch. Also clears the shared price
+  // cache so stale quotes don't linger.
+  clearAllData: async () => {
+    const userId = await requireSessionUserId()
+    await run(`DELETE FROM holdings WHERE user_id = ?`, [userId])
+    await run(`DELETE FROM transactions WHERE user_id = ?`, [userId])
+    await run(`DELETE FROM watchlist WHERE user_id = ?`, [userId])
+    await run(`DELETE FROM accounts WHERE user_id = ?`, [userId])
+    await run(`DELETE FROM loans WHERE user_id = ?`, [userId])
+    await run(`DELETE FROM properties WHERE user_id = ?`, [userId])
+    await run(`DELETE FROM portfolio_history WHERE user_id = ?`, [userId])
+    await run(`DELETE FROM market_prices`, [])
+    return { data: { success: true, message: 'All data cleared. You can start fresh.' } }
   },
 
   // ── Backups ────────────────────────────────────────────────────────────
@@ -683,20 +749,21 @@ export const nativeDataApi = {
   // visit). The user explicitly taps Download on a row to share it.
 
   createBackup: async () => {
-    const [holdings, accounts, transactions, watchlist, loans, properties] = await Promise.all([
+    const [holdings, accounts, transactions, watchlist, loans, properties, portfolio_history] = await Promise.all([
       fetchHoldings(),
       fetchAccounts(),
       fetchTransactions(),
       fetchWatchlist(),
       fetchLoans(),
       fetchProperties(),
+      fetchPortfolioHistory(),
     ])
     const payload = {
       version: 1,
       exported_at: new Date().toISOString(),
       source: 'nworth-ios',
       kind: 'auto-backup',
-      holdings, accounts, transactions, watchlist, loans, properties,
+      holdings, accounts, transactions, watchlist, loans, properties, portfolio_history,
     }
     const json = JSON.stringify(payload, null, 2)
     const filename = `nworth_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.json`
