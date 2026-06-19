@@ -298,14 +298,15 @@ function RegisterForm() {
               </Button>
             </form>
 
-            {!isSetup && (
-              <p className="text-center text-xs text-muted-foreground mt-4">
-                Already have an account?{' '}
-                <Link href="/login" className="text-primary hover:underline font-medium">
-                  Sign in
-                </Link>
-              </p>
-            )}
+            {/* Always offer a way to sign in — even during first-run setup, in
+                case the user actually has an account (e.g. after a reinstall or
+                if they landed here by mistake). /login links back to register. */}
+            <p className="text-center text-xs text-muted-foreground mt-4">
+              Already have an account?{' '}
+              <Link href="/login" className="text-primary hover:underline font-medium">
+                Sign in
+              </Link>
+            </p>
           </CardContent>
         </Card>
 
