@@ -32,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem('theme');if(t==='dark'||(t===null&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}`,
+            __html: `try{var m=localStorage.getItem('theme');var dark;if(m==='dark'){dark=true}else if(m==='light'){dark=false}else{if(window.matchMedia('(prefers-color-scheme: dark)').matches){dark=true}else if(window.matchMedia('(prefers-color-scheme: light)').matches){dark=false}else{var h=new Date().getHours();dark=(h<7||h>=19)}}if(dark){document.documentElement.classList.add('dark')}}catch(e){}`,
           }}
         />
       </head>

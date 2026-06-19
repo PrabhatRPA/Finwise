@@ -1,14 +1,17 @@
 'use client'
 
-// Fixes the iOS keyboard UX in the Capacitor build:
+// Makes the iOS software keyboard behave like a native app's:
 //
-//   1. The software keyboard slides up but the WebView doesn't scroll the
-//      focused field into view, so you can't see what you're typing.
-//   2. Capacitor hides the native input accessory bar on iPhone by default,
-//      so there's no "Done" button to dismiss the keyboard.
+//   1. resize: 'native' (capacitor.config.ts) shrinks the WebView above the
+//      keyboard so centered / full-height layouts reflow up on their own.
+//   2. This manager then scrolls the focused field into the visible area — both
+//      when the keyboard opens and when the user taps a different field while
+//      it's already up (covers long forms and in-card modals).
+//   3. Exposes the keyboard height as a CSS var (--keyboard-height) for any
+//      component that wants to pad itself.
+//   4. Shows the native accessory bar so there's a "Done" button to dismiss.
 //
-// This component (mounted once in the root layout) registers global keyboard
-// listeners on native only — it's a no-op on web/desktop.
+// No-op on web / desktop.
 
 import { useEffect } from 'react'
 import { Capacitor } from '@capacitor/core'
@@ -17,33 +20,58 @@ export function KeyboardManager() {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
 
-    let listeners: { remove: () => void }[] = []
+    const root = document.documentElement
+    const listeners: { remove: () => void }[] = []
     let cancelled = false
+
+    // Bring the focused input into view once layout has settled. rAF + a short
+    // timeout lets the native resize + reflow finish first, otherwise we'd
+    // scroll against the pre-resize geometry.
+    const scrollFocusedIntoView = () => {
+      const el = document.activeElement as HTMLElement | null
+      if (!el || typeof el.scrollIntoView !== 'function') return
+      const tag = el.tagName
+      if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') return
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }) } catch {}
+        }, 60)
+      })
+    }
+
+    // Re-focus into view when tapping another field while the keyboard is up.
+    const onFocusIn = () => scrollFocusedIntoView()
+    document.addEventListener('focusin', onFocusIn)
 
     ;(async () => {
       const { Keyboard } = await import('@capacitor/keyboard')
       if (cancelled) return
 
-      // Show the native accessory bar so the keyboard has a "Done" button.
+      // "Done" / prev-next accessory bar (hidden by default on iPhone).
       try { await Keyboard.setAccessoryBarVisible({ isVisible: true }) } catch {}
 
-      // When the keyboard is about to show, scroll the focused element into
-      // the centre of the (now shorter) viewport so it isn't hidden behind
-      // the keyboard. A short delay lets the body resize settle first.
-      const onShow = await Keyboard.addListener('keyboardWillShow', () => {
-        setTimeout(() => {
-          const el = document.activeElement as HTMLElement | null
-          if (el && typeof el.scrollIntoView === 'function') {
-            el.scrollIntoView({ block: 'center', behavior: 'smooth' })
-          }
-        }, 100)
-      })
-      listeners.push(onShow)
+      listeners.push(
+        await Keyboard.addListener('keyboardWillShow', (info) => {
+          root.style.setProperty('--keyboard-height', `${info.keyboardHeight}px`)
+          root.classList.add('keyboard-open')
+          scrollFocusedIntoView()
+        }),
+        // keyboardDidShow fires after the keyboard is fully up — a second scroll
+        // here catches cases where the first ran too early.
+        await Keyboard.addListener('keyboardDidShow', () => scrollFocusedIntoView()),
+        await Keyboard.addListener('keyboardWillHide', () => {
+          root.style.setProperty('--keyboard-height', '0px')
+          root.classList.remove('keyboard-open')
+        }),
+      )
     })()
 
     return () => {
       cancelled = true
+      document.removeEventListener('focusin', onFocusIn)
       listeners.forEach((l) => l.remove())
+      root.style.removeProperty('--keyboard-height')
+      root.classList.remove('keyboard-open')
     }
   }, [])
 

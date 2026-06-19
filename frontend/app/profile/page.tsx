@@ -21,7 +21,7 @@ import {
 export default function ProfilePage() {
   const router = useRouter()
   const { user, isLoading, logout } = useAuth()
-  const { theme, setTheme } = useTheme()
+  const { mode, setMode } = useTheme()
 
   const [biometryStatus, setBiometryStatus] = useState<BiometryStatus | null>(null)
   const [biometricOn, setBiometricOn] = useState(false)
@@ -125,13 +125,13 @@ export default function ProfilePage() {
           <CardTitle className="text-base">Appearance</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-2">
-            {(['light', 'dark'] as const).map(t => (
+          <div className="grid grid-cols-3 gap-2">
+            {(['light', 'dark', 'system'] as const).map(t => (
               <button
                 key={t}
-                onClick={() => setTheme(t)}
+                onClick={() => setMode(t)}
                 className={`h-10 rounded-md border text-sm font-medium capitalize transition-colors ${
-                  theme === t
+                  mode === t
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'border-border hover:bg-accent'
                 }`}
@@ -140,6 +140,10 @@ export default function ProfilePage() {
               </button>
             ))}
           </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            <span className="font-medium">System</span> follows your device&apos;s
+            appearance; if the device has no preference it switches by time of day.
+          </p>
         </CardContent>
       </Card>
 

@@ -4,6 +4,9 @@
 
 @layer base {
   :root {
+    /* Tell the WebView to render native controls (the <select> dropdown arrow,
+       scrollbars, etc.) with light-appropriate contrast. */
+    color-scheme: light;
     /* Finwise — emerald finance theme (light) */
     --background:     210 40% 98%;   /* slate-50 */
     --foreground:     222 47% 11%;   /* slate-900 */
@@ -28,6 +31,9 @@
   }
 
   .dark {
+    /* Dark-render native controls so the <select> dropdown arrow (and other
+       native UI) stays visible on dark backgrounds. */
+    color-scheme: dark;
     /* Finwise — emerald finance theme (dark) */
     --background:     222 47%  7%;   /* deep slate */
     --foreground:     210 40% 96%;   /* slate-100 */
@@ -93,4 +99,14 @@ body::before {
 }
 .dark body::before {
   background: radial-gradient(ellipse 80% 120px at 50% -20px, hsl(160 84% 50% / 0.08) 0%, transparent 100%);
+}
+
+/* Keyboard handling (see components/keyboard-manager.tsx):
+   when a field is scrolled into view above the software keyboard, leave some
+   breathing room so it doesn't sit flush against the keyboard or the navbar. */
+input,
+textarea,
+select {
+  scroll-margin-top: 96px;
+  scroll-margin-bottom: 96px;
 }

@@ -24,7 +24,11 @@ const config: CapacitorConfig = {
       backgroundColor: '#1a1a2e',
     },
     Keyboard: {
-      resize: 'body',
+      // 'native' shrinks the WebView frame to the area above the keyboard, so
+      // full-height / vertically-centered layouts (login, register, modals)
+      // reflow upward on their own instead of hiding behind the keyboard.
+      // The KeyboardManager additionally scrolls the focused field into view.
+      resize: 'native',
       resizeOnFullScreen: true,
     },
     StatusBar: {
