@@ -50,6 +50,8 @@ const EMPTY_FORM = {
 }
 type FormState = typeof EMPTY_FORM
 
+const CASH_ACCOUNT_TYPES = new Set(['checking', 'savings', 'cash_management'])
+
 export function AccountsTable({ accounts, onAccountChanged }: AccountsTableProps) {
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -59,7 +61,13 @@ export function AccountsTable({ accounts, onAccountChanged }: AccountsTableProps
   const [confirmDelete, setConfirmDelete] = useState<AccountLike | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
-  const total = accounts.reduce((s, a) => s + (a.balance ?? 0), 0)
+  const cashTotal = accounts
+    .filter(a => CASH_ACCOUNT_TYPES.has(a.account_type))
+    .reduce((s, a) => s + (a.balance ?? 0), 0)
+  const investTotal = accounts
+    .filter(a => !CASH_ACCOUNT_TYPES.has(a.account_type))
+    .reduce((s, a) => s + (a.balance ?? 0), 0)
+  const total = cashTotal + investTotal
 
   function openAdd() {
     setEditingId(null)
@@ -253,7 +261,16 @@ export function AccountsTable({ accounts, onAccountChanged }: AccountsTableProps
           <div>
             <CardTitle>Cash &amp; Accounts</CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Total balance: <span className="font-semibold text-foreground tabular-nums">{formatCurrency(total)}</span>
+              Liquid cash:{' '}
+              <span className="font-semibold text-foreground tabular-nums">{formatCurrency(cashTotal)}</span>
+              {investTotal > 0 && (
+                <>
+                  {' '}·{' '}Investment accounts:{' '}
+                  <span className="font-semibold text-foreground tabular-nums">{formatCurrency(investTotal)}</span>
+                  {' '}·{' '}Total:{' '}
+                  <span className="font-semibold text-foreground tabular-nums">{formatCurrency(total)}</span>
+                </>
+              )}
             </p>
           </div>
           <Button onClick={openAdd} size="sm">+ Add Account</Button>

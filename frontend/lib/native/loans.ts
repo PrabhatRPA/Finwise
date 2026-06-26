@@ -9,8 +9,9 @@ export const nativeLoansApi = {
     const sql = includePaidOff
       ? `SELECT * FROM loans WHERE user_id = ? ORDER BY id DESC`
       : `SELECT * FROM loans WHERE user_id = ? AND status = 'active' ORDER BY id DESC`
-    const rows = await all(sql, [userId])
-    return { data: { loans: rows } }
+    const rows = await all<any>(sql, [userId])
+    const total_debt = rows.reduce((s: number, r: any) => s + (r.current_balance ?? 0), 0)
+    return { data: { loans: rows, total_debt } }
   },
 
   create: async (data: any) => {

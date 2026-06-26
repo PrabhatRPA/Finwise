@@ -268,16 +268,16 @@ export function WatchlistTable() {
       {alerts.filter(i => i.notification_method === 'in_app' || i.notification_method === 'both').map(item => (
         <div
           key={item.id}
-          className="flex items-center justify-between bg-yellow-50 border border-yellow-300 rounded-lg px-4 py-3 text-sm"
+          className="flex items-center justify-between bg-yellow-50 dark:bg-yellow-900/40 border border-yellow-300 dark:border-yellow-600 rounded-lg px-4 py-3 text-sm"
         >
-          <span className="font-medium text-yellow-900">
+          <span className="font-medium text-yellow-900 dark:text-yellow-100">
             🔔 {item.ticker} hit your target — now {formatCurrency(item.current_price ?? 0)}
             {item.target_direction === 'above' ? ' (above' : ' (below'} {formatCurrency(item.target_price ?? 0)})
           </span>
           <Button
             size="sm"
             variant="outline"
-            className="ml-4 text-xs"
+            className="ml-4 text-xs shrink-0 border-yellow-600 dark:border-yellow-500 text-yellow-900 dark:text-yellow-100 hover:bg-yellow-100 dark:hover:bg-yellow-800/60"
             onClick={() => handleAcknowledge(item.id)}
           >
             Dismiss

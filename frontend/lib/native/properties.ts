@@ -51,7 +51,9 @@ export const nativePropertiesApi = {
       `SELECT * FROM properties WHERE user_id = ? AND is_active = 1 ORDER BY id DESC`,
       [userId],
     )
-    return { data: { properties: rows.map(enrich) } }
+    const enriched = rows.map(enrich)
+    const total_value = enriched.reduce((s, p) => s + p.current_value, 0)
+    return { data: { properties: enriched, total_value, rentcast_configured: false } }
   },
 
   create: async (data: any) => {
