@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import { all, get, run } from './db'
 import { getSessionUserId, setSessionUserId, clearSession } from './session'
 import { saveToken, clearToken } from '../token'
+import { isPasswordValid, PASSWORD_POLICY_TEXT } from '../password'
 
 // We don't actually need a JWT for on-device auth, but the existing UI
 // expects an `access_token` field to drop into the Authorization header.
@@ -47,6 +48,11 @@ export const nativeAuthApi = {
     // Normalize once at the boundary so a row inserted as "test" can be
     // looked up later regardless of how iOS's auto-capitalize behaves.
     const uname = username.trim().toLowerCase()
+    // Enforce the password policy here too — the form gates the button, but
+    // this is the real enforcement point on-device.
+    if (!isPasswordValid(password)) {
+      throw withStatus(400, PASSWORD_POLICY_TEXT)
+    }
     const existing = await get<UserRow>(
       'SELECT id FROM users WHERE LOWER(username) = ?',
       [uname],

@@ -3,6 +3,7 @@ Personal Finance Platform - Auth API
 Registration, login, token refresh, and user info endpoints.
 """
 
+import re
 from datetime import timedelta
 from typing import Optional
 
@@ -55,8 +56,22 @@ async def register(body: RegisterRequest, db: Session = Depends(get_db)):
     username = body.username.strip().lower()
     if len(username) < 3:
         raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
-    if len(body.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    # Password policy — kept in sync with frontend/lib/password.ts:
+    # min 8 chars, at least one uppercase, one lowercase, and one number.
+    pw = body.password
+    if (
+        len(pw) < 8
+        or not re.search(r"[A-Z]", pw)
+        or not re.search(r"[a-z]", pw)
+        or not re.search(r"[0-9]", pw)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Password must be at least 8 characters and include an uppercase "
+                "letter, a lowercase letter, and a number."
+            ),
+        )
 
     if db.query(models.User).filter(models.User.username == username).first():
         raise HTTPException(status_code=409, detail="Username already taken")

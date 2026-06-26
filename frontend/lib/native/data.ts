@@ -165,6 +165,36 @@ async function fetchWatchlist() {
 
 // ── Public export surface ──────────────────────────────────────────────────
 
+// Single source of truth for the full-data JSON snapshot used by exports,
+// on-device backups, and iCloud sync. The shape is exactly what importFullData
+// accepts, so any snapshot round-trips cleanly. `kind` lets callers tag the
+// origin (e.g. 'auto-backup', 'icloud') without changing the schema.
+export async function buildSnapshotPayload(kind?: string) {
+  const [holdings, accounts, transactions, watchlist, loans, properties, portfolio_history] =
+    await Promise.all([
+      fetchHoldings(),
+      fetchAccounts(),
+      fetchTransactions(),
+      fetchWatchlist(),
+      fetchLoans(),
+      fetchProperties(),
+      fetchPortfolioHistory(),
+    ])
+  return {
+    version: 1,
+    exported_at: new Date().toISOString(),
+    source: 'nworth-ios',
+    ...(kind ? { kind } : {}),
+    holdings,
+    accounts,
+    transactions,
+    watchlist,
+    loans,
+    properties,
+    portfolio_history,
+  }
+}
+
 export const nativeDataApi = {
   exportHoldings: async () => {
     const rows = await fetchHoldings()
@@ -205,27 +235,7 @@ export const nativeDataApi = {
   },
 
   exportFullData: async () => {
-    const [holdings, accounts, transactions, watchlist, loans, properties, portfolio_history] = await Promise.all([
-      fetchHoldings(),
-      fetchAccounts(),
-      fetchTransactions(),
-      fetchWatchlist(),
-      fetchLoans(),
-      fetchProperties(),
-      fetchPortfolioHistory(),
-    ])
-    const payload = {
-      version: 1,
-      exported_at: new Date().toISOString(),
-      source: 'nworth-ios',
-      holdings,
-      accounts,
-      transactions,
-      watchlist,
-      loans,
-      properties,
-      portfolio_history,
-    }
+    const payload = await buildSnapshotPayload()
     await exportFile('nworth_full_export.json', JSON.stringify(payload, null, 2), 'application/json')
   },
 
@@ -749,22 +759,7 @@ export const nativeDataApi = {
   // visit). The user explicitly taps Download on a row to share it.
 
   createBackup: async () => {
-    const [holdings, accounts, transactions, watchlist, loans, properties, portfolio_history] = await Promise.all([
-      fetchHoldings(),
-      fetchAccounts(),
-      fetchTransactions(),
-      fetchWatchlist(),
-      fetchLoans(),
-      fetchProperties(),
-      fetchPortfolioHistory(),
-    ])
-    const payload = {
-      version: 1,
-      exported_at: new Date().toISOString(),
-      source: 'nworth-ios',
-      kind: 'auto-backup',
-      holdings, accounts, transactions, watchlist, loans, properties, portfolio_history,
-    }
+    const payload = await buildSnapshotPayload('auto-backup')
     const json = JSON.stringify(payload, null, 2)
     const filename = `nworth_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.json`
 

@@ -69,6 +69,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true }
   }, [])
 
+  // Auto-sync to iCloud when the app moves to the background (if the user
+  // enabled it in Settings). Only wired while signed in. Dynamically imported
+  // so web/Tauri builds don't pull in the native modules.
+  useEffect(() => {
+    if (!user) return
+    let remove: (() => void) | undefined
+    ;(async () => {
+      try {
+        const { Capacitor } = await import('@capacitor/core')
+        if (!Capacitor.isNativePlatform()) return
+        const { App } = await import('@capacitor/app')
+        const { autoSyncIfEnabled } = await import('./native/icloud')
+        const handle = await App.addListener('appStateChange', ({ isActive }) => {
+          if (!isActive) autoSyncIfEnabled()
+        })
+        remove = () => { handle.remove() }
+      } catch {
+        // native modules unavailable — skip
+      }
+    })()
+    return () => { remove?.() }
+  }, [user])
+
   const login = async (username: string, password: string) => {
     const res = await authApi.login(username, password)
     await saveToken(res.data.access_token)

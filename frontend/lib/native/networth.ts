@@ -18,14 +18,19 @@ function todayIso(): string {
   return `${yyyy}-${mm}-${dd}`
 }
 
+// Bank/cash account types. Everything else (brokerage, traditional_ira,
+// roth_ira, 401k, hsa, pension, other) is treated as an investment account so
+// its balance rolls into the Portfolio tile alongside holdings — not into Cash.
+const CASH_ACCOUNT_TYPES = new Set(['checking', 'savings', 'cash_management'])
+
 async function computeNetWorth(userId: number) {
   const [holdings, accounts, loans, properties] = await Promise.all([
     all<{ current_value: number | null }>(
       `SELECT current_value FROM holdings WHERE user_id = ? AND is_active = 1`,
       [userId],
     ),
-    all<{ balance: number | null }>(
-      `SELECT balance FROM accounts WHERE user_id = ? AND is_active = 1`,
+    all<{ balance: number | null; account_type: string }>(
+      `SELECT balance, account_type FROM accounts WHERE user_id = ? AND is_active = 1`,
       [userId],
     ),
     all<{ current_balance: number | null; loan_type: string }>(
@@ -37,8 +42,17 @@ async function computeNetWorth(userId: number) {
       [userId],
     ),
   ])
-  const investments = holdings.reduce((s, h) => s + (h.current_value ?? 0), 0)
-  const cash = accounts.reduce((s, a) => s + (a.balance ?? 0), 0)
+  // Holdings are always investments. Account balances split by type: cash
+  // accounts feed the Cash tile, all other account balances feed Portfolio.
+  const holdings_value = holdings.reduce((s, h) => s + (h.current_value ?? 0), 0)
+  let cash = 0
+  let investment_accounts = 0
+  for (const a of accounts) {
+    const bal = a.balance ?? 0
+    if (CASH_ACCOUNT_TYPES.has(a.account_type)) cash += bal
+    else investment_accounts += bal
+  }
+  const investments = holdings_value + investment_accounts
   const real_estate = properties.reduce(
     (s, p) => s + (p.manual_value ?? p.estimated_value ?? 0),
     0,

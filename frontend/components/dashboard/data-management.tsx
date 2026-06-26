@@ -5,6 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { dataApi } from '@/lib/api'
+import {
+  getICloudStatus,
+  syncToICloud,
+  restoreFromICloud,
+  isAutoSyncEnabled,
+  setAutoSync,
+  type ICloudStatus,
+} from '@/lib/native/icloud'
 
 interface BackupRecord {
   filename: string
@@ -125,6 +133,60 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
   const [demoBusy, setDemoBusy] = useState(false)
   const [demoMsg, setDemoMsg] = useState('')
   const [clearBusy, setClearBusy] = useState(false)
+
+  // ── iCloud sync ──
+  const [icloud, setIcloud] = useState<ICloudStatus | null>(null)
+  const [icloudBusy, setIcloudBusy] = useState<'sync' | 'restore' | null>(null)
+  const [icloudMsg, setIcloudMsg] = useState('')
+  const [autoSync, setAutoSyncState] = useState(false)
+
+  const refreshICloud = useCallback(async () => {
+    try { setIcloud(await getICloudStatus()) } catch { setIcloud(null) }
+  }, [])
+
+  useEffect(() => {
+    refreshICloud()
+    isAutoSyncEnabled().then(setAutoSyncState).catch(() => {})
+  }, [refreshICloud])
+
+  const handleICloudSync = async () => {
+    setIcloudBusy('sync')
+    setIcloudMsg('')
+    try {
+      const ok = await syncToICloud()
+      setIcloudMsg(ok ? 'Synced to iCloud.' : 'iCloud is not available. Sign in to iCloud in iOS Settings.')
+      await refreshICloud()
+    } catch (e: any) {
+      setIcloudMsg(e?.message ?? 'iCloud sync failed.')
+    } finally {
+      setIcloudBusy(null)
+    }
+  }
+
+  const handleICloudRestore = async () => {
+    if (typeof window !== 'undefined' && !window.confirm(
+      'Restore from iCloud?\n\nThis REPLACES all current holdings, accounts, transactions, ' +
+      'watchlist, loans, properties, and trend history with the snapshot stored in iCloud. ' +
+      'Your login is preserved. This cannot be undone.'
+    )) return
+    setIcloudBusy('restore')
+    setIcloudMsg('')
+    try {
+      const out = await restoreFromICloud()
+      onDataChanged?.()
+      setIcloudMsg(out.message)
+    } catch (e: any) {
+      setIcloudMsg(e?.message ?? 'iCloud restore failed.')
+    } finally {
+      setIcloudBusy(null)
+    }
+  }
+
+  const toggleAutoSync = async () => {
+    const next = !autoSync
+    setAutoSyncState(next)
+    try { await setAutoSync(next) } catch {}
+  }
 
   // Wipe all data (demo or real) so the user can start fresh. Keeps the login.
   const handleClearAll = async () => {
@@ -272,6 +334,85 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
 
   return (
     <div className="space-y-6">
+      {/* ── iCloud Sync ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">iCloud Sync</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Keep your portfolio in sync across your iPhone and iPad. A complete
+            snapshot is stored in your private iCloud Drive — nothing is sent to
+            any third-party server. Restore on another device to copy everything
+            over (this replaces that device&apos;s data).
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {icloud && !icloud.available && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-3 py-2">
+              <p className="text-xs text-amber-800 dark:text-amber-300">
+                iCloud isn&apos;t available. Sign in to iCloud in{' '}
+                <span className="font-mono">iOS Settings → [your name] → iCloud</span>{' '}
+                and make sure iCloud Drive is on.
+              </p>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={icloudBusy !== null || (icloud ? !icloud.available : false)}
+              onClick={handleICloudSync}
+              className="text-xs"
+            >
+              {icloudBusy === 'sync' ? 'Syncing…' : 'Sync now'}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={icloudBusy !== null || !icloud?.remoteExists}
+              onClick={handleICloudRestore}
+              className="text-xs"
+            >
+              {icloudBusy === 'restore' ? 'Restoring…' : 'Restore from iCloud'}
+            </Button>
+          </div>
+
+          {/* Auto-sync toggle */}
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Auto-sync when app closes</p>
+              <p className="text-xs text-muted-foreground">
+                Upload a fresh snapshot to iCloud each time you leave the app.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={autoSync}
+              onClick={toggleAutoSync}
+              className={`relative inline-flex h-[31px] w-[51px] shrink-0 items-center rounded-full
+                border-2 border-transparent transition-colors duration-200 ease-in-out
+                ${autoSync ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`}
+            >
+              <span
+                aria-hidden="true"
+                className={`pointer-events-none inline-block h-[27px] w-[27px] transform rounded-full
+                  bg-white shadow-md transition duration-200 ease-in-out
+                  ${autoSync ? 'translate-x-[20px]' : 'translate-x-0'}`}
+              />
+            </button>
+          </div>
+
+          {(icloud?.lastSyncAt || icloud?.remoteModifiedAt) && (
+            <p className="text-xs text-muted-foreground">
+              {icloud?.lastSyncAt && <>Last synced from this device: {new Date(icloud.lastSyncAt).toLocaleString()}. </>}
+              {icloud?.remoteModifiedAt && <>iCloud snapshot updated: {new Date(icloud.remoteModifiedAt).toLocaleString()}.</>}
+            </p>
+          )}
+          {icloudMsg && <p className="text-xs text-muted-foreground">{icloudMsg}</p>}
+        </CardContent>
+      </Card>
+
       {/* ── Export ── */}
       <Card>
         <CardHeader>

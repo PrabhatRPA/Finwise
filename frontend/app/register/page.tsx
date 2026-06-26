@@ -8,12 +8,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { APP_NAME, APP_TAGLINE, APP_VERSION } from '@/lib/constants'
+import { PASSWORD_RULES, isPasswordValid } from '@/lib/password'
 
-// Username and password rules (kept in sync with backend/app/api/v1/auth.py)
+// Username rules (kept in sync with backend/app/api/v1/auth.py). Password rules
+// live in lib/password.ts so the form and the native register call share them.
 const USERNAME_MIN   = 3
 const USERNAME_MAX   = 30
 const USERNAME_REGEX = /^[a-z0-9_-]+$/
-const PASSWORD_MIN   = 6
 
 function validate(field: 'username' | 'password', value: string): string {
   if (field === 'username') {
@@ -26,8 +27,7 @@ function validate(field: 'username' | 'password', value: string): string {
   }
   if (field === 'password') {
     if (value.length === 0) return ''
-    if (value.length < PASSWORD_MIN) return `At least ${PASSWORD_MIN} characters`
-    return 'ok'
+    return isPasswordValid(value) ? 'ok' : 'incomplete'
   }
   return ''
 }
@@ -257,11 +257,25 @@ function RegisterForm() {
                     )}
                   </button>
                 </div>
-                <HintRow status={passStatus} msg={`At least ${PASSWORD_MIN} characters (${password.length}/${PASSWORD_MIN})`} />
-                {/* Always-visible requirement so the user knows the format up front. */}
-                <p className="text-xs text-muted-foreground mt-1">
-                  Must be at least {PASSWORD_MIN} characters. Any letters, numbers, or symbols are allowed — choose something only you know.
-                </p>
+                {/* Live requirement checklist — each rule turns green as it's met. */}
+                <ul className="mt-1.5 space-y-0.5">
+                  {PASSWORD_RULES.map((rule) => {
+                    const met = rule.test(password)
+                    return (
+                      <li
+                        key={rule.id}
+                        className={`text-xs flex items-center gap-1.5 ${
+                          met
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-muted-foreground'
+                        }`}
+                      >
+                        <span className="w-3 inline-block text-center">{met ? '✓' : '○'}</span>
+                        {rule.label}
+                      </li>
+                    )
+                  })}
+                </ul>
               </div>
 
               {/* Confirm password */}

@@ -55,5 +55,17 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSUbiquitousContainers</key>
+	<dict>
+		<key>iCloud.com.prabhat.nworth</key>
+		<dict>
+			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
+			<false/>
+			<key>NSUbiquitousContainerName</key>
+			<string>Nworth</string>
+			<key>NSUbiquitousContainerSupportedFolderLevels</key>
+			<string>One</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

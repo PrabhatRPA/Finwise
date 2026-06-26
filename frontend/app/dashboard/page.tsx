@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatCurrency } from '@/lib/utils'
 import { usePortfolioStore } from '@/lib/store'
-import { holdingsApi, accountsApi, netWorthApi, systemApi } from '@/lib/api'
+import { holdingsApi, accountsApi, netWorthApi, systemApi, dataApi } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { WelcomeDemoModal } from '@/components/onboarding/welcome-demo-modal'
 import { HoldingsTable } from '@/components/dashboard/holdings-table'
 import { AssetAllocationChart } from '@/components/dashboard/allocation-chart'
 import { PortfolioPerformanceChart } from '@/components/dashboard/performance-chart'
@@ -103,9 +104,14 @@ function formatCompactCurrency(n: number): string {
   }
 }
 
+// First-run onboarding flag — per user so each account is prompted once.
+function onboardingSeenKey(userId: number | string) {
+  return `onboarding_seen_${userId}`
+}
+
 export default function DashboardPage() {
   const router = useRouter()
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const { holdings, accounts, totalValue, setHoldings, calculatePortfolio } = usePortfolioStore()
 
   // Only block the page on the very first load (store is empty).
@@ -123,6 +129,12 @@ export default function DashboardPage() {
   // handles full CRUD (name / type / institution / balance).
   // Controlled tab state so the mobile <select> and the desktop TabsList stay in sync.
   const [activeTab, setActiveTab] = useState('holdings')
+
+  // First-run onboarding: offer to load the demo dataset. Shown once per user,
+  // only when their account is still empty (so a returning user whose flag was
+  // lost isn't prompted over real data).
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [onboardingBusy, setOnboardingBusy] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -210,6 +222,47 @@ export default function DashboardPage() {
     }
   }
 
+  // Decide whether to surface the first-run onboarding popup. Runs once the
+  // initial load settles: prompt only if this user hasn't seen it and has no
+  // holdings or accounts yet.
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || !user) return
+    if (typeof window === 'undefined') return
+    const seen = window.localStorage.getItem(onboardingSeenKey(user.user_id))
+    if (!seen && holdings.length === 0 && accounts.length === 0) {
+      setShowOnboarding(true)
+    }
+  }, [isLoading, isAuthenticated, user, holdings.length, accounts.length])
+
+  const markOnboardingSeen = () => {
+    if (typeof window !== 'undefined' && user) {
+      window.localStorage.setItem(onboardingSeenKey(user.user_id), '1')
+    }
+  }
+
+  const handleLoadDemoData = async () => {
+    setOnboardingBusy(true)
+    try {
+      const res = await fetch('/demo-data.json', { cache: 'no-store' })
+      if (!res.ok) throw new Error(`Could not load demo file (HTTP ${res.status}).`)
+      const text = await res.text()
+      const file = new File([text], 'demo-data.json', { type: 'application/json' })
+      await dataApi.importFullData(file, 'replace')
+      markOnboardingSeen()
+      setShowOnboarding(false)
+      await fetchData(false, 8, true)
+    } catch {
+      // Leave the popup open on failure so the user can retry or skip.
+    } finally {
+      setOnboardingBusy(false)
+    }
+  }
+
+  const handleSkipOnboarding = () => {
+    markOnboardingSeen()
+    setShowOnboarding(false)
+  }
+
   if (authLoading || (isLoading && isAuthenticated)) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)]">
@@ -223,13 +276,24 @@ export default function DashboardPage() {
 
   if (!isAuthenticated) return null
 
-  // Prefer the live store value; fall back to the cached snapshot so the
-  // Portfolio tile and growth chart never momentarily read $0 on a cold start.
-  const displayTotalValue = totalValue || netWorthData?.totalValue || netWorthData?.investments || 0
+  // Portfolio = holdings + investment-account balances (brokerage / IRA / 401k
+  // / HSA / pension). That figure is computed by the net-worth engine as
+  // `investments`, so prefer it; the store's `totalValue` is holdings-only and
+  // would otherwise understate the tile. Fall back to it (then the cached
+  // snapshot) only so a cold start never momentarily reads $0.
+  const displayTotalValue =
+    netWorthData?.investments ?? (totalValue || netWorthData?.totalValue || 0)
 
   return (
     <div className="mx-auto max-w-screen-xl px-3 sm:px-4 pt-3 pb-6 sm:pt-3 sm:pb-8 space-y-3 sm:space-y-4">
 
+      {showOnboarding && (
+        <WelcomeDemoModal
+          busy={onboardingBusy}
+          onLoadDemo={handleLoadDemoData}
+          onSkip={handleSkipOnboarding}
+        />
+      )}
 
       {/* ── Page header ── single row: title + search.
           The subtitle moved into the navbar center. Refresh moved next to

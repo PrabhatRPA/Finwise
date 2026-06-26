@@ -229,6 +229,11 @@ export default function ProfilePage() {
             onClick={() => router.push('/documents')}
           />
           <Row
+            label="Remove demo / all data"
+            sub="Clear the sample portfolio (or everything) and start fresh."
+            onClick={() => router.push('/documents')}
+          />
+          <Row
             label="About Nworth"
             sub={APP_TAGLINE}
             onClick={() => router.push('/about')}
