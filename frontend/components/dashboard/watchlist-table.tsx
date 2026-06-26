@@ -319,7 +319,10 @@ export function WatchlistTable() {
                 </thead>
                 <tbody className="divide-y">
                   {items.map(item => (
-                    <tr key={item.id} className={item.alert_active ? 'bg-muted border-l-4 border-l-yellow-400' : 'border-l-4 border-l-transparent'}>
+                    <tr key={item.id}
+                      className={item.alert_active ? 'border-l-4 border-l-blue-400' : 'border-l-4 border-l-transparent'}
+                      style={item.alert_active ? { backgroundColor: 'rgba(59,130,246,0.18)' } : undefined}
+                    >
                       <td className="py-3 pr-4">
                         <div className="flex items-center gap-2">
                           <span className="font-bold">{item.ticker}</span>
