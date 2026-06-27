@@ -1,3 +1,3 @@
 export const APP_NAME = 'Nworth'
 export const APP_TAGLINE = 'Track Everything. Share Nothing.'
-export const APP_VERSION = '1.7.0'
+export const APP_VERSION = '1.7.1'

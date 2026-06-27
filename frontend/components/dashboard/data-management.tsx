@@ -160,7 +160,7 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
         setIcloudMsg('Synced to iCloud successfully.')
       } else {
         setIcloudMsgType('error')
-        setIcloudMsg('iCloud is not available. Go to iOS Settings → [your name] → iCloud and make sure iCloud Drive is on.')
+        setIcloudMsg('iCloud is not available. In iOS Settings → [Your Name] → iCloud, turn on iCloud Drive, then tap iCloud Drive and make sure Nworth is enabled.')
       }
       await refreshICloud()
     } catch (e: any) {
@@ -359,9 +359,10 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
           {icloud && !icloud.available && (
             <div className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-3 py-2">
               <p className="text-xs text-amber-800 dark:text-amber-300">
-                iCloud isn&apos;t available. Sign in to iCloud in{' '}
-                <span className="font-mono">iOS Settings → [your name] → iCloud</span>{' '}
-                and make sure iCloud Drive is on.
+                iCloud isn&apos;t available. In{' '}
+                <span className="font-mono">iOS Settings → [Your Name] → iCloud</span>,
+                make sure iCloud Drive is on. Then tap iCloud Drive and confirm
+                <span className="font-semibold"> Nworth</span> is enabled in the app list.
               </p>
             </div>
           )}

@@ -60,7 +60,7 @@
 		<key>iCloud.com.prabhat.nworth</key>
 		<dict>
 			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
-			<false/>
+			<true/>
 			<key>NSUbiquitousContainerName</key>
 			<string>Nworth</string>
 			<key>NSUbiquitousContainerSupportedFolderLevels</key>
