@@ -1,23 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python3 -c \"import socket; s=socket.socket\\(\\); s.connect\\(\\(''localhost'', 5000\\)\\); print\\(''5000 open''\\)\")",
-      "Bash(python3 -c \"import socket; s=socket.socket\\(\\); s.connect\\(\\(''localhost'', 8080\\)\\); print\\(''8080 open''\\)\")",
-      "Bash(python3 -c \"import socket; s=socket.socket\\(\\); s.connect\\(\\(''localhost'', 5010\\)\\); print\\(''5010 open''\\)\")",
-      "Bash(kill 66485 66488 66492)",
-      "Bash(python3 -m uvicorn --version)",
-      "Bash(pip3 show:*)",
-      "Bash(pip3 install:*)",
-      "Bash(/opt/homebrew/opt/python@3.13/Frameworks/Python.framework/Versions/3.13/bin/python3.13 -m uvicorn --version)",
-      "Bash(PYTHON=/opt/homebrew/opt/python@3.13/Frameworks/Python.framework/Versions/3.13/bin/python3.13 $PYTHON -m pip install jinja2 python-dotenv aiosqlite alembic --break-system-packages -q)",
-      "Bash(PYTHON=/opt/homebrew/opt/python@3.13/Frameworks/Python.framework/Versions/3.13/bin/python3.13 cd /Users/raos/Documents/VS Code Projects/Demo/personal-finance-platform/backend)",
-      "Bash($PYTHON -m pip install -r requirements.txt --break-system-packages -q)",
-      "Bash(PYTHON=/opt/homebrew/opt/python@3.13/Frameworks/Python.framework/Versions/3.13/bin/python3.13 $PYTHON -m pip install yfinance pdfplumber python-jose passlib bcrypt ollama langchain langchain-community --break-system-packages -q)",
-      "Bash(curl -s -X POST http://localhost:8000/api/v1/holdings -H 'Content-Type: application/json' -d '{\"ticker\":\"AAPL\",\"shares\":10,\"average_cost\":150.0,\"account_id\":1,\"security_type\":\"stock\"}')",
-      "Bash(npm install *)",
-      "Bash(git push *)",
-      "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(*)",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "WebFetch"
     ],
     "additionalDirectories": [
       "/Users/raos/Practice"
