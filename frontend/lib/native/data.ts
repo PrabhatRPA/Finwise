@@ -382,6 +382,9 @@ export const nativeDataApi = {
     const properties = Array.isArray(payload.properties)   ? payload.properties   : []
     const history    = Array.isArray(payload.portfolio_history) ? payload.portfolio_history : []
 
+    // Clean up any stale open transaction from a previous failed import
+    // before starting a new one.
+    try { await rollbackTransaction() } catch {}
     await beginTransaction()
     try {
     if (mode === 'replace') {

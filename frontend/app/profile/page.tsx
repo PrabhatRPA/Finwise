@@ -95,7 +95,7 @@ export default function ProfilePage() {
 
   if (isLoading || !user) return null
 
-  const initials = (user.full_name || user.username || '?')[0].toUpperCase()
+  const initials = (user.full_name || user.email || user.username || '?')[0].toUpperCase()
   const biometryAvailable = biometryStatus?.available === true
   const biometryKind = biometryAvailable
     ? (biometryStatus.kind === 'face_id' ? 'Face ID'
@@ -125,7 +125,9 @@ export default function ProfilePage() {
           {initials}
         </div>
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold truncate">{user.full_name || (user.username.startsWith('apple_') ? 'Apple Account' : user.username)}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold truncate">
+            {user.full_name || user.email || user.username}
+          </h1>
           {!user.username.startsWith('apple_') && (
             <p className="text-xs sm:text-sm text-muted-foreground">@{user.username}</p>
           )}

@@ -89,7 +89,11 @@ export async function run(
   params: any[] = [],
 ): Promise<{ changes: number; lastId: number }> {
   const conn = await getDb()
-  const res = await conn.run(sql, params)
+  // Pass transaction=false so the plugin does NOT auto-wrap in BEGIN/COMMIT.
+  // This prevents "cannot start a transaction within a transaction" when run()
+  // is called inside an explicit beginTransaction()/commitTransaction() block.
+  // Outside a transaction, SQLite auto-commits each statement anyway.
+  const res = await conn.run(sql, params, false)
   if (WRITE_SQL.test(sql) && _writeListeners.length > 0) {
     for (const l of _writeListeners) l()
   }
