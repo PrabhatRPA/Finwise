@@ -45,12 +45,15 @@ async function init(): Promise<SQLiteDBConnection> {
     [String(SCHEMA_VERSION)],
   )
 
-  // Incremental migrations — safe to re-run (errors mean column already exists).
+  // Incremental migrations — each statement is safe to re-run.
+  // ALTER TABLE ADD COLUMN must NOT include UNIQUE (unsupported in older SQLite).
+  // Uniqueness is enforced via a separate partial index instead.
   const migrations = [
-    `ALTER TABLE users ADD COLUMN apple_user_id TEXT UNIQUE`,
+    `ALTER TABLE users ADD COLUMN apple_user_id TEXT`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_apple_user_id ON users(apple_user_id) WHERE apple_user_id IS NOT NULL`,
   ]
   for (const sql of migrations) {
-    try { await conn.run(sql, []) } catch { /* column already exists — skip */ }
+    try { await conn.run(sql, []) } catch { /* already applied — skip */ }
   }
 
   db = conn
