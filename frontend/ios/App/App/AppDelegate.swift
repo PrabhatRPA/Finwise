@@ -7,13 +7,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Touch the iCloud ubiquity container in the background so iOS registers
-        // this app under Settings → [Your Name] → iCloud → iCloud Drive → Apps.
-        // iOS only adds the app to that list once it sees the container accessed —
-        // this ensures it registers on first launch rather than waiting for the
-        // user to tap a sync button.
+        // Register with iCloud on every launch so iOS shows this app under
+        // Settings → [Your Name] → iCloud → iCloud Drive → Apps.
+        // Getting the container URL is not enough — iOS only registers the app
+        // once it sees the Documents folder created inside the container.
         DispatchQueue.global(qos: .background).async {
-            let _ = FileManager.default.url(forUbiquityContainerIdentifier: "iCloud.com.prabhat.nworth")
+            guard let container = FileManager.default.url(
+                forUbiquityContainerIdentifier: "iCloud.com.prabhat.nworth"
+            ) else { return }
+            let docs = container.appendingPathComponent("Documents", isDirectory: true)
+            try? FileManager.default.createDirectory(
+                at: docs, withIntermediateDirectories: true, attributes: nil
+            )
         }
         return true
     }
