@@ -6,7 +6,7 @@
 // to live long enough for the share sheet to read it; iOS may purge it after.
 
 import { Capacitor } from '@capacitor/core'
-import { all, get, run } from './db'
+import { all, get, run, beginTransaction, commitTransaction, rollbackTransaction } from './db'
 import { requireSessionUserId } from './session'
 import { getAppleUserId } from './auth'
 
@@ -382,7 +382,7 @@ export const nativeDataApi = {
     const properties = Array.isArray(payload.properties)   ? payload.properties   : []
     const history    = Array.isArray(payload.portfolio_history) ? payload.portfolio_history : []
 
-    await run('BEGIN TRANSACTION', [])
+    await beginTransaction()
     try {
     if (mode === 'replace') {
       // True restore: wipe the user's data first. User account is preserved.
@@ -721,7 +721,7 @@ export const nativeDataApi = {
     }
     if (counts.skipped > 0) summary.skipped = { created: 0, skipped: counts.skipped }
 
-    await run('COMMIT', [])
+    await commitTransaction()
     return {
       data: {
         message:
@@ -734,7 +734,7 @@ export const nativeDataApi = {
       },
     }
     } catch (e) {
-      await run('ROLLBACK', []).catch(() => {})
+      await rollbackTransaction().catch(() => {})
       throw e
     }
   },

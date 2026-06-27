@@ -86,3 +86,18 @@ export async function run(
     lastId: res.changes?.lastId ?? 0,
   }
 }
+
+export async function beginTransaction(): Promise<void> {
+  const conn = await getDb()
+  await conn.beginTransaction()
+}
+
+export async function commitTransaction(): Promise<void> {
+  const conn = await getDb()
+  await conn.commitTransaction()
+}
+
+export async function rollbackTransaction(): Promise<void> {
+  const conn = await getDb()
+  await conn.rollbackTransaction()
+}

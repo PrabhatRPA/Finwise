@@ -125,8 +125,10 @@ export default function ProfilePage() {
           {initials}
         </div>
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold truncate">{user.full_name || user.username}</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">@{user.username}</p>
+          <h1 className="text-xl sm:text-2xl font-bold truncate">{user.full_name || (user.username.startsWith('apple_') ? 'Apple Account' : user.username)}</h1>
+          {!user.username.startsWith('apple_') && (
+            <p className="text-xs sm:text-sm text-muted-foreground">@{user.username}</p>
+          )}
         </div>
       </header>
 
