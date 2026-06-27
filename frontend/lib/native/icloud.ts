@@ -122,8 +122,9 @@ export async function setAutoSync(enabled: boolean): Promise<void> {
   await Preferences.set({ key: AUTO_SYNC_KEY, value: enabled ? '1' : '0' })
 }
 
-// Called from the app-background listener. Silent: swallows errors and no-ops
-// when auto-sync is off or iCloud is unavailable.
+// Called from the app-background listener AND after every DB write (via
+// scheduleAutoSync below). Silent: swallows errors and no-ops when auto-sync
+// is off or iCloud is unavailable.
 export async function autoSyncIfEnabled(): Promise<void> {
   try {
     if (!Capacitor.isNativePlatform()) return
@@ -132,4 +133,18 @@ export async function autoSyncIfEnabled(): Promise<void> {
   } catch {
     // best-effort
   }
+}
+
+// Debounced auto-sync triggered after any data write. Batches rapid edits
+// (e.g. bulk import) into a single iCloud write 2 s after the last change.
+// Silently no-ops when auto-sync is off or iCloud is unavailable.
+let _syncTimer: ReturnType<typeof setTimeout> | null = null
+
+export function scheduleAutoSync(delayMs = 2000): void {
+  if (!Capacitor.isNativePlatform()) return
+  if (_syncTimer !== null) clearTimeout(_syncTimer)
+  _syncTimer = setTimeout(() => {
+    _syncTimer = null
+    autoSyncIfEnabled().catch(() => {})
+  }, delayMs)
 }

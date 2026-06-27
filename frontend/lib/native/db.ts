@@ -75,12 +75,24 @@ export async function get<T = any>(sql: string, params: any[] = []): Promise<T |
   return rows[0] ?? null
 }
 
+// Write-listener registry — notified after any INSERT / UPDATE / DELETE.
+// Used by the auto-sync wiring in api.ts to trigger iCloud sync on data changes.
+const _writeListeners: Array<() => void> = []
+export function onDbWrite(listener: () => void): void {
+  _writeListeners.push(listener)
+}
+
+const WRITE_SQL = /^\s*(INSERT|UPDATE|DELETE)/i
+
 export async function run(
   sql: string,
   params: any[] = [],
 ): Promise<{ changes: number; lastId: number }> {
   const conn = await getDb()
   const res = await conn.run(sql, params)
+  if (WRITE_SQL.test(sql) && _writeListeners.length > 0) {
+    for (const l of _writeListeners) l()
+  }
   return {
     changes: res.changes?.changes ?? 0,
     lastId: res.changes?.lastId ?? 0,

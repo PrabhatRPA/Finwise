@@ -391,9 +391,10 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
           {/* Auto-sync toggle */}
           <div className="flex items-center justify-between gap-3 pt-1">
             <div className="min-w-0">
-              <p className="text-sm font-medium">Auto-sync when app closes</p>
+              <p className="text-sm font-medium">Auto-sync</p>
               <p className="text-xs text-muted-foreground">
-                Upload a fresh snapshot to iCloud each time you leave the app.
+                Push changes to iCloud within seconds of every edit — including
+                when the app is closed or killed.
               </p>
             </div>
             <button

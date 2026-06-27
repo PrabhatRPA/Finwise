@@ -290,6 +290,17 @@ const native = NATIVE ? {
   },
 } : null
 
+// Wire iCloud auto-sync: after any SQLite write, schedule a debounced sync
+// so data is pushed to iCloud within ~2 s of every change — catching the
+// "user kills the app immediately" case that app-background events miss.
+if (NATIVE) {
+  try {
+    const { onDbWrite } = require('./native/db') as { onDbWrite: (cb: () => void) => void }
+    const { scheduleAutoSync } = require('./native/icloud') as { scheduleAutoSync: () => void }
+    onDbWrite(scheduleAutoSync)
+  } catch { /* best-effort */ }
+}
+
 export const authApi          = (native?.auth          ?? remoteAuthApi)         as typeof remoteAuthApi
 export const holdingsApi      = (native?.holdings      ?? remoteHoldingsApi)     as typeof remoteHoldingsApi
 export const accountsApi      = (native?.accounts      ?? remoteAccountsApi)     as typeof remoteAccountsApi
