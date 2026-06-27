@@ -1,6 +1,6 @@
 {
   "name": "nworth",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "description": "Nworth — Track Everything. Share Nothing. Privacy-first personal finance dashboard.",
   "author": "Prabhat Kumar",
   "private": true,
@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@aparajita/capacitor-biometric-auth": "^10.0.0",
+    "@capacitor-community/apple-sign-in": "^7.1.0",
     "@capacitor-community/sqlite": "^8.1.0",
     "@capacitor/app": "^8.1.0",
     "@capacitor/browser": "^8.0.3",

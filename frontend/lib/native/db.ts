@@ -45,6 +45,14 @@ async function init(): Promise<SQLiteDBConnection> {
     [String(SCHEMA_VERSION)],
   )
 
+  // Incremental migrations — safe to re-run (errors mean column already exists).
+  const migrations = [
+    `ALTER TABLE users ADD COLUMN apple_user_id TEXT UNIQUE`,
+  ]
+  for (const sql of migrations) {
+    try { await conn.run(sql, []) } catch { /* column already exists — skip */ }
+  }
+
   db = conn
   return db
 }

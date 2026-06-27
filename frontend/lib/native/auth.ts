@@ -2,6 +2,7 @@
 // Single-user device — once a user registers, register-again is blocked.
 
 import bcrypt from 'bcryptjs'
+import { Capacitor } from '@capacitor/core'
 import { all, get, run } from './db'
 import { getSessionUserId, setSessionUserId, clearSession } from './session'
 import { saveToken, clearToken } from '../token'
@@ -113,6 +114,82 @@ export const nativeAuthApi = {
     }
     return { data: userToPublic(u) }
   },
+}
+
+// ── Sign in with Apple ────────────────────────────────────────────────────────
+// Returns { isNewUser: true } when we created a new account (new device / first
+// Apple sign-in), so the caller can offer to restore from iCloud.
+
+export async function signInWithApple(): Promise<{ isNewUser: boolean }> {
+  if (!Capacitor.isNativePlatform()) {
+    throw new Error('Sign in with Apple is only available on iOS.')
+  }
+  const { SignInWithApple } = await import('@capacitor-community/apple-sign-in')
+  const result = await SignInWithApple.authorize({
+    clientId: 'com.prabhat.nworth',
+    redirectURI: '',
+    scopes: 'name email',
+    state: '',
+    nonce: '',
+  })
+  const appleUserId = result.response.user ?? ''
+  if (!appleUserId) throw new Error('Apple Sign-In did not return a user identifier.')
+  const givenName  = result.response.givenName  ?? ''
+  const familyName = result.response.familyName ?? ''
+  const fullName   = [givenName, familyName].filter(Boolean).join(' ') || null
+  const email      = result.response.email ?? null
+
+  // Look up existing account linked to this Apple ID.
+  const existing = await get<UserRow>('SELECT * FROM users WHERE apple_user_id = ?', [appleUserId])
+  if (existing) {
+    await setSessionUserId(existing.id)
+    await saveToken(LOCAL_TOKEN_MARKER)
+    return { isNewUser: false }
+  }
+
+  // First time on this device — create a local account tied to the Apple sub ID.
+  const username = `apple_${appleUserId.slice(-10).toLowerCase()}`
+  const derivedEmail = email ?? `${username}@apple`
+  const res = await run(
+    `INSERT INTO users (username, email, password_hash, full_name, apple_user_id)
+     VALUES (?, ?, '', ?, ?)`,
+    [username, derivedEmail, fullName, appleUserId],
+  )
+  await setSessionUserId(res.lastId)
+  await saveToken(LOCAL_TOKEN_MARKER)
+  return { isNewUser: true }
+}
+
+// Helper for other modules to read the current user's apple_user_id.
+export async function getAppleUserId(): Promise<string | null> {
+  const userId = await getSessionUserId()
+  if (!userId) return null
+  const u = await get<{ apple_user_id: string | null }>(
+    'SELECT apple_user_id FROM users WHERE id = ?', [userId]
+  )
+  return u?.apple_user_id ?? null
+}
+
+// Link an Apple ID to an existing local (password) account from the profile page.
+export async function connectAppleId(): Promise<void> {
+  if (!Capacitor.isNativePlatform()) throw new Error('Only available on iOS.')
+  const { SignInWithApple } = await import('@capacitor-community/apple-sign-in')
+  const result = await SignInWithApple.authorize({
+    clientId: 'com.prabhat.nworth',
+    redirectURI: '',
+    scopes: '',
+    state: '',
+    nonce: '',
+  })
+  const appleUserId = result.response.user
+  const userId = await getSessionUserId()
+  if (!userId) throw new Error('Not logged in.')
+  // Fail clearly if another account already claims this Apple ID.
+  const taken = await get<{ id: number }>(
+    'SELECT id FROM users WHERE apple_user_id = ? AND id != ?', [appleUserId, userId]
+  )
+  if (taken) throw new Error('This Apple ID is already linked to a different account.')
+  await run('UPDATE users SET apple_user_id = ? WHERE id = ?', [appleUserId, userId])
 }
 
 // Construct an axios-shaped error so existing catch blocks (which check

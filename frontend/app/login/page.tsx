@@ -16,6 +16,8 @@ import {
   getBiometryStatus,
 } from '@/lib/native/biometric'
 import { setSessionUserId } from '@/lib/native/session'
+import { signInWithApple } from '@/lib/native/auth'
+import { getICloudStatus, restoreFromICloud } from '@/lib/native/icloud'
 
 // Path shown in the "failed to start" error — matches what lib.rs writes.
 const LOG_PATHS = {
@@ -54,9 +56,22 @@ export default function LoginPage() {
   const [bioKind, setBioKind] = useState<'face_id' | 'touch_id' | 'other'>('face_id')
   const [bioBusy, setBioBusy] = useState(false)
 
+  // Sign in with Apple state
+  const [isNative, setIsNative] = useState(false)
+  const [appleBusy, setAppleBusy] = useState(false)
+  const [appleError, setAppleError] = useState('')
+  // After a new Apple account is created, ask if user wants to restore from iCloud
+  const [showICloudPrompt, setShowICloudPrompt] = useState(false)
+  const [icloudRestoring, setIcloudRestoring] = useState(false)
+  const [icloudMsg, setIcloudMsg] = useState('')
+
   useEffect(() => {
     if (!isLoading && isAuthenticated) router.replace('/dashboard')
   }, [isAuthenticated, isLoading, router])
+
+  useEffect(() => {
+    setIsNative(typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.() === true)
+  }, [])
 
   // Detect if biometric sign-in was enabled previously.
   useEffect(() => {
@@ -176,6 +191,42 @@ export default function LoginPage() {
     return () => { if (pollingRef.current) clearInterval(pollingRef.current) }
   }, [])
 
+  const handleAppleSignIn = async () => {
+    setAppleError('')
+    setAppleBusy(true)
+    try {
+      const { isNewUser } = await signInWithApple()
+      await refreshUser()
+      if (isNewUser) {
+        // Check if there's an iCloud snapshot they might want to restore.
+        const status = await getICloudStatus().catch(() => null)
+        if (status?.available && status.remoteExists) {
+          setShowICloudPrompt(true)
+          setAppleBusy(false)
+          return
+        }
+      }
+      router.replace('/dashboard')
+    } catch (err: any) {
+      setAppleError(err?.message ?? 'Sign in with Apple failed.')
+    } finally {
+      setAppleBusy(false)
+    }
+  }
+
+  const handleICloudRestore = async () => {
+    setIcloudRestoring(true)
+    setIcloudMsg('')
+    try {
+      await restoreFromICloud()
+      setIcloudMsg('Restored successfully!')
+      setTimeout(() => router.replace('/dashboard'), 1200)
+    } catch (err: any) {
+      setIcloudMsg(err?.message ?? 'Restore failed.')
+      setIcloudRestoring(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -263,10 +314,62 @@ export default function LoginPage() {
           </div>
         )}
 
+        {/* iCloud restore prompt — shown after a new Apple Sign-In when a snapshot exists */}
+        {showICloudPrompt && (
+          <Card className="shadow-md border-primary/40">
+            <CardContent className="pt-6 space-y-3">
+              <h2 className="text-base font-semibold text-center">Data found in iCloud</h2>
+              <p className="text-sm text-muted-foreground text-center">
+                We found a portfolio snapshot in your iCloud Drive. Restore it now to bring your data to this device.
+              </p>
+              {icloudMsg && (
+                <p className={`text-xs font-medium text-center ${icloudMsg.startsWith('Restored') ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {icloudMsg}
+                </p>
+              )}
+              <Button className="w-full" onClick={handleICloudRestore} disabled={icloudRestoring}>
+                {icloudRestoring ? 'Restoring…' : 'Restore from iCloud'}
+              </Button>
+              <button
+                type="button"
+                className="w-full text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => router.replace('/dashboard')}
+              >
+                Skip — start fresh
+              </button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Login card */}
-        <Card className="shadow-md border-border/60">
+        {!showICloudPrompt && <Card className="shadow-md border-border/60">
           <CardContent className="pt-6">
             <h2 className="text-base font-semibold mb-4 text-center">Sign in to your account</h2>
+
+            {/* Sign in with Apple — only on iOS */}
+            {isNative && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleAppleSignIn}
+                  disabled={appleBusy}
+                  className="w-full mb-3 inline-flex items-center justify-center gap-2 h-11 rounded-md bg-black text-white font-medium text-sm hover:bg-zinc-800 active:bg-zinc-700 transition-colors disabled:opacity-50"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                    <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.7 9.05 7.42c1.33.07 2.25.73 3.03.75.86-.14 1.7-.8 3.06-.85 1.64-.07 2.88.85 3.68 2.12-3.27 2.03-2.68 6.43.59 7.77-.52 1.38-1.27 2.74-2.36 3.07zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                  </svg>
+                  {appleBusy ? 'Signing in…' : 'Sign in with Apple'}
+                </button>
+                {appleError && (
+                  <p className="text-xs text-destructive text-center mb-3">{appleError}</p>
+                )}
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">or</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+              </>
+            )}
 
             {/* Biometric sign-in — shown only when previously enabled in Profile */}
             {bioEnabled && (
@@ -385,7 +488,7 @@ export default function LoginPage() {
               </Link>
             </p>
           </CardContent>
-        </Card>
+        </Card>}
 
         <p className="text-center text-[11px] text-muted-foreground/60">
           {APP_NAME} v{APP_VERSION} · All data stored locally on your device

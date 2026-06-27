@@ -10,6 +10,7 @@
 import { registerPlugin, Capacitor } from '@capacitor/core'
 import { Preferences } from '@capacitor/preferences'
 import { buildSnapshotPayload, nativeDataApi } from './data'
+import { getAppleUserId } from './auth'
 
 const SNAPSHOT_FILE = 'nworth-icloud-snapshot.json'
 const LAST_SYNC_KEY = 'last_icloud_sync'      // ISO timestamp of our last upload
@@ -82,6 +83,26 @@ export async function restoreFromICloud(): Promise<{ message: string }> {
   if (!res.exists || !res.contents) {
     throw new Error('No iCloud snapshot found yet. Sync from another device first.')
   }
+
+  // Warn if the snapshot was created by a different Apple ID, so the user
+  // doesn't accidentally overwrite their own data with someone else's.
+  try {
+    const payload = JSON.parse(res.contents)
+    const snapshotAppleId = payload?.apple_user_id as string | undefined
+    if (snapshotAppleId) {
+      const localAppleId = await getAppleUserId()
+      if (localAppleId && localAppleId !== snapshotAppleId) {
+        throw new Error(
+          'This iCloud snapshot belongs to a different Apple ID. ' +
+          'Sign in with the correct Apple ID first, or use "Restore" to import anyway.'
+        )
+      }
+    }
+  } catch (e: any) {
+    // Re-throw Apple ID mismatch errors; swallow JSON parse issues.
+    if (e.message?.includes('Apple ID')) throw e
+  }
+
   const file = new File([res.contents], SNAPSHOT_FILE, { type: 'application/json' })
   const out = await nativeDataApi.importFullData(file, 'replace')
   // Drop the dashboard's cached net-worth snapshot so it doesn't show stale

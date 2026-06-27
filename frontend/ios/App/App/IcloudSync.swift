@@ -86,7 +86,8 @@ public class IcloudSync: CAPPlugin, CAPBridgedPlugin {
             // Make sure the latest version is pulled down from iCloud before we read.
             try? FileManager.default.startDownloadingUbiquitousItem(at: url)
             // Brief wait for the download to materialize the file.
-            for _ in 0..<20 {
+            // 60 × 0.25 s = 15 s total; slow iCloud connections need more than 5 s.
+            for _ in 0..<60 {
                 if FileManager.default.fileExists(atPath: url.path) { break }
                 Thread.sleep(forTimeInterval: 0.25)
             }

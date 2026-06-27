@@ -8,6 +8,7 @@
 import { Capacitor } from '@capacitor/core'
 import { all, get, run } from './db'
 import { requireSessionUserId } from './session'
+import { getAppleUserId } from './auth'
 
 // ── CSV helpers ────────────────────────────────────────────────────────────
 
@@ -170,7 +171,7 @@ async function fetchWatchlist() {
 // accepts, so any snapshot round-trips cleanly. `kind` lets callers tag the
 // origin (e.g. 'auto-backup', 'icloud') without changing the schema.
 export async function buildSnapshotPayload(kind?: string) {
-  const [holdings, accounts, transactions, watchlist, loans, properties, portfolio_history] =
+  const [holdings, accounts, transactions, watchlist, loans, properties, portfolio_history, appleUserId] =
     await Promise.all([
       fetchHoldings(),
       fetchAccounts(),
@@ -179,12 +180,14 @@ export async function buildSnapshotPayload(kind?: string) {
       fetchLoans(),
       fetchProperties(),
       fetchPortfolioHistory(),
+      getAppleUserId().catch(() => null),
     ])
   return {
     version: 1,
     exported_at: new Date().toISOString(),
     source: 'nworth-ios',
     ...(kind ? { kind } : {}),
+    ...(appleUserId ? { apple_user_id: appleUserId } : {}),
     holdings,
     accounts,
     transactions,
@@ -379,6 +382,8 @@ export const nativeDataApi = {
     const properties = Array.isArray(payload.properties)   ? payload.properties   : []
     const history    = Array.isArray(payload.portfolio_history) ? payload.portfolio_history : []
 
+    await run('BEGIN TRANSACTION', [])
+    try {
     if (mode === 'replace') {
       // True restore: wipe the user's data first. User account is preserved.
       await run(`DELETE FROM holdings WHERE user_id = ?`, [userId])
@@ -716,6 +721,7 @@ export const nativeDataApi = {
     }
     if (counts.skipped > 0) summary.skipped = { created: 0, skipped: counts.skipped }
 
+    await run('COMMIT', [])
     return {
       data: {
         message:
@@ -726,6 +732,10 @@ export const nativeDataApi = {
         ...counts,
         portfolio_history: historyCount,
       },
+    }
+    } catch (e) {
+      await run('ROLLBACK', []).catch(() => {})
+      throw e
     }
   },
 

@@ -138,6 +138,7 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
   const [icloud, setIcloud] = useState<ICloudStatus | null>(null)
   const [icloudBusy, setIcloudBusy] = useState<'sync' | 'restore' | null>(null)
   const [icloudMsg, setIcloudMsg] = useState('')
+  const [icloudMsgType, setIcloudMsgType] = useState<'success' | 'error'>('success')
   const [autoSync, setAutoSyncState] = useState(false)
 
   const refreshICloud = useCallback(async () => {
@@ -154,9 +155,16 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
     setIcloudMsg('')
     try {
       const ok = await syncToICloud()
-      setIcloudMsg(ok ? 'Synced to iCloud.' : 'iCloud is not available. Sign in to iCloud in iOS Settings.')
+      if (ok) {
+        setIcloudMsgType('success')
+        setIcloudMsg('Synced to iCloud successfully.')
+      } else {
+        setIcloudMsgType('error')
+        setIcloudMsg('iCloud is not available. Go to iOS Settings → [your name] → iCloud and make sure iCloud Drive is on.')
+      }
       await refreshICloud()
     } catch (e: any) {
+      setIcloudMsgType('error')
       setIcloudMsg(e?.message ?? 'iCloud sync failed.')
     } finally {
       setIcloudBusy(null)
@@ -174,8 +182,10 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
     try {
       const out = await restoreFromICloud()
       onDataChanged?.()
+      setIcloudMsgType('success')
       setIcloudMsg(out.message)
     } catch (e: any) {
+      setIcloudMsgType('error')
       setIcloudMsg(e?.message ?? 'iCloud restore failed.')
     } finally {
       setIcloudBusy(null)
@@ -369,7 +379,7 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
             <Button
               size="sm"
               variant="outline"
-              disabled={icloudBusy !== null || !icloud?.remoteExists}
+              disabled={icloudBusy !== null || (icloud ? !icloud.available : false)}
               onClick={handleICloudRestore}
               className="text-xs"
             >
@@ -409,7 +419,11 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
               {icloud?.remoteModifiedAt && <>iCloud snapshot updated: {new Date(icloud.remoteModifiedAt).toLocaleString()}.</>}
             </p>
           )}
-          {icloudMsg && <p className="text-xs text-muted-foreground">{icloudMsg}</p>}
+          {icloudMsg && (
+            <p className={`text-xs font-medium ${icloudMsgType === 'error' ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+              {icloudMsgType === 'error' ? '⚠ ' : '✓ '}{icloudMsg}
+            </p>
+          )}
         </CardContent>
       </Card>
 

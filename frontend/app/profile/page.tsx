@@ -17,6 +17,7 @@ import {
   promptBiometric,
   type BiometryStatus,
 } from '@/lib/native/biometric'
+import { connectAppleId, getAppleUserId } from '@/lib/native/auth'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -28,17 +29,27 @@ export default function ProfilePage() {
   const [biometricBusy, setBiometricBusy] = useState(false)
   const [biometricMsg, setBiometricMsg] = useState('')
 
+  const [appleLinked, setAppleLinked] = useState<boolean | null>(null)
+  const [appleBusy, setAppleBusy] = useState(false)
+  const [appleMsg, setAppleMsg] = useState('')
+  const [isNative, setIsNative] = useState(false)
+
   useEffect(() => {
     if (!isLoading && !user) router.replace('/login')
   }, [isLoading, user, router])
 
   useEffect(() => {
     let cancelled = false
+    const native = typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.() === true
+    setIsNative(native)
     Promise.all([getBiometryStatus(), isBiometricEnabled()]).then(([s, e]) => {
       if (cancelled) return
       setBiometryStatus(s)
       setBiometricOn(e.enabled)
     })
+    if (native) {
+      getAppleUserId().then(id => { if (!cancelled) setAppleLinked(!!id) }).catch(() => {})
+    }
     return () => { cancelled = true }
   }, [])
 
@@ -205,6 +216,55 @@ export default function ProfilePage() {
 
           {biometricMsg && (
             <p className="text-xs text-muted-foreground">{biometricMsg}</p>
+          )}
+
+          {/* Connect Apple ID — shown on iOS only */}
+          {isNative && (
+            <div className="pt-2 border-t">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">Apple ID</p>
+                  <p className="text-xs text-muted-foreground">
+                    {appleLinked
+                      ? 'Connected — your data syncs across all your Apple devices.'
+                      : 'Link your Apple ID to enable cross-device iCloud sync.'}
+                  </p>
+                </div>
+                {!appleLinked && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setAppleBusy(true)
+                      setAppleMsg('')
+                      try {
+                        await connectAppleId()
+                        setAppleLinked(true)
+                        setAppleMsg('Apple ID connected.')
+                      } catch (e: any) {
+                        setAppleMsg(e?.message ?? 'Failed to connect Apple ID.')
+                      } finally {
+                        setAppleBusy(false)
+                      }
+                    }}
+                    disabled={appleBusy}
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-black text-white text-xs font-medium hover:bg-zinc-800 disabled:opacity-50"
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
+                      <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.7 9.05 7.42c1.33.07 2.25.73 3.03.75.86-.14 1.7-.8 3.06-.85 1.64-.07 2.88.85 3.68 2.12-3.27 2.03-2.68 6.43.59 7.77-.52 1.38-1.27 2.74-2.36 3.07zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                    </svg>
+                    {appleBusy ? 'Connecting…' : 'Connect'}
+                  </button>
+                )}
+                {appleLinked && (
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">✓ Linked</span>
+                )}
+              </div>
+              {appleMsg && (
+                <p className={`text-xs mt-1 ${appleMsg.includes('connected') ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {appleMsg}
+                </p>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
