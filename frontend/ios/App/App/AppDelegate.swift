@@ -7,7 +7,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Touch the iCloud ubiquity container in the background so iOS registers
+        // this app under Settings → [Your Name] → iCloud → iCloud Drive → Apps.
+        // iOS only adds the app to that list once it sees the container accessed —
+        // this ensures it registers on first launch rather than waiting for the
+        // user to tap a sync button.
+        DispatchQueue.global(qos: .background).async {
+            let _ = FileManager.default.url(forUbiquityContainerIdentifier: "iCloud.com.prabhat.nworth")
+        }
         return true
     }
 
