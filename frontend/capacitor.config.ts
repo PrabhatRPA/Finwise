@@ -20,7 +20,13 @@ const config: CapacitorConfig = {
       enable: true,
     },
     SplashScreen: {
-      launchShowDuration: 2000,
+      // Don't auto-hide on a blind timer — the WebView often isn't done
+      // booting at 2 s on a cold start, which left a black gap. SplashHider
+      // (components/splash-hider.tsx) hides it from JS the instant the web app
+      // has painted its first frame, so the branded splash covers the whole
+      // launch with no black flash. launchShowDuration is ignored when
+      // launchAutoHide is false.
+      launchAutoHide: false,
       backgroundColor: '#1a1a2e',
     },
     Keyboard: {
