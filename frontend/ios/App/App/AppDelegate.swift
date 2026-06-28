@@ -7,6 +7,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        NSLog("[TIMING] AppDelegate.didFinishLaunching")
         // Register with iCloud so iOS shows this app under Settings → [Your
         // Name] → iCloud → iCloud Drive → Apps. Getting the container URL is
         // not enough — iOS only registers the app once it sees the Documents
@@ -84,7 +85,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 /// this class (customModule="Nworth").
 class MainViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
-        NSLog("[MainViewController] capacitorDidLoad — registering IcloudSync plugin")
+        NSLog("[TIMING] MainViewController.capacitorDidLoad — registering IcloudSync plugin")
         bridge?.registerPluginInstance(IcloudSync())
     }
 }

@@ -14,6 +14,7 @@ import { Capacitor } from '@capacitor/core'
 export function SplashHider() {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
+    console.log('[TIMING] SplashHider mounted — React has painted')
     let cancelled = false
 
     const hide = async () => {
