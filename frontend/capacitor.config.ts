@@ -28,6 +28,11 @@ const config: CapacitorConfig = {
       // launchAutoHide is false.
       launchAutoHide: false,
       backgroundColor: '#1a1a2e',
+      // Show an animated spinner over the navy splash so a slow cold start
+      // reads as "loading", not "frozen".
+      showSpinner: true,
+      spinnerColor: '#4aa3ff',
+      iosSpinnerStyle: 'large',
     },
     Keyboard: {
       // 'native' shrinks the WebView frame to the area above the keyboard, so

@@ -7,11 +7,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Register with iCloud on every launch so iOS shows this app under
-        // Settings → [Your Name] → iCloud → iCloud Drive → Apps.
-        // Getting the container URL is not enough — iOS only registers the app
-        // once it sees the Documents folder created inside the container.
-        DispatchQueue.global(qos: .utility).async {
+        // Register with iCloud so iOS shows this app under Settings → [Your
+        // Name] → iCloud → iCloud Drive → Apps. Getting the container URL is
+        // not enough — iOS only registers the app once it sees the Documents
+        // folder created inside the container.
+        //
+        // Deferred ~4 s and run at background priority: the first-ever ubiquity
+        // container call can be expensive, and we don't want it competing with
+        // the WebView cold start. Visibility/registration isn't time-critical.
+        DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 4) {
             let signedIn = FileManager.default.ubiquityIdentityToken != nil
             guard let container = FileManager.default.url(
                 forUbiquityContainerIdentifier: "iCloud.com.prabhat.nworth"
