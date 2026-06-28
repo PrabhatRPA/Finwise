@@ -15,10 +15,63 @@ import { getAppleUserId } from './auth'
 const SNAPSHOT_FILE = 'nworth-icloud-snapshot.json'
 const LAST_SYNC_KEY = 'last_icloud_sync'      // ISO timestamp of our last upload
 const AUTO_SYNC_KEY = 'icloud_auto_sync'      // '1' = on, '0' = off (default on)
-// exported_at of the snapshot this device last pushed OR pulled. Acts as the
-// "common ancestor" version so launch reconciliation can tell whether the
-// iCloud snapshot is newer (another device changed it → pull) or not.
-const DATA_VERSION_KEY = 'icloud_data_version'
+
+// ── Sync state (per device, in Preferences) ─────────────────────────────────
+// The sync model is whole-snapshot last-writer-wins, made robust with:
+//   • revision: a MONOTONIC integer carried in the snapshot. Ordering is by
+//     revision, NOT wall-clock, so device clock skew can't pick the wrong
+//     winner. Each push sets revision = max(localSynced, remote) + 1.
+//   • dirty flag: set only when the USER modifies data (after launch
+//     reconciliation arms writes). A device that didn't modify anything never
+//     pushes — this is what stops a passively-opened device from clobbering
+//     the master. "You become the source by actually editing", as intended.
+//   • modifiedAt: wall-clock, used ONLY as a tiebreaker for true concurrent
+//     conflicts (both devices edited offline since the last common revision).
+const SYNCED_REV_KEY = 'icloud_synced_rev'    // revision this device last pushed/pulled
+const DIRTY_KEY = 'icloud_dirty'              // '1' = unsynced local user edits
+const LOCAL_MODIFIED_KEY = 'icloud_local_modified' // ISO of last local user edit
+const DEVICE_ID_KEY = 'icloud_device_id'      // stable per-install id (diagnostics + tiebreak)
+
+async function getSyncedRevision(): Promise<number> {
+  const v = (await Preferences.get({ key: SYNCED_REV_KEY })).value
+  const n = v ? parseInt(v, 10) : 0
+  return Number.isFinite(n) ? n : 0
+}
+async function setSyncedRevision(n: number): Promise<void> {
+  await Preferences.set({ key: SYNCED_REV_KEY, value: String(n) })
+}
+async function isDirty(): Promise<boolean> {
+  return (await Preferences.get({ key: DIRTY_KEY })).value === '1'
+}
+async function setDirty(dirty: boolean): Promise<void> {
+  await Preferences.set({ key: DIRTY_KEY, value: dirty ? '1' : '0' })
+  if (dirty) await Preferences.set({ key: LOCAL_MODIFIED_KEY, value: new Date().toISOString() })
+}
+async function getLocalModifiedAt(): Promise<string> {
+  return (await Preferences.get({ key: LOCAL_MODIFIED_KEY })).value ?? ''
+}
+async function getDeviceId(): Promise<string> {
+  const existing = (await Preferences.get({ key: DEVICE_ID_KEY })).value
+  if (existing) return existing
+  const id = (globalThis.crypto?.randomUUID?.() ?? `dev-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  await Preferences.set({ key: DEVICE_ID_KEY, value: id })
+  return id
+}
+
+// Parsed view of the remote snapshot's sync metadata.
+interface RemoteMeta { exists: boolean; contents: string; payload: any | null; revision: number; modifiedAt: string }
+async function readRemote(): Promise<RemoteMeta> {
+  const res = await IcloudSync.read({ fileName: SNAPSHOT_FILE })
+  if (!res.exists || !res.contents) return { exists: false, contents: '', payload: null, revision: 0, modifiedAt: '' }
+  try {
+    const payload = JSON.parse(res.contents)
+    const revision = Number.isFinite(payload?.revision) ? payload.revision : 0
+    const modifiedAt = payload?.sync_modified_at ?? payload?.exported_at ?? ''
+    return { exists: true, contents: res.contents, payload, revision, modifiedAt }
+  } catch {
+    return { exists: true, contents: res.contents, payload: null, revision: 0, modifiedAt: '' }
+  }
+}
 
 // A snapshot is "empty" when it carries no user-entered records. portfolio_history
 // is ignored on purpose — a freshly-initialised DB seeds a default history row,
@@ -71,35 +124,38 @@ export async function getICloudStatus(): Promise<ICloudStatus> {
   }
 }
 
-// Upload a fresh full-data snapshot to iCloud. Returns true on success.
+// Upload a fresh full-data snapshot to iCloud, stamped with the next revision.
+// Returns true on success. Used by both the manual "Sync now" button and the
+// automatic push path.
 export async function syncToICloud(): Promise<boolean> {
   const { available } = await IcloudSync.isAvailable()
   if (!available) return false
-  const payload = await buildSnapshotPayload('icloud')
+  const payload: any = await buildSnapshotPayload('icloud')
+
+  const remote = await readRemote()
 
   // SAFETY: never overwrite a non-empty remote snapshot with empty local data.
   // A device that just launched (only default/seed rows) must not clobber the
-  // master before it has reconciled/restored. This is the core guard against
-  // the "iPad replaces iCloud file with empty JSON" bug.
-  if (isSnapshotEmpty(payload)) {
-    const remote = await IcloudSync.read({ fileName: SNAPSHOT_FILE })
-    if (remote.exists && remote.contents) {
-      try {
-        if (!isSnapshotEmpty(JSON.parse(remote.contents))) return false
-      } catch { /* unparseable remote — fall through and allow the write */ }
-    }
+  // master. This is the core guard against the "empty JSON overwrite" bug.
+  if (isSnapshotEmpty(payload) && remote.exists && remote.payload && !isSnapshotEmpty(remote.payload)) {
+    return false
   }
+
+  // Monotonic revision: strictly greater than both what we last synced and
+  // whatever is currently in iCloud, so ordering never depends on wall clocks.
+  const nextRevision = Math.max(await getSyncedRevision(), remote.revision) + 1
+  payload.revision = nextRevision
+  payload.sync_modified_at = new Date().toISOString()
+  payload.device_id = await getDeviceId()
 
   const res = await IcloudSync.write({
     fileName: SNAPSHOT_FILE,
     contents: JSON.stringify(payload),
   })
   if (res.success) {
-    const now = new Date().toISOString()
-    await Preferences.set({ key: LAST_SYNC_KEY, value: now })
-    // Record the version we just pushed so reconciliation knows this device is
-    // current with the remote and shouldn't pull its own write back.
-    await Preferences.set({ key: DATA_VERSION_KEY, value: payload.exported_at })
+    await Preferences.set({ key: LAST_SYNC_KEY, value: new Date().toISOString() })
+    await setSyncedRevision(nextRevision)
+    await setDirty(false)   // our local edits are now safely in iCloud
     return true
   }
   return false
@@ -139,10 +195,13 @@ export async function restoreFromICloud(): Promise<{ message: string }> {
   // Drop the dashboard's cached net-worth snapshot so it doesn't show stale
   // numbers after the restore (mirrors data-management's clear-all behaviour).
   try { window.localStorage.removeItem('last_net_worth_snapshot') } catch {}
-  // Mark this device as current with the version we just pulled.
+  // Mark this device as current with the revision we just pulled, and clear the
+  // dirty flag — local data now equals the remote snapshot.
   try {
-    const v = JSON.parse(res.contents)?.exported_at
-    if (v) await Preferences.set({ key: DATA_VERSION_KEY, value: v })
+    const v = JSON.parse(res.contents)
+    const rev = Number.isFinite(v?.revision) ? v.revision : 0
+    await setSyncedRevision(rev)
+    await setDirty(false)
   } catch { /* ignore */ }
   return { message: out.data?.message ?? 'Restored from iCloud.' }
 }
@@ -160,34 +219,40 @@ export async function setAutoSync(enabled: boolean): Promise<void> {
   await Preferences.set({ key: AUTO_SYNC_KEY, value: enabled ? '1' : '0' })
 }
 
-// Called from the app-background listener AND after every DB write (via
-// scheduleAutoSync below). Silent: swallows errors and no-ops when auto-sync
-// is off or iCloud is unavailable.
+// Called from the app-background listener AND after every user DB write (via
+// scheduleAutoSync). Pushes only when this device is dirty (has unsynced local
+// edits) so we don't needlessly bump the revision and make other devices pull
+// identical data. Silent: swallows errors and no-ops when off / unavailable.
 export async function autoSyncIfEnabled(): Promise<void> {
   try {
     if (!Capacitor.isNativePlatform()) return
     if (!(await isAutoSyncEnabled())) return
+    if (!(await isDirty())) return
     await syncToICloud()
   } catch {
     // best-effort
   }
 }
 
-// Debounced auto-sync triggered after any data write. Batches rapid edits
-// (e.g. bulk import) into a single iCloud write 2 s after the last change.
-// Silently no-ops when auto-sync is off or iCloud is unavailable.
+// Debounced auto-sync triggered after any USER data write. Marks this device
+// dirty (it now holds unsynced edits → it's allowed to become the source) and
+// batches rapid edits into a single iCloud push 2 s after the last change.
 let _syncTimer: ReturnType<typeof setTimeout> | null = null
 
 // Auto-push is DISARMED until launch reconciliation finishes. This is critical:
 // during startup the DB writes default/seed rows, which fire the write-listener.
-// If we pushed then, an empty device would overwrite the master before it had a
-// chance to pull. armAutoSync() is called once reconciliation completes.
+// While disarmed those writes neither mark the device dirty nor push — so a
+// passively-opened device can't clobber the master. armAutoSync() is called
+// once reconciliation completes; only writes AFTER that count as user edits.
 let _armed = false
 export function armAutoSync(): void { _armed = true }
 
 export function scheduleAutoSync(delayMs = 2000): void {
   if (!Capacitor.isNativePlatform()) return
   if (!_armed) return
+  // A write after reconciliation = a real user modification. Mark dirty so this
+  // device is recognised as having changes to push (and to win ties).
+  setDirty(true).catch(() => {})
   if (_syncTimer !== null) clearTimeout(_syncTimer)
   _syncTimer = setTimeout(() => {
     _syncTimer = null
@@ -195,16 +260,33 @@ export function scheduleAutoSync(delayMs = 2000): void {
   }, delayMs)
 }
 
+// Apply a remote snapshot to local storage (a pull) and record its revision.
+async function applyRemotePull(remote: RemoteMeta): Promise<void> {
+  const file = new File([remote.contents], SNAPSHOT_FILE, { type: 'application/json' })
+  await nativeDataApi.importFullData(file, 'replace')
+  try { window.localStorage.removeItem('last_net_worth_snapshot') } catch {}
+  await setSyncedRevision(remote.revision)
+  await setDirty(false)
+}
+
 // Reconcile local data with the iCloud snapshot on launch / foreground, then arm
-// auto-push. Last-writer-wins by snapshot timestamp:
-//   • remote newer than what we last synced (another device changed it) → pull
-//   • no remote yet but we have local data → seed the remote
-//   • otherwise → nothing (our local edits auto-push via the write-listener)
-// Always arms auto-sync in the end so user edits sync going forward.
+// auto-push. Robust whole-snapshot sync (see the sync-state comment at top):
+//
+//   remote.revision > our lastSyncedRevision   → someone else pushed since we
+//                                                 last synced:
+//        • we're NOT dirty                → pull (no local work to lose)
+//        • we ARE dirty (concurrent edit) → CONFLICT, newest modifiedAt wins
+//        • remote is empty but we have data → repair remote from local
+//   remote.revision <= lastSyncedRevision     → remote isn't ahead of us:
+//        • we're dirty                    → push our pending edits
+//        • else                           → already in sync, do nothing
+//   no remote yet                              → seed it from local if we have data
+//
+// Ordering is by the monotonic revision, never the wall clock; modifiedAt is
+// only the conflict tiebreaker. Always arms auto-sync at the end.
 export async function reconcileICloud(): Promise<void> {
   // Disarm while reconciling so the DELETE/INSERT churn of an incoming pull
-  // (importFullData) can't schedule a push of the data we just pulled. Re-armed
-  // in the finally below once reconciliation settles.
+  // can't mark us dirty or schedule a push. Re-armed in finally.
   _armed = false
   try {
     if (!Capacitor.isNativePlatform()) return
@@ -212,44 +294,51 @@ export async function reconcileICloud(): Promise<void> {
     const { available } = await IcloudSync.isAvailable()
     if (!available) return
 
-    const remote = await IcloudSync.read({ fileName: SNAPSHOT_FILE })
+    const remote = await readRemote()
+    const localPayload = await buildSnapshotPayload('icloud')
+    const localEmpty = isSnapshotEmpty(localPayload)
 
-    if (remote.exists && remote.contents) {
-      let payload: any = null
-      try { payload = JSON.parse(remote.contents) } catch { return }
-      const remoteVersion: string | null = payload?.exported_at ?? null
-      if (!remoteVersion) return
+    // No remote yet — seed it from this device if we actually have data.
+    if (!remote.exists) {
+      if (!localEmpty) await syncToICloud()
+      return
+    }
 
-      // Don't auto-pull a snapshot that belongs to a different Apple ID.
-      const snapshotAppleId = payload?.apple_user_id as string | undefined
-      if (snapshotAppleId) {
-        const localAppleId = await getAppleUserId().catch(() => null)
-        if (localAppleId && localAppleId !== snapshotAppleId) return
+    // Don't auto-pull a snapshot that belongs to a different Apple ID.
+    const snapshotAppleId = remote.payload?.apple_user_id as string | undefined
+    if (snapshotAppleId) {
+      const localAppleId = await getAppleUserId().catch(() => null)
+      if (localAppleId && localAppleId !== snapshotAppleId) return
+    }
+
+    const syncedRev = await getSyncedRevision()
+    const dirty = await isDirty()
+    const remoteEmpty = !remote.payload || isSnapshotEmpty(remote.payload)
+
+    if (remote.revision > syncedRev) {
+      // Remote advanced since we last synced.
+      if (remoteEmpty && !localEmpty) {
+        // Empty/clobbered remote must never wipe real local data → repair it.
+        await syncToICloud()
+        return
       }
-
-      const localVersion = (await Preferences.get({ key: DATA_VERSION_KEY })).value
-      // Pull when the remote is newer than the version this device last synced,
-      // OR when this device has never synced (localVersion null) — the new-device
-      // bootstrap that pulls the master instead of overwriting it.
-      if (!localVersion || remoteVersion > localVersion) {
-        // GUARD: never let an empty remote (e.g. one that got clobbered) wipe
-        // real local data. If the remote is empty but we have data, repair the
-        // remote from local instead of pulling. syncToICloud's own empty-guard
-        // makes this safe even if both are empty.
-        if (isSnapshotEmpty(payload)) {
-          const local = await buildSnapshotPayload('icloud')
-          if (!isSnapshotEmpty(local)) { await syncToICloud(); return }
-          return // both empty — nothing to reconcile
+      if (!dirty) {
+        // No unsynced local edits → safe to take the remote.
+        if (!remoteEmpty) await applyRemotePull(remote)
+        else await setSyncedRevision(remote.revision) // both empty — just catch up
+      } else {
+        // CONFLICT: both sides changed since the last common revision.
+        // Newest last-modified wins (last-writer-wins tiebreaker).
+        const localMod = await getLocalModifiedAt()
+        if (remote.modifiedAt && remote.modifiedAt > localMod) {
+          if (!remoteEmpty) await applyRemotePull(remote)
+        } else {
+          await syncToICloud() // our edit is newer → push over the remote
         }
-        const file = new File([remote.contents], SNAPSHOT_FILE, { type: 'application/json' })
-        await nativeDataApi.importFullData(file, 'replace')
-        try { window.localStorage.removeItem('last_net_worth_snapshot') } catch {}
-        await Preferences.set({ key: DATA_VERSION_KEY, value: remoteVersion })
       }
     } else {
-      // No remote yet — seed it from this device if we actually have data.
-      const local = await buildSnapshotPayload('icloud')
-      if (!isSnapshotEmpty(local)) await syncToICloud()
+      // Remote is not ahead of us. Push only if we have pending local edits.
+      if (dirty && !localEmpty) await syncToICloud()
     }
   } catch {
     // best-effort — never block launch on sync
