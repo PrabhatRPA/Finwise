@@ -154,6 +154,28 @@ export function AIProviderSettings() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {settings?.using_default_key && (
+          <div className={`rounded-md border px-3 py-2 text-xs ${
+            settings.default_key_remaining > 0
+              ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300'
+              : 'border-destructive bg-destructive/10 text-destructive'
+          }`}>
+            {settings.default_key_remaining > 0 ? (
+              <>
+                You&apos;re using the built-in trial key —{' '}
+                <span className="font-semibold">
+                  {settings.default_key_remaining} of {settings.default_key_limit} free AI requests left
+                </span>
+                . Add your own API key below to keep using AI features after that.
+              </>
+            ) : (
+              <>
+                <span className="font-semibold">Free AI requests used up.</span> Add your own
+                API key below (Claude or OpenAI) and tap Save to continue using AI features.
+              </>
+            )}
+          </div>
+        )}
         <div className="flex gap-2 flex-wrap">
           {PROVIDERS.map(p => (
             <button

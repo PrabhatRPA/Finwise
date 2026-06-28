@@ -14,17 +14,42 @@
 // bundle, so do NOT distribute a build that has this var populated to
 // users who shouldn't see your key.
 
+import { Preferences } from '@capacitor/preferences'
 import { all, get, run } from './db'
 import { requireSessionUserId } from './session'
 
 const KEY = 'ai_providers_config'
 
+// The built-in (app owner's) API key is a free trial only: it works for this
+// many AI requests, after which the user must supply their own key. The counter
+// lives in device Preferences (not the per-user DB) so it can't be reset by
+// signing out / creating a new local account.
+export const DEFAULT_KEY_LIMIT = 5
+const DEFAULT_KEY_USAGE_KEY = 'ai_default_key_usage'
+
 export type ProviderId = 'claude' | 'openai' | 'ollama' | 'lmstudio'
 
 export interface ProviderSlot {
-  api_key?: string  // cloud providers only
+  api_key?: string     // cloud providers only
   model?: string
-  host?: string     // local providers only
+  host?: string        // local providers only
+  is_default?: boolean // true when api_key is the app owner's built-in trial key
+}
+
+export async function getDefaultKeyUsage(): Promise<number> {
+  const v = (await Preferences.get({ key: DEFAULT_KEY_USAGE_KEY })).value
+  const n = v ? parseInt(v, 10) : 0
+  return Number.isFinite(n) ? n : 0
+}
+
+export async function incrementDefaultKeyUsage(): Promise<number> {
+  const n = (await getDefaultKeyUsage()) + 1
+  await Preferences.set({ key: DEFAULT_KEY_USAGE_KEY, value: String(n) })
+  return n
+}
+
+export async function getDefaultKeyRemaining(): Promise<number> {
+  return Math.max(0, DEFAULT_KEY_LIMIT - (await getDefaultKeyUsage()))
 }
 
 export interface AiProvidersConfig {
@@ -51,11 +76,13 @@ function seedFromBuildEnv(): AiProvidersConfig {
   if (openaiKey) {
     cfg.openai.api_key = openaiKey
     cfg.openai.model = 'gpt-4o'
+    cfg.openai.is_default = true   // owner's trial key — usage-limited
     cfg.active = 'openai'
   }
   if (claudeKey) {
     cfg.claude.api_key = claudeKey
     cfg.claude.model = 'claude-opus-4-7'
+    cfg.claude.is_default = true   // owner's trial key — usage-limited
     if (!openaiKey) cfg.active = 'claude'
   }
   return cfg
@@ -96,6 +123,8 @@ export async function saveAiConfig(cfg: AiProvidersConfig): Promise<void> {
 // shipping them back to the UI unnecessarily.
 export async function getAiSettingsForUI() {
   const c = await getAiConfig()
+  const activeSlot = c[c.active]
+  const usingDefaultKey = !!activeSlot.is_default && !!activeSlot.api_key
   return {
     provider: c.active,
     claude_api_key_set: !!c.claude.api_key,
@@ -106,6 +135,10 @@ export async function getAiSettingsForUI() {
     ollama_model: c.ollama.model ?? '',
     lmstudio_host: c.lmstudio.host ?? '',
     lmstudio_model: c.lmstudio.model ?? '',
+    // Built-in trial-key status so the UI can nudge the user to add their own.
+    using_default_key: usingDefaultKey,
+    default_key_limit: DEFAULT_KEY_LIMIT,
+    default_key_remaining: usingDefaultKey ? await getDefaultKeyRemaining() : DEFAULT_KEY_LIMIT,
   }
 }
 
@@ -118,7 +151,12 @@ export async function applyAiSettingsUpdate(payload: {
 }) {
   const c = await getAiConfig()
   const slot = c[payload.provider]
-  if (payload.api_key !== undefined && payload.api_key !== '') slot.api_key = payload.api_key
+  if (payload.api_key !== undefined && payload.api_key !== '') {
+    slot.api_key = payload.api_key
+    // The user supplied their own key — it's no longer the owner's trial key,
+    // so it's not subject to the request limit.
+    slot.is_default = false
+  }
   if (payload.model !== undefined) slot.model = payload.model
   if (payload.host !== undefined) slot.host = payload.host
   c.active = payload.provider
@@ -129,12 +167,12 @@ export async function applyAiSettingsUpdate(payload: {
 // Used by ai.ts to pick the active provider's credentials when sending a
 // request. Returns null if the active provider isn't configured.
 export async function getActiveProviderCredentials(): Promise<
-  { provider: ProviderId; slot: ProviderSlot } | null
+  { provider: ProviderId; slot: ProviderSlot; isDefaultKey: boolean } | null
 > {
   const c = await getAiConfig()
   const slot = c[c.active]
   const cloudConfigured = (c.active === 'claude' || c.active === 'openai') && !!slot.api_key
   const localConfigured = (c.active === 'ollama' || c.active === 'lmstudio') && !!slot.host
   if (!cloudConfigured && !localConfigured) return null
-  return { provider: c.active, slot }
+  return { provider: c.active, slot, isDefaultKey: !!slot.is_default }
 }

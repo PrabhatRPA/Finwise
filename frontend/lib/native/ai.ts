@@ -9,6 +9,9 @@ import {
   getAiSettingsForUI,
   applyAiSettingsUpdate,
   getActiveProviderCredentials,
+  getDefaultKeyUsage,
+  incrementDefaultKeyUsage,
+  DEFAULT_KEY_LIMIT,
 } from './settings'
 import { fetchPrice } from './market'
 import { stockAnalysisPrompt, portfolioAnalysisPrompt } from './prompts'
@@ -55,19 +58,34 @@ async function chat(prompt: string): Promise<ChatResult> {
       `${cfg.active.toUpperCase()} is not configured. Open AI Insights → AI Provider, paste your key and save.`,
     )
   }
-  const { provider, slot } = creds
+  const { provider, slot, isDefaultKey } = creds
+
+  // The built-in trial key only covers DEFAULT_KEY_LIMIT requests. Once used up,
+  // require the user to add their own key before making any more AI calls.
+  if (isDefaultKey && (await getDefaultKeyUsage()) >= DEFAULT_KEY_LIMIT) {
+    throw withDetail(
+      `You've used all ${DEFAULT_KEY_LIMIT} free AI requests on the built-in key. ` +
+      `Open AI Insights → AI Provider and add your own API key to keep using AI features.`,
+    )
+  }
+
+  let result: ChatResult
   if (provider === 'claude') {
-    return callClaude(prompt, slot.api_key!, slot.model || 'claude-opus-4-7')
+    result = await callClaude(prompt, slot.api_key!, slot.model || 'claude-opus-4-7')
+  } else if (provider === 'openai') {
+    result = await callOpenAi(prompt, slot.api_key!, slot.model || 'gpt-4o')
+  } else {
+    // Ollama / LM Studio aren't reachable from inside the iOS WebView (no
+    // localhost on the device). Surface a clear error so the user picks a
+    // cloud provider instead.
+    throw withDetail(
+      'Local providers (Ollama, LM Studio) only work on the desktop app. Switch to Claude or OpenAI in AI Provider settings.',
+    )
   }
-  if (provider === 'openai') {
-    return callOpenAi(prompt, slot.api_key!, slot.model || 'gpt-4o')
-  }
-  // Ollama / LM Studio aren't reachable from inside the iOS WebView (no
-  // localhost on the device). Surface a clear error so the user picks a
-  // cloud provider instead.
-  throw withDetail(
-    'Local providers (Ollama, LM Studio) only work on the desktop app. Switch to Claude or OpenAI in AI Provider settings.',
-  )
+
+  // Only count successful calls that actually used the owner's trial key.
+  if (isDefaultKey) await incrementDefaultKeyUsage()
+  return result
 }
 
 function withDetail(detail: string) {
