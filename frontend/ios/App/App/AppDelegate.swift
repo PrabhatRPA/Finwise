@@ -69,3 +69,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
 }
+
+/// Custom Capacitor bridge view controller that explicitly registers our
+/// app-local IcloudSync plugin. App-embedded Capacitor plugins (ones defined
+/// directly in the App target rather than as an npm package) are NOT reliably
+/// auto-discovered in Capacitor's SPM setup, so the plugin's methods never
+/// reach the JS bridge and IcloudSync.isAvailable() rejects — which is what
+/// kept the Sync/Restore buttons disabled. Registering the instance here makes
+/// the plugin reachable. Main.storyboard points its root view controller at
+/// this class (customModule="Nworth").
+class MainViewController: CAPBridgeViewController {
+    override open func capacitorDidLoad() {
+        NSLog("[MainViewController] capacitorDidLoad — registering IcloudSync plugin")
+        bridge?.registerPluginInstance(IcloudSync())
+    }
+}
