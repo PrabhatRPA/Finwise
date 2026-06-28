@@ -17,16 +17,26 @@ public class IcloudSync: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "info", returnType: CAPPluginReturnPromise)
     ]
 
-    // The Documents subfolder of the default ubiquity container (the first
-    // container listed in the app's entitlements). nil when the user isn't
-    // signed into iCloud or the capability isn't provisioned.
+    // The explicit ubiquity container identifier. Using the explicit ID is more
+    // reliable than passing nil (which relies on the entitlement array order).
+    private let containerID = "iCloud.com.prabhat.nworth"
+
+    // The Documents subfolder of the app's ubiquity container. nil when the user
+    // isn't signed into iCloud or the capability isn't provisioned.
     private func documentsURL() -> URL? {
-        guard let container = FileManager.default.url(forUbiquityContainerIdentifier: nil) else {
+        guard let container = FileManager.default.url(forUbiquityContainerIdentifier: containerID) else {
+            NSLog("[IcloudSync] documentsURL: container URL is NIL for \(containerID)")
             return nil
         }
+        NSLog("[IcloudSync] documentsURL: container = \(container.path)")
         let docs = container.appendingPathComponent("Documents", isDirectory: true)
         if !FileManager.default.fileExists(atPath: docs.path) {
-            try? FileManager.default.createDirectory(at: docs, withIntermediateDirectories: true)
+            do {
+                try FileManager.default.createDirectory(at: docs, withIntermediateDirectories: true)
+                NSLog("[IcloudSync] documentsURL: created Documents folder")
+            } catch {
+                NSLog("[IcloudSync] documentsURL: failed to create Documents folder: \(error.localizedDescription)")
+            }
         }
         return docs
     }
@@ -40,8 +50,19 @@ public class IcloudSync: CAPPlugin, CAPBridgedPlugin {
 
     @objc func isAvailable(_ call: CAPPluginCall) {
         DispatchQueue.global(qos: .userInitiated).async {
-            let available = FileManager.default.url(forUbiquityContainerIdentifier: nil) != nil
-            call.resolve(["available": available])
+            // ubiquityIdentityToken is non-nil when the user is signed into iCloud.
+            // This distinguishes "not signed in" from "entitlement/provisioning problem".
+            let signedIn = FileManager.default.ubiquityIdentityToken != nil
+            let containerURL = FileManager.default.url(forUbiquityContainerIdentifier: self.containerID)
+            let available = containerURL != nil
+
+            NSLog("[IcloudSync] isAvailable: signedIntoICloud=\(signedIn) containerURL=\(containerURL?.path ?? "NIL") available=\(available)")
+
+            call.resolve([
+                "available": available,
+                "signedIntoICloud": signedIn,
+                "containerPath": containerURL?.path ?? ""
+            ])
         }
     }
 

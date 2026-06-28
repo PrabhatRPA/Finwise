@@ -11,14 +11,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Settings → [Your Name] → iCloud → iCloud Drive → Apps.
         // Getting the container URL is not enough — iOS only registers the app
         // once it sees the Documents folder created inside the container.
-        DispatchQueue.global(qos: .background).async {
+        DispatchQueue.global(qos: .utility).async {
+            let signedIn = FileManager.default.ubiquityIdentityToken != nil
             guard let container = FileManager.default.url(
                 forUbiquityContainerIdentifier: "iCloud.com.prabhat.nworth"
-            ) else { return }
+            ) else {
+                NSLog("[AppDelegate] iCloud container URL is NIL (signedIntoICloud=\(signedIn)) — entitlement/provisioning issue")
+                return
+            }
+            NSLog("[AppDelegate] iCloud container = \(container.path) (signedIntoICloud=\(signedIn))")
             let docs = container.appendingPathComponent("Documents", isDirectory: true)
-            try? FileManager.default.createDirectory(
-                at: docs, withIntermediateDirectories: true, attributes: nil
-            )
+            do {
+                try FileManager.default.createDirectory(
+                    at: docs, withIntermediateDirectories: true, attributes: nil
+                )
+                NSLog("[AppDelegate] iCloud Documents folder ensured at \(docs.path)")
+            } catch {
+                NSLog("[AppDelegate] failed to create iCloud Documents folder: \(error.localizedDescription)")
+            }
         }
         return true
     }
