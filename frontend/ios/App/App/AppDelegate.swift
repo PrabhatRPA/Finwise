@@ -7,7 +7,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        NSLog("[TIMING] AppDelegate.didFinishLaunching")
         // Register with iCloud so iOS shows this app under Settings → [Your
         // Name] → iCloud → iCloud Drive → Apps. Getting the container URL is
         // not enough — iOS only registers the app once it sees the Documents
@@ -17,23 +16,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // container call can be expensive, and we don't want it competing with
         // the WebView cold start. Visibility/registration isn't time-critical.
         DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 4) {
-            let signedIn = FileManager.default.ubiquityIdentityToken != nil
             guard let container = FileManager.default.url(
                 forUbiquityContainerIdentifier: "iCloud.com.prabhat.nworth"
-            ) else {
-                NSLog("[AppDelegate] iCloud container URL is NIL (signedIntoICloud=\(signedIn)) — entitlement/provisioning issue")
-                return
-            }
-            NSLog("[AppDelegate] iCloud container = \(container.path) (signedIntoICloud=\(signedIn))")
+            ) else { return }
             let docs = container.appendingPathComponent("Documents", isDirectory: true)
-            do {
-                try FileManager.default.createDirectory(
-                    at: docs, withIntermediateDirectories: true, attributes: nil
-                )
-                NSLog("[AppDelegate] iCloud Documents folder ensured at \(docs.path)")
-            } catch {
-                NSLog("[AppDelegate] failed to create iCloud Documents folder: \(error.localizedDescription)")
-            }
+            try? FileManager.default.createDirectory(
+                at: docs, withIntermediateDirectories: true, attributes: nil
+            )
         }
         return true
     }
@@ -85,7 +74,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 /// this class (customModule="Nworth").
 class MainViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
-        NSLog("[TIMING] MainViewController.capacitorDidLoad — registering IcloudSync plugin")
         bridge?.registerPluginInstance(IcloudSync())
     }
 }

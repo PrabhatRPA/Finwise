@@ -17,12 +17,6 @@ public class IcloudSync: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "info", returnType: CAPPluginReturnPromise)
     ]
 
-    // Called by Capacitor when the plugin is registered & instantiated.
-    // If this logs, the plugin IS reachable from the JS bridge.
-    public override func load() {
-        NSLog("[IcloudSync] load() — plugin registered with Capacitor bridge")
-    }
-
     // The explicit ubiquity container identifier. Using the explicit ID is more
     // reliable than passing nil (which relies on the entitlement array order).
     private let containerID = "iCloud.com.prabhat.nworth"
@@ -31,18 +25,11 @@ public class IcloudSync: CAPPlugin, CAPBridgedPlugin {
     // isn't signed into iCloud or the capability isn't provisioned.
     private func documentsURL() -> URL? {
         guard let container = FileManager.default.url(forUbiquityContainerIdentifier: containerID) else {
-            NSLog("[IcloudSync] documentsURL: container URL is NIL for \(containerID)")
             return nil
         }
-        NSLog("[IcloudSync] documentsURL: container = \(container.path)")
         let docs = container.appendingPathComponent("Documents", isDirectory: true)
         if !FileManager.default.fileExists(atPath: docs.path) {
-            do {
-                try FileManager.default.createDirectory(at: docs, withIntermediateDirectories: true)
-                NSLog("[IcloudSync] documentsURL: created Documents folder")
-            } catch {
-                NSLog("[IcloudSync] documentsURL: failed to create Documents folder: \(error.localizedDescription)")
-            }
+            try? FileManager.default.createDirectory(at: docs, withIntermediateDirectories: true)
         }
         return docs
     }
@@ -61,8 +48,6 @@ public class IcloudSync: CAPPlugin, CAPBridgedPlugin {
             let signedIn = FileManager.default.ubiquityIdentityToken != nil
             let containerURL = FileManager.default.url(forUbiquityContainerIdentifier: self.containerID)
             let available = containerURL != nil
-
-            NSLog("[IcloudSync] isAvailable: signedIntoICloud=\(signedIn) containerURL=\(containerURL?.path ?? "NIL") available=\(available)")
 
             call.resolve([
                 "available": available,
