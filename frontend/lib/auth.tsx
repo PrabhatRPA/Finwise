@@ -69,9 +69,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true }
   }, [])
 
-  // Auto-sync to iCloud when the app moves to the background (if the user
-  // enabled it in Settings). Only wired while signed in. Dynamically imported
-  // so web/Tauri builds don't pull in the native modules.
+  // Bidirectional iCloud auto-sync, wired while signed in (native only).
+  //   • On launch + every foreground: reconcile — pull the master if another
+  //     device has a newer snapshot. This is also what arms auto-push, so seed
+  //     writes during startup can't clobber the master.
+  //   • On background: push local changes up.
+  // Dynamically imported so web/Tauri builds don't pull in the native modules.
   useEffect(() => {
     if (!user) return
     let remove: (() => void) | undefined
@@ -80,9 +83,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { Capacitor } = await import('@capacitor/core')
         if (!Capacitor.isNativePlatform()) return
         const { App } = await import('@capacitor/app')
-        const { autoSyncIfEnabled } = await import('./native/icloud')
+        const { autoSyncIfEnabled, reconcileICloud } = await import('./native/icloud')
+        // Initial launch reconciliation (pull master if newer; arm auto-push).
+        reconcileICloud()
         const handle = await App.addListener('appStateChange', ({ isActive }) => {
-          if (!isActive) autoSyncIfEnabled()
+          if (isActive) reconcileICloud()   // foreground → pull if remote newer
+          else autoSyncIfEnabled()          // background → push local changes
         })
         remove = () => { handle.remove() }
       } catch {
