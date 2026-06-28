@@ -17,6 +17,12 @@ public class IcloudSync: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "info", returnType: CAPPluginReturnPromise)
     ]
 
+    // Called by Capacitor when the plugin is registered & instantiated.
+    // If this logs, the plugin IS reachable from the JS bridge.
+    public override func load() {
+        NSLog("[IcloudSync] load() — plugin registered with Capacitor bridge")
+    }
+
     // The explicit ubiquity container identifier. Using the explicit ID is more
     // reliable than passing nil (which relies on the entitlement array order).
     private let containerID = "iCloud.com.prabhat.nworth"
