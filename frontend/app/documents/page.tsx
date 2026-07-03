@@ -394,7 +394,7 @@ export default function DocumentsPage() {
                   </svg>
                 </div>
                 {uploading ? (
-                  <p className="text-sm font-medium">Uploading &amp; running OCR + AI extraction…</p>
+                  <p className="text-sm font-medium">Uploading &amp; extracting with AI… this can take a few seconds.</p>
                 ) : (
                   <>
                     <p className="text-sm font-medium">
@@ -403,10 +403,11 @@ export default function DocumentsPage() {
                     </p>
                     <div className="hidden sm:block text-xs text-muted-foreground space-y-1">
                       <p><span className="font-medium">Documents:</span> PDF, CSV, TXT — 1099-B, 1099-DIV, brokerage &amp; bank statements</p>
-                      <p><span className="font-medium">Images:</span> PNG, JPG, JPEG, WEBP — screenshots, photos of statements — OCR + AI extracts holdings automatically</p>
+                      <p><span className="font-medium">Images:</span> PNG, JPG, JPEG, WEBP — screenshots or photos of statements — AI extracts holdings automatically</p>
+                      <p className="text-[11px] pt-0.5">Uses your configured AI provider. PDFs require Claude; on OpenAI, upload a photo/screenshot instead.</p>
                     </div>
                     <p className="sm:hidden text-[11px] text-muted-foreground">
-                      PDF, CSV, TXT, PNG, JPG — AI extracts holdings automatically
+                      PDF, CSV, TXT, PNG, JPG — AI extracts holdings automatically. PDFs require Claude.
                     </p>
                   </>
                 )}

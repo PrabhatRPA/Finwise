@@ -355,3 +355,30 @@ IMPORTANT RULES:
   Ticker | Quantity | Average Buy Price
   Example: AAPL | 10 | $150.00`
 }
+
+// Instruction for extracting holdings from an uploaded statement (image / PDF /
+// text). The attached document is provided as a separate content block by the
+// caller. Field names MUST match what investmentsToRows() in the documents page
+// reads: ticker, shares, average_cost, security_type, purchase_date.
+export function documentExtractionPrompt(): string {
+  return `You are an expert at reading brokerage statements, 401(k)/IRA statements, and tax documents (e.g. 1099-B) and extracting investment holdings.
+
+From the attached document, extract every investment holding you can find. Return ONLY a valid JSON array (no prose, no markdown, no code fences). Each element must have these fields:
+- "ticker": stock/ETF/fund ticker symbol in UPPERCASE (e.g. "AAPL", "VTI"). REQUIRED. If only a fund/company name is shown, use its common ticker; if you cannot determine a ticker, skip that row.
+- "shares": number of shares/units held (numeric). REQUIRED.
+- "average_cost": average cost or purchase price PER SHARE (numeric). Use the cost basis per share if shown; if only total cost basis and shares are shown, divide. If unknown, use 0.
+- "security_type": one of "stock", "etf", "mutual_fund", "bond", "reit", "crypto". Best guess from the description.
+- "purchase_date": acquisition date as "YYYY-MM-DD" if shown, else null.
+
+Rules:
+1. Output ONLY the JSON array — nothing before or after it.
+2. Include every holding found; handle multiple pages/accounts.
+3. Do NOT invent holdings that aren't in the document. If none are found, return [].
+4. Numbers must be plain (no "$", no commas, no "%").
+
+Example:
+[
+  {"ticker":"AAPL","shares":50,"average_cost":150.25,"security_type":"stock","purchase_date":"2023-01-15"},
+  {"ticker":"VTI","shares":12.5,"average_cost":210.00,"security_type":"etf","purchase_date":null}
+]`
+}

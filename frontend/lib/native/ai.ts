@@ -14,15 +14,19 @@ import {
   DEFAULT_KEY_LIMIT,
 } from './settings'
 import { fetchPrice } from './market'
-import { stockAnalysisPrompt, portfolioAnalysisPrompt } from './prompts'
+import { stockAnalysisPrompt, portfolioAnalysisPrompt, documentExtractionPrompt } from './prompts'
 
 interface ChatResult { text: string; model: string }
+
+// `content` is either a plain string (text chat) or an array of Anthropic /
+// OpenAI content blocks (multimodal: text + image / document).
+type MessageContent = string | any[]
 
 // 8K tokens — the new prompts produce long multi-section reports (portfolio
 // analysis especially). 4K was truncating output mid-section.
 const MAX_TOKENS = 8000
 
-async function callClaude(prompt: string, apiKey: string, model: string): Promise<ChatResult> {
+async function callClaude(content: MessageContent, apiKey: string, model: string): Promise<ChatResult> {
   const res = await CapacitorHttp.post({
     url: 'https://api.anthropic.com/v1/messages',
     headers: {
@@ -31,20 +35,20 @@ async function callClaude(prompt: string, apiKey: string, model: string): Promis
       'anthropic-dangerous-direct-browser-access': 'true',
       'content-type': 'application/json',
     },
-    data: { model, max_tokens: MAX_TOKENS, messages: [{ role: 'user', content: prompt }] },
+    data: { model, max_tokens: MAX_TOKENS, messages: [{ role: 'user', content }] },
   })
   if (res.status >= 400) throw new Error(res.data?.error?.message || `Claude API ${res.status}`)
   return { text: res.data?.content?.[0]?.text ?? '', model: res.data?.model ?? model }
 }
 
-async function callOpenAi(prompt: string, apiKey: string, model: string): Promise<ChatResult> {
+async function callOpenAi(content: MessageContent, apiKey: string, model: string): Promise<ChatResult> {
   const res = await CapacitorHttp.post({
     url: 'https://api.openai.com/v1/chat/completions',
     headers: {
       'authorization': `Bearer ${apiKey}`,
       'content-type': 'application/json',
     },
-    data: { model, max_tokens: MAX_TOKENS, messages: [{ role: 'user', content: prompt }] },
+    data: { model, max_tokens: MAX_TOKENS, messages: [{ role: 'user', content }] },
   })
   if (res.status >= 400) throw new Error(res.data?.error?.message || `OpenAI API ${res.status}`)
   return { text: res.data?.choices?.[0]?.message?.content ?? '', model: res.data?.model ?? model }
@@ -92,6 +96,84 @@ function withDetail(detail: string) {
   const err = new Error(detail) as any
   err.response = { status: 400, data: { detail } }
   return err
+}
+
+// ── Document → holdings extraction (vision / PDF) ───────────────────────────
+
+export interface DocInput {
+  kind: 'image' | 'pdf' | 'text'
+  base64?: string      // for image / pdf
+  mediaType?: string   // e.g. 'image/jpeg', 'application/pdf'
+  text?: string        // for csv / txt
+}
+
+// Pull a JSON array of holdings out of the model's reply, tolerating code
+// fences and any surrounding prose.
+function parseHoldingsJson(raw: string): any[] {
+  if (!raw) return []
+  let s = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
+  const start = s.indexOf('[')
+  const end = s.lastIndexOf(']')
+  if (start !== -1 && end !== -1 && end > start) s = s.slice(start, end + 1)
+  try {
+    const arr = JSON.parse(s)
+    return Array.isArray(arr) ? arr : []
+  } catch {
+    return []
+  }
+}
+
+// Send an uploaded document to the user's configured AI provider/model and
+// return the extracted holdings. Counts as one AI request (trial-key aware).
+// Images work on Claude or OpenAI; PDFs require Claude.
+export async function extractHoldingsFromDocument(doc: DocInput): Promise<{ investments: any[] }> {
+  const creds = await getActiveProviderCredentials()
+  if (!creds) {
+    throw withDetail('AI is not configured. Open Profile → AI Provider, paste your key and save, then try again.')
+  }
+  const { provider, slot, isDefaultKey } = creds
+
+  if (provider !== 'claude' && provider !== 'openai') {
+    throw withDetail('Local AI providers (Ollama, LM Studio) only work on the desktop app. Switch to Claude or OpenAI in AI Provider settings.')
+  }
+  if (doc.kind === 'pdf' && provider !== 'claude') {
+    throw withDetail('Your current AI provider can read images only. To extract from PDFs, switch to Claude in Profile → AI Provider — or upload a photo/screenshot of the statement instead.')
+  }
+
+  // Trial-key cap: one request per document.
+  if (isDefaultKey && (await getDefaultKeyUsage()) >= DEFAULT_KEY_LIMIT) {
+    throw withDetail(
+      `You've used all ${DEFAULT_KEY_LIMIT} free AI requests on the built-in key. ` +
+      `Open Profile → AI Provider and add your own API key to use document extraction.`,
+    )
+  }
+
+  const prompt = documentExtractionPrompt()
+  let raw = ''
+
+  if (provider === 'claude') {
+    const content: any[] = [{ type: 'text', text: prompt }]
+    if (doc.kind === 'image' && doc.base64) {
+      content.push({ type: 'image', source: { type: 'base64', media_type: doc.mediaType || 'image/jpeg', data: doc.base64 } })
+    } else if (doc.kind === 'pdf' && doc.base64) {
+      content.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: doc.base64 } })
+    } else if (doc.kind === 'text') {
+      content.push({ type: 'text', text: `Document contents:\n\n${doc.text ?? ''}` })
+    }
+    raw = (await callClaude(content, slot.api_key!, slot.model || 'claude-opus-4-7')).text
+  } else {
+    // openai — images + text only (PDF guarded above)
+    const content: any[] = [{ type: 'text', text: prompt }]
+    if (doc.kind === 'image' && doc.base64) {
+      content.push({ type: 'image_url', image_url: { url: `data:${doc.mediaType || 'image/jpeg'};base64,${doc.base64}` } })
+    } else if (doc.kind === 'text') {
+      content.push({ type: 'text', text: `Document contents:\n\n${doc.text ?? ''}` })
+    }
+    raw = (await callOpenAi(content, slot.api_key!, slot.model || 'gpt-4o')).text
+  }
+
+  if (isDefaultKey) await incrementDefaultKeyUsage()
+  return { investments: parseHoldingsJson(raw) }
 }
 
 // ── Public surface matching the FastAPI aiApi shape ─────────────────────────
