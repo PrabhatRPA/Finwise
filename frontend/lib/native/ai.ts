@@ -108,25 +108,40 @@ export interface DocInput {
 }
 
 // Pull a JSON array of holdings out of the model's reply, tolerating code
-// fences and any surrounding prose.
+// fences, surrounding prose, and object-wrapped arrays ({"holdings":[...]}).
 function parseHoldingsJson(raw: string): any[] {
   if (!raw) return []
-  let s = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
-  const start = s.indexOf('[')
-  const end = s.lastIndexOf(']')
-  if (start !== -1 && end !== -1 && end > start) s = s.slice(start, end + 1)
-  try {
-    const arr = JSON.parse(s)
-    return Array.isArray(arr) ? arr : []
-  } catch {
-    return []
+  const s = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
+
+  const fromValue = (v: any): any[] | null => {
+    if (Array.isArray(v)) return v
+    if (v && typeof v === 'object') {
+      for (const k of ['investments', 'holdings', 'data', 'rows', 'items', 'positions']) {
+        if (Array.isArray(v[k])) return v[k]
+      }
+    }
+    return null
   }
+  const tryParse = (t: string): any[] | null => {
+    try { return fromValue(JSON.parse(t)) } catch { return null }
+  }
+
+  // 1) whole string (array or object).
+  let arr = tryParse(s)
+  if (arr) return arr
+  // 2) first [...] block.
+  const a = s.indexOf('['), b = s.lastIndexOf(']')
+  if (a !== -1 && b > a) { arr = tryParse(s.slice(a, b + 1)); if (arr) return arr }
+  // 3) first {...} block (object-wrapped).
+  const c = s.indexOf('{'), d = s.lastIndexOf('}')
+  if (c !== -1 && d > c) { arr = tryParse(s.slice(c, d + 1)); if (arr) return arr }
+  return []
 }
 
 // Send an uploaded document to the user's configured AI provider/model and
 // return the extracted holdings. Counts as one AI request (trial-key aware).
 // Images work on Claude or OpenAI; PDFs require Claude.
-export async function extractHoldingsFromDocument(doc: DocInput): Promise<{ investments: any[] }> {
+export async function extractHoldingsFromDocument(doc: DocInput): Promise<{ investments: any[]; raw: string }> {
   const creds = await getActiveProviderCredentials()
   if (!creds) {
     throw withDetail('AI is not configured. Open Profile → AI Provider, paste your key and save, then try again.')
@@ -173,7 +188,7 @@ export async function extractHoldingsFromDocument(doc: DocInput): Promise<{ inve
   }
 
   if (isDefaultKey) await incrementDefaultKeyUsage()
-  return { investments: parseHoldingsJson(raw) }
+  return { investments: parseHoldingsJson(raw), raw }
 }
 
 // ── Public surface matching the FastAPI aiApi shape ─────────────────────────

@@ -59,15 +59,18 @@ async function runExtraction(
   input: DocInput,
 ): Promise<{ data: { document_id: number; id: number; status: string; message: string } }> {
   try {
-    const { investments } = await extractHoldingsFromDocument(input)
+    const { investments, raw } = await extractHoldingsFromDocument(input)
+    // When nothing parsed out, keep the model's raw reply so the review screen
+    // can show what the AI actually saw (helps diagnose bad reads / refusals).
+    const note = investments.length === 0 && raw ? `AI reply: ${raw.slice(0, 600)}` : null
     await run(
-      `UPDATE documents SET extraction_status = 'completed', extracted_data = ?, error_message = NULL
+      `UPDATE documents SET extraction_status = 'completed', extracted_data = ?, error_message = ?
        WHERE id = ? AND user_id = ?`,
-      [JSON.stringify({ investments }), id, userId],
+      [JSON.stringify({ investments }), note, id, userId],
     )
     const msg = investments.length > 0
       ? `Extracted ${investments.length} holding(s). Review and import below.`
-      : 'No holdings were found in this document. You can add them manually from the Dashboard.'
+      : 'No holdings were found in this document. You can add them manually below.'
     return okResult(id, msg)
   } catch (e: any) {
     const msg = e?.response?.data?.detail || e?.message || 'AI extraction failed. Please try again.'

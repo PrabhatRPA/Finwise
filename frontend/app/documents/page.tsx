@@ -515,6 +515,16 @@ export default function DocumentsPage() {
                             <Button size="sm" variant="outline" onClick={addRow}>+ Add row</Button>
                           </div>
 
+                          {/* When nothing was parsed, show the model's raw reply so
+                              it's clear what the AI saw (bad read, refusal, etc.). */}
+                          {editRows.length === 0 && doc.error_message && (
+                            <div className="rounded-md border border-border bg-muted/40 p-2">
+                              <p className="text-[11px] text-muted-foreground whitespace-pre-wrap break-words">
+                                {doc.error_message}
+                              </p>
+                            </div>
+                          )}
+
                           {/* Editable table */}
                           <div className="overflow-x-auto">
                             <table className="w-full text-sm border-collapse">

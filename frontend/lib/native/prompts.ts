@@ -361,24 +361,26 @@ IMPORTANT RULES:
 // caller. Field names MUST match what investmentsToRows() in the documents page
 // reads: ticker, shares, average_cost, security_type, purchase_date.
 export function documentExtractionPrompt(): string {
-  return `You are an expert at reading brokerage statements, 401(k)/IRA statements, and tax documents (e.g. 1099-B) and extracting investment holdings.
+  return `You extract investment holdings from ANY document a user uploads — a brokerage or 401(k)/IRA statement, a tax form (1099-B), a spreadsheet, a screenshot, a photo, or a HANDWRITTEN note. The image may be informal, messy, or contain just one holding. Read it carefully (including handwriting) and extract EVERY holding you can identify.
 
-From the attached document, extract every investment holding you can find. Return ONLY a valid JSON array (no prose, no markdown, no code fences). Each element must have these fields:
-- "ticker": stock/ETF/fund ticker symbol in UPPERCASE (e.g. "AAPL", "VTI"). REQUIRED. If only a fund/company name is shown, use its common ticker; if you cannot determine a ticker, skip that row.
-- "shares": number of shares/units held (numeric). REQUIRED.
-- "average_cost": average cost or purchase price PER SHARE (numeric). Use the cost basis per share if shown; if only total cost basis and shares are shown, divide. If unknown, use 0.
-- "security_type": one of "stock", "etf", "mutual_fund", "bond", "reit", "crypto". Best guess from the description.
-- "purchase_date": acquisition date as "YYYY-MM-DD" if shown, else null.
+A "holding" is any security plus a quantity of shares/units. Return ONLY a valid JSON array — no prose, no markdown, no code fences. Each element:
+- "ticker": the stock/ETF/fund ticker symbol in UPPERCASE. A ticker is 1–5 letters. Examples: COST = Costco, AAPL = Apple, MSFT = Microsoft, VTI = Vanguard Total Stock Market, TSLA = Tesla. If the document shows a company or fund NAME instead of a symbol, convert it to its well-known ticker. IMPORTANT: treat a standalone uppercase symbol (e.g. "COST") as the TICKER even when it appears next to words like "cost", "shares", "price", or "avg". REQUIRED — only skip a row if you genuinely cannot determine any ticker.
+- "shares": number of shares/units (numeric). REQUIRED.
+- "average_cost": average cost / purchase price PER SHARE (numeric). If only a total cost and a share count are given, divide to get per-share. If not shown, use 0. Strip any "$" or commas.
+- "security_type": one of "stock", "etf", "mutual_fund", "bond", "reit", "crypto" — best guess (default "stock").
+- "purchase_date": "YYYY-MM-DD" if shown, else null.
 
 Rules:
-1. Output ONLY the JSON array — nothing before or after it.
-2. Include every holding found; handle multiple pages/accounts.
-3. Do NOT invent holdings that aren't in the document. If none are found, return [].
-4. Numbers must be plain (no "$", no commas, no "%").
+1. Output ONLY the JSON array — nothing before or after it, no explanations.
+2. Extract holdings even from a brief, informal, or handwritten note. A SINGLE holding still must be returned.
+3. If the same ticker appears more than once with the same details, return it once.
+4. Do NOT invent holdings that are not in the document. If there are genuinely none, return [].
+5. Numbers must be plain (no "$", commas, or "%").
 
-Example:
-[
-  {"ticker":"AAPL","shares":50,"average_cost":150.25,"security_type":"stock","purchase_date":"2023-01-15"},
-  {"ticker":"VTI","shares":12.5,"average_cost":210.00,"security_type":"etf","purchase_date":null}
-]`
+Examples:
+Handwritten note "COST — shares 15 — avg cost $200"  →
+[{"ticker":"COST","shares":15,"average_cost":200,"security_type":"stock","purchase_date":null}]
+
+Statement line "APPLE INC (AAPL) 50 sh — cost basis $7,500"  →
+[{"ticker":"AAPL","shares":50,"average_cost":150,"security_type":"stock","purchase_date":null}]`
 }
