@@ -19,6 +19,7 @@ import {
 } from '@/lib/native/biometric'
 import { connectAppleId, getAppleUserId } from '@/lib/native/auth'
 import { isAppLockEnabled, setAppLockEnabled } from '@/lib/native/app-lock'
+import { getFloatSide, setFloatSide, type FloatSide } from '@/lib/float-side'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -30,6 +31,7 @@ export default function ProfilePage() {
   const [biometricBusy, setBiometricBusy] = useState(false)
   const [biometricMsg, setBiometricMsg] = useState('')
   const [appLockOn, setAppLockOn] = useState(true)
+  const [floatSide, setFloatSideState] = useState<FloatSide>('right')
 
   const [appleLinked, setAppleLinked] = useState<boolean | null>(null)
   const [appleBusy, setAppleBusy] = useState(false)
@@ -44,6 +46,7 @@ export default function ProfilePage() {
     let cancelled = false
     const native = typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.() === true
     setIsNative(native)
+    setFloatSideState(getFloatSide())
     Promise.all([getBiometryStatus(), isBiometricEnabled()]).then(([s, e]) => {
       if (cancelled) return
       setBiometryStatus(s)
@@ -170,6 +173,29 @@ export default function ProfilePage() {
             <span className="font-medium">System</span> follows your device&apos;s
             appearance; if the device has no preference it switches by time of day.
           </p>
+
+          {/* Floating buttons side — left for left-handed, right for right-handed */}
+          <div className="mt-4 pt-4 border-t">
+            <p className="text-sm font-medium mb-1">Floating buttons</p>
+            <p className="text-xs text-muted-foreground mb-2">
+              Choose which side the floating back / scroll-to-top buttons sit on.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {(['left', 'right'] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => { setFloatSide(s); setFloatSideState(s) }}
+                  className={`h-10 rounded-md border text-sm font-medium capitalize transition-colors ${
+                    floatSide === s
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'border-border hover:bg-accent'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
         </CardContent>
       </Card>
 

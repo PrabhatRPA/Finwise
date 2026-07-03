@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
@@ -65,7 +64,6 @@ interface Quote {
 interface NewsItem { title: string; publisher: string; link: string; published: number | null }
 
 export function TickerDetail({ symbol }: { symbol: string }) {
-  const router = useRouter()
   const ticker = symbol.toUpperCase()
   const { holdings } = usePortfolioStore()
 
@@ -155,19 +153,7 @@ export function TickerDetail({ symbol }: { symbol: string }) {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 sm:py-8 space-y-5">
-      {/* Back */}
-      <button
-        onClick={() => router.back()}
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-          <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
-        </svg>
-        Back
-      </button>
-
-      {/* Header: ticker + price */}
+      {/* Header: ticker + price (back is handled by the global floating nav) */}
       <header>
         <h1 className="text-2xl font-bold tracking-tight">{ticker}</h1>
         {companyName && <p className="text-sm text-muted-foreground truncate">{companyName}</p>}
@@ -319,23 +305,6 @@ export function TickerDetail({ symbol }: { symbol: string }) {
       </Card>
 
       <Disclaimer variant="market" />
-
-      {/* Floating back button — always reachable no matter how far the user has
-          scrolled, so they don't have to scroll back up to the header link. */}
-      <button
-        type="button"
-        onClick={() => router.back()}
-        aria-label="Back"
-        className="fixed left-4 z-40 h-11 w-11 rounded-full bg-primary text-primary-foreground
-          shadow-lg flex items-center justify-center hover:opacity-90 active:scale-95 transition"
-        style={{ bottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-          strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-          <line x1="19" y1="12" x2="5" y2="12" />
-          <polyline points="12 19 5 12 12 5" />
-        </svg>
-      </button>
     </div>
   )
 }

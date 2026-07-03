@@ -789,40 +789,6 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
           </div>
         </CardContent>
       </Card>
-
-      <ScrollToTopButton />
     </>
-  )
-}
-
-// Floating "back to top" button — appears once the user has scrolled the
-// holdings list down a bit, so they don't have to scroll all the way back up.
-// Sits above the iOS home-indicator safe area.
-function ScrollToTopButton() {
-  const [show, setShow] = useState(false)
-
-  useEffect(() => {
-    const onScroll = () => setShow(window.scrollY > 400)
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  if (!show) return null
-  return (
-    <button
-      type="button"
-      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-      aria-label="Scroll to top"
-      className="fixed right-4 z-40 h-11 w-11 rounded-full bg-primary text-primary-foreground
-        shadow-lg flex items-center justify-center hover:opacity-90 active:scale-95 transition"
-      style={{ bottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-        strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-        <line x1="12" y1="19" x2="12" y2="5" />
-        <polyline points="5 12 12 5 19 12" />
-      </svg>
-    </button>
   )
 }

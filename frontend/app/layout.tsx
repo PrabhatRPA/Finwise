@@ -7,6 +7,7 @@ import { Navbar } from '@/components/layout/navbar'
 import { KeyboardManager } from '@/components/keyboard-manager'
 import { SplashHider } from '@/components/splash-hider'
 import { AppLockGate } from '@/components/app-lock-gate'
+import { FloatingNav } from '@/components/floating-nav'
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' })
 
@@ -48,6 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <main className="flex-1">
                 {children}
               </main>
+              <FloatingNav />
             </AppLockGate>
           </AuthProvider>
         </ThemeProvider>
