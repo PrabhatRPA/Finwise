@@ -8,6 +8,7 @@
 
 import { all, get, run } from './db'
 import { requireSessionUserId } from './session'
+import { effectiveLoanBalance } from './loans'
 
 function todayIso(): string {
   // Format: YYYY-MM-DD using local time.
@@ -33,8 +34,9 @@ async function computeNetWorth(userId: number) {
       `SELECT balance, account_type FROM accounts WHERE user_id = ? AND is_active = 1`,
       [userId],
     ),
-    all<{ current_balance: number | null; loan_type: string }>(
-      `SELECT current_balance, loan_type FROM loans WHERE user_id = ? AND status = 'active'`,
+    all<any>(
+      `SELECT current_balance, loan_type, interest_rate, monthly_payment, updated_at, created_at, start_date
+       FROM loans WHERE user_id = ? AND status = 'active'`,
       [userId],
     ),
     all<{ manual_value: number | null; estimated_value: number | null }>(
@@ -60,10 +62,12 @@ async function computeNetWorth(userId: number) {
 
   // Liabilities: roll up by loan type so the dashboard can break it out
   // (mortgage vs credit_card vs auto vs everything else).
+  // Use each loan's amortized (estimated-today) balance so net worth improves
+  // as installment debts are paid down over time. Revolving debts are unchanged.
   const liability_breakdown: Record<string, number> = {}
   let total_liabilities = 0
   for (const l of loans) {
-    const amt = l.current_balance ?? 0
+    const amt = effectiveLoanBalance(l)
     total_liabilities += amt
     liability_breakdown[l.loan_type] = (liability_breakdown[l.loan_type] ?? 0) + amt
   }

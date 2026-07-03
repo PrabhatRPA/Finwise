@@ -312,8 +312,18 @@ export function DebtsTable({ onDebtChanged }: Props) {
                           {LOAN_TYPE_LABELS[loan.loan_type] ?? loan.loan_type}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold text-destructive">
-                        {formatCurrency(loan.current_balance)}
+                      <td className="px-4 py-3 text-right">
+                        <div className="font-semibold text-destructive">{formatCurrency(loan.current_balance)}</div>
+                        {(loan as any).next_principal > 0 && (
+                          <div className="text-[10px] text-muted-foreground mt-0.5 whitespace-nowrap">
+                            next pmt: {formatCurrency((loan as any).next_interest)} int · {formatCurrency((loan as any).next_principal)} prin
+                          </div>
+                        )}
+                        {(loan as any).amortizing && (loan as any).principal_paid_to_date > 0 && (
+                          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 whitespace-nowrap">
+                            −{formatCurrency((loan as any).principal_paid_to_date)} paid down
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right text-muted-foreground">
                         {loan.interest_rate != null ? `${loan.interest_rate}%` : '—'}
@@ -359,6 +369,11 @@ export function DebtsTable({ onDebtChanged }: Props) {
                 </tfoot>
               </table>
             </div>
+            <p className="text-[11px] text-muted-foreground px-4 py-3 border-t leading-relaxed">
+              Installment loans (mortgage, auto, student, personal) show an <span className="font-medium">estimated</span> balance
+              that pays down each month from your rate &amp; payment — so your net worth improves over time without re-typing it.
+              Credit cards &amp; lines of credit stay at the balance you enter. Edit a debt to reset its balance anytime.
+            </p>
           </CardContent>
         </Card>
       )}
