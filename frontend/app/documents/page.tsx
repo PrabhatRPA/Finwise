@@ -293,28 +293,14 @@ export default function DocumentsPage() {
   // ── Render ────────────────────────────────────────────────
   return (
     <div className="container mx-auto p-3 sm:p-4 space-y-4 sm:space-y-6 max-w-5xl">
-      {/* Mobile: stack title above the back-link as a thin top row.
-          Desktop: keep the side-by-side header. */}
-      <header className="space-y-2 sm:space-y-0 sm:flex sm:justify-between sm:items-start sm:gap-4">
-        <button
-          onClick={() => router.push('/dashboard')}
-          className="sm:hidden inline-flex items-center gap-1 text-sm text-primary font-medium"
-        >
-          ← Dashboard
-        </button>
+      {/* Back is handled by the global floating nav button. */}
+      <header>
         <div className="min-w-0 flex-1">
           <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Upload Documents</h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
             Upload tax forms, 401(k), Roth IRA, or brokerage statements — AI extracts tickers, shares, and costs automatically.
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => router.push('/dashboard')}
-          className="hidden sm:inline-flex shrink-0"
-        >
-          ← Dashboard
-        </Button>
       </header>
 
       {/* Upload Card */}

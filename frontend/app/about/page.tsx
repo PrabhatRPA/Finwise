@@ -1,7 +1,5 @@
 'use client'
 
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { APP_NAME, APP_TAGLINE, APP_VERSION } from '@/lib/constants'
 import { Disclaimer } from '@/components/disclaimer'
 
@@ -120,22 +118,9 @@ const FEATURES: Feature[] = [
 ]
 
 export default function AboutPage() {
-  const router = useRouter()
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 sm:py-10 space-y-8">
 
-      {/* Back link */}
-      <button
-        onClick={() => router.back()}
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-          <line x1="19" y1="12" x2="5" y2="12" />
-          <polyline points="12 19 5 12 12 5" />
-        </svg>
-        Back
-      </button>
 
       {/* Hero */}
       <section className="text-center space-y-3">
@@ -218,9 +203,6 @@ export default function AboutPage() {
       <footer className="text-center text-xs text-muted-foreground space-y-1 pt-2">
         <p>{APP_NAME} v{APP_VERSION}</p>
         <p>Made with care. Track everything. Share nothing.</p>
-        <Link href="/dashboard" className="inline-block mt-3 text-primary hover:underline font-medium text-sm">
-          Back to dashboard →
-        </Link>
       </footer>
     </div>
   )

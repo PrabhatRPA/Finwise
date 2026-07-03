@@ -1,6 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { APP_NAME } from '@/lib/constants'
 
@@ -33,22 +32,9 @@ function Guide({
 }
 
 export default function HelpPage() {
-  const router = useRouter()
-
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 sm:py-8 space-y-5">
-      {/* Back link */}
-      <button
-        onClick={() => router.back()}
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-          <line x1="19" y1="12" x2="5" y2="12" />
-          <polyline points="12 19 5 12 12 5" />
-        </svg>
-        Back
-      </button>
+      {/* Back is handled by the global floating nav button. */}
 
       <header>
         <h1 className="text-xl sm:text-2xl font-bold">Know your app</h1>
