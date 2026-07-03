@@ -100,6 +100,17 @@ export default function DocumentsPage() {
     }
   }, [authLoading, isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Deep link from Profile → "Remove demo / all data": scroll straight to the
+  // demo / clear-data controls so the user doesn't have to hunt for them.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!new URLSearchParams(window.location.search).has('focus')) return
+    const t = setTimeout(() => {
+      document.getElementById('demo-data')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 350)
+    return () => clearTimeout(t)
+  }, [])
+
   const fetchAccounts = async () => {
     try {
       const res = await accountsApi.getAll()

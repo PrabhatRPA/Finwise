@@ -567,7 +567,7 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
             </p>
 
             {/* Demo / sample data — one tap, no file picker needed */}
-            <div className="rounded-md border border-dashed border-border p-3 space-y-2">
+            <div id="demo-data" className="rounded-md border border-dashed border-border p-3 space-y-2 scroll-mt-20">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-medium">Load demo data</p>

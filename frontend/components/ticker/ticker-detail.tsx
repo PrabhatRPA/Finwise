@@ -7,13 +7,15 @@ import {
 import ReactMarkdown from 'react-markdown'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { marketApi, aiApi } from '@/lib/api'
+import { marketApi, aiApi, watchlistApi } from '@/lib/api'
 import { usePortfolioStore } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils'
 import { Disclaimer } from '@/components/disclaimer'
 
 // Time-range buttons → Yahoo period + a tick formatter appropriate to the span.
+// 1D is intraday (5-minute bars) — the closest thing to a live view.
 const RANGES = [
+  { id: '1D', period: '1d' },
   { id: '1W', period: '5d' },
   { id: '1M', period: '1mo' },
   { id: '3M', period: '3mo' },
@@ -28,8 +30,13 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 
 function fmtTick(ts: number, range: RangeId): string {
   const d = new Date(ts * 1000)
-  if (range === '1W') return `${MONTHS[d.getMonth()]} ${d.getDate()}`
-  if (range === '1M' || range === '3M' || range === '6M') return `${MONTHS[d.getMonth()]} ${d.getDate()}`
+  if (range === '1D') {
+    // Intraday → local time (e.g. "9:30", "14:05").
+    const h = d.getHours()
+    const m = String(d.getMinutes()).padStart(2, '0')
+    return `${h}:${m}`
+  }
+  if (range === '1W' || range === '1M' || range === '3M' || range === '6M') return `${MONTHS[d.getMonth()]} ${d.getDate()}`
   return `${MONTHS[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`
 }
 
@@ -83,6 +90,22 @@ export function TickerDetail({ symbol }: { symbol: string }) {
   const [aiResult, setAiResult] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState('')
+
+  const [watchBusy, setWatchBusy] = useState(false)
+  const [watchMsg, setWatchMsg] = useState('')
+
+  const addToWatchlist = async () => {
+    setWatchBusy(true)
+    setWatchMsg('')
+    try {
+      await watchlistApi.create({ ticker, company_name: companyName ?? null })
+      setWatchMsg('Added to your watchlist.')
+    } catch (e: any) {
+      setWatchMsg(e?.response?.data?.detail || e?.message || 'Could not add to watchlist.')
+    } finally {
+      setWatchBusy(false)
+    }
+  }
 
   // Current price (independent of the chart range).
   useEffect(() => {
@@ -155,8 +178,24 @@ export function TickerDetail({ symbol }: { symbol: string }) {
     <div className="mx-auto max-w-2xl px-4 py-6 sm:py-8 space-y-5">
       {/* Header: ticker + price (back is handled by the global floating nav) */}
       <header>
-        <h1 className="text-2xl font-bold tracking-tight">{ticker}</h1>
-        {companyName && <p className="text-sm text-muted-foreground truncate">{companyName}</p>}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight">{ticker}</h1>
+            {companyName && <p className="text-sm text-muted-foreground truncate">{companyName}</p>}
+          </div>
+          <button
+            onClick={addToWatchlist}
+            disabled={watchBusy}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border
+              text-sm font-medium text-foreground hover:bg-accent disabled:opacity-50"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+            {watchBusy ? 'Adding…' : 'Watchlist'}
+          </button>
+        </div>
         <div className="mt-2 flex items-baseline gap-3">
           <span className="text-3xl font-bold">
             {quote ? formatCurrency(quote.price) : '—'}
@@ -167,6 +206,7 @@ export function TickerDetail({ symbol }: { symbol: string }) {
             </span>
           )}
         </div>
+        {watchMsg && <p className="text-xs text-muted-foreground mt-1">{watchMsg}</p>}
       </header>
 
       {/* Chart */}

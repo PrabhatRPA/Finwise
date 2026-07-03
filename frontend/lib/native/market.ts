@@ -281,6 +281,74 @@ async function fetchNews(ticker: string): Promise<NewsItem[]> {
   return []
 }
 
+// Second free source: Google News RSS (keyless). Broadens coverage beyond Yahoo
+// so the feed isn't single-sourced. Returns items tagged with their real
+// publisher (from the RSS <source> element).
+function xmlPick(block: string, tag: string): string {
+  const m = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, 'i').exec(block)
+  if (!m) return ''
+  return m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim()
+}
+function xmlDecode(s: string): string {
+  return s
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&apos;/g, "'")
+}
+async function fetchNewsGoogle(ticker: string): Promise<NewsItem[]> {
+  try {
+    const res = await CapacitorHttp.get({
+      url: 'https://news.google.com/rss/search',
+      params: { q: `${ticker.toUpperCase()} stock`, hl: 'en-US', gl: 'US', ceid: 'US:en' },
+      headers: { 'User-Agent': 'Mozilla/5.0 Nworth/1.0' },
+    })
+    if (res.status !== 200) return []
+    const xml = typeof res.data === 'string' ? res.data : ''
+    if (!xml) return []
+    const out: NewsItem[] = []
+    const itemRe = /<item>([\s\S]*?)<\/item>/g
+    let m: RegExpExecArray | null
+    while ((m = itemRe.exec(xml)) && out.length < 12) {
+      const block = m[1]
+      const rawTitle = xmlDecode(xmlPick(block, 'title'))
+      const link = xmlPick(block, 'link')
+      const source = xmlDecode(xmlPick(block, 'source'))
+      const pub = xmlPick(block, 'pubDate')
+      if (!rawTitle || !link) continue
+      // Google appends " - Publisher" to titles; strip it since we show source.
+      const title = source && rawTitle.endsWith(` - ${source}`)
+        ? rawTitle.slice(0, -(source.length + 3))
+        : rawTitle
+      const ts = pub ? Math.round(Date.parse(pub) / 1000) : NaN
+      out.push({
+        title,
+        publisher: source || 'Google News',
+        link,
+        published: Number.isFinite(ts) ? ts : null,
+      })
+    }
+    return out
+  } catch {
+    return []
+  }
+}
+
+// Merge Yahoo + Google, dedupe by headline, newest first.
+async function fetchNewsMerged(ticker: string): Promise<NewsItem[]> {
+  const [yahoo, google] = await Promise.allSettled([fetchNews(ticker), fetchNewsGoogle(ticker)])
+  const merged: NewsItem[] = []
+  const seen = new Set<string>()
+  const add = (arr: NewsItem[]) => {
+    for (const n of arr) {
+      const key = (n.title || '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 70)
+      if (n.link && key && !seen.has(key)) { seen.add(key); merged.push(n) }
+    }
+  }
+  if (yahoo.status === 'fulfilled') add(yahoo.value)
+  if (google.status === 'fulfilled') add(google.value)
+  merged.sort((a, b) => (b.published ?? 0) - (a.published ?? 0))
+  return merged
+}
+
 // ── Cache (SQLite) ─────────────────────────────────────────────────────
 async function readCache(ticker: string, ignoreTtl = false): Promise<PriceQuote | null> {
   const row = await dbGet<any>(
@@ -350,7 +418,7 @@ export const nativeMarketApi = {
     return { data: { ticker, period, data: history, history } }
   },
   getNews: async (ticker: string) => {
-    const news = await fetchNews(ticker)
+    const news = await fetchNewsMerged(ticker)
     return { data: { ticker, news } }
   },
   search: async (_query: string) => ({ data: [] }),

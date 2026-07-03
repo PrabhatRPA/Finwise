@@ -7,9 +7,11 @@ import { formatCurrency } from '@/lib/utils'
 
 // Lookback windows for the time-range pill row.
 const RANGES = [
+  { key: '1D',  days: 1      },
   { key: '1W',  days: 7      },
   { key: '1M',  days: 30     },
   { key: '3M',  days: 90     },
+  { key: '6M',  days: 180    },
   { key: '1Y',  days: 365    },
   { key: 'ALL', days: 100000 },
 ] as const

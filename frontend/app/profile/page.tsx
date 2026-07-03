@@ -352,7 +352,7 @@ export default function ProfilePage() {
           <Row
             label="Remove demo / all data"
             sub="Clear the sample portfolio (or everything) and start fresh."
-            onClick={() => router.push('/documents')}
+            onClick={() => router.push('/documents?focus=demo')}
           />
           <Row
             label="About Nworth"
