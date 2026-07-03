@@ -18,6 +18,7 @@ import {
   type BiometryStatus,
 } from '@/lib/native/biometric'
 import { connectAppleId, getAppleUserId } from '@/lib/native/auth'
+import { isAppLockEnabled, setAppLockEnabled } from '@/lib/native/app-lock'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -28,6 +29,7 @@ export default function ProfilePage() {
   const [biometricOn, setBiometricOn] = useState(false)
   const [biometricBusy, setBiometricBusy] = useState(false)
   const [biometricMsg, setBiometricMsg] = useState('')
+  const [appLockOn, setAppLockOn] = useState(true)
 
   const [appleLinked, setAppleLinked] = useState<boolean | null>(null)
   const [appleBusy, setAppleBusy] = useState(false)
@@ -48,10 +50,19 @@ export default function ProfilePage() {
       setBiometricOn(e.enabled)
     })
     if (native) {
+      isAppLockEnabled().then(v => { if (!cancelled) setAppLockOn(v) }).catch(() => {})
+    }
+    if (native) {
       getAppleUserId().then(id => { if (!cancelled) setAppleLinked(!!id) }).catch(() => {})
     }
     return () => { cancelled = true }
   }, [])
+
+  const handleToggleAppLock = async () => {
+    const next = !appLockOn
+    setAppLockOn(next)
+    try { await setAppLockEnabled(next) } catch { setAppLockOn(!next) }
+  }
 
   const handleToggleBiometric = async () => {
     if (!user) return
@@ -220,6 +231,39 @@ export default function ProfilePage() {
 
           {biometricMsg && (
             <p className="text-xs text-muted-foreground">{biometricMsg}</p>
+          )}
+
+          {/* App Lock — require Face ID / passcode on launch & after backgrounding */}
+          {isNative && (
+            <div className="flex items-center justify-between gap-3 pt-2 border-t">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">Require {biometryKind} to open</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {biometryAvailable
+                    ? 'Lock the app on launch and after it’s been in the background, so your finances stay private on an unlocked phone.'
+                    : `Set up ${biometryKind} on this device to use App Lock.`}
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={appLockOn}
+                onClick={handleToggleAppLock}
+                disabled={!biometryAvailable}
+                className={`relative inline-flex h-[31px] w-[51px] shrink-0 items-center rounded-full
+                  border-2 border-transparent transition-colors duration-200 ease-in-out
+                  focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
+                  disabled:opacity-40 disabled:cursor-not-allowed
+                  ${appLockOn && biometryAvailable ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none inline-block h-[27px] w-[27px] transform rounded-full
+                    bg-white shadow-md ring-0 transition duration-200 ease-in-out
+                    ${appLockOn && biometryAvailable ? 'translate-x-[20px]' : 'translate-x-0'}`}
+                />
+              </button>
+            </div>
           )}
 
           {/* Connect Apple ID — shown on iOS only */}

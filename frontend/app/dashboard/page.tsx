@@ -24,6 +24,7 @@ import { BenchmarkChart } from '@/components/dashboard/benchmark-chart'
 import { DebtsTable } from '@/components/dashboard/debts-table'
 import { WatchlistTable } from '@/components/dashboard/watchlist-table'
 import { PropertiesTable } from '@/components/dashboard/properties-table'
+import { PortfolioNews } from '@/components/dashboard/portfolio-news'
 
 // Tiny stat tile — used in the 5-up summary row.
 //
@@ -348,6 +349,7 @@ export default function DashboardPage() {
               <option value="properties">Properties</option>
               <option value="allocation">Allocation</option>
               <option value="performance">Performance</option>
+              <option value="news">News</option>
               <option value="ai">AI Insights</option>
             </select>
           </div>
@@ -368,7 +370,7 @@ export default function DashboardPage() {
 
         {/* Tablet + desktop: tab bar + refresh button */}
         <div className="hidden md:flex items-center gap-2 mb-3">
-          <TabsList className="grid grid-cols-8 flex-1">
+          <TabsList className="grid grid-cols-9 flex-1">
           <TabsTrigger value="holdings">Holdings</TabsTrigger>
           <TabsTrigger value="accounts">Cash</TabsTrigger>
           <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
@@ -376,6 +378,7 @@ export default function DashboardPage() {
           <TabsTrigger value="properties">Properties</TabsTrigger>
           <TabsTrigger value="allocation">Allocation</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
+          <TabsTrigger value="news">News</TabsTrigger>
           <TabsTrigger value="ai">AI Insights</TabsTrigger>
         </TabsList>
           <Button
@@ -467,6 +470,10 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent><NetWorthTrendChart /></CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="news" className="space-y-4">
+          <PortfolioNews holdings={holdings} />
         </TabsContent>
 
         <TabsContent value="ai" className="space-y-4">

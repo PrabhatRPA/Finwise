@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/lib/theme'
 import { Navbar } from '@/components/layout/navbar'
 import { KeyboardManager } from '@/components/keyboard-manager'
 import { SplashHider } from '@/components/splash-hider'
+import { AppLockGate } from '@/components/app-lock-gate'
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' })
 
@@ -42,10 +43,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthProvider>
             <SplashHider />
             <KeyboardManager />
-            <Navbar />
-            <main className="flex-1">
-              {children}
-            </main>
+            <AppLockGate>
+              <Navbar />
+              <main className="flex-1">
+                {children}
+              </main>
+            </AppLockGate>
           </AuthProvider>
         </ThemeProvider>
       </body>
