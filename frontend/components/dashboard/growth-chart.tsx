@@ -1,9 +1,20 @@
 'use client'
 
+// Hero net-worth card ("HeroCard" in the design system): green-ink gradient
+// surface with grain, oversized tabular numeral that rolls up on mount /
+// refresh (the app's one signature motion moment), ▲/▼ delta line, an area
+// chart of net-worth history, and compact time-range pills.
+//
+// The gradient is dark in BOTH themes (pine→viridian on Paper Light,
+// green-black on Ledger Dark), so on-gradient text uses fixed light tints
+// rather than theme tokens.
+
 import { useEffect, useMemo, useState } from 'react'
 import { Area, AreaChart, ResponsiveContainer, Tooltip, YAxis } from 'recharts'
 import { netWorthApi } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
+import { useCountUp, useReducedMotion } from '@/components/ds/motion'
+import { impactLight } from '@/components/ds/haptics'
 
 // Lookback windows for the time-range pill row.
 const RANGES = [
@@ -22,9 +33,14 @@ interface TrendPoint {
   net_worth: number
 }
 
+// On-gradient accent tints (fixed — the gradient is dark in both themes).
+const UP_TINT = 'hsl(152 73% 66%)'
+const DOWN_TINT = 'hsl(0 100% 76%)'
+
 export function GrowthChart({ currentNetWorth }: { currentNetWorth: number | null | undefined }) {
   const [range, setRange] = useState<RangeKey>('1M')
   const [trends, setTrends] = useState<TrendPoint[]>([])
+  const reducedMotion = useReducedMotion()
 
   // Refetch when the range pill changes. Server returns rows oldest-first
   // already; we just slice by the window count if needed.
@@ -70,8 +86,11 @@ export function GrowthChart({ currentNetWorth }: { currentNetWorth: number | nul
   const endLabel   = data[data.length - 1] ? formatShortDate(data[data.length - 1].date) : ''
 
   const positive = delta >= 0
-  const lineColor = positive ? '#10b981' /* emerald-500 */ : '#ef4444' /* red-500 */
-  const gradId = `growth-grad-${positive ? 'up' : 'down'}`
+  const tint = positive ? UP_TINT : DOWN_TINT
+
+  // Signature moment: the hero number rolls up (600 ms) on mount and whenever
+  // the recomputed total changes (e.g. after Refresh). Reduce Motion → snap.
+  const rolled = useCountUp(end, 600, reducedMotion)
 
   // Pad Y-axis a touch so the line doesn't sit on the bottom edge.
   const values = data.map(d => d.net_worth)
@@ -81,38 +100,47 @@ export function GrowthChart({ currentNetWorth }: { currentNetWorth: number | nul
   const yDomain: [number, number] = [Math.max(0, minY - pad), maxY + pad]
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+    <div
+      className="rounded-ds-lg bg-hero-gradient grain shadow-card p-4 sm:p-6 relative overflow-hidden"
+      aria-label={`Net worth ${formatCurrency(end)}, ${positive ? 'up' : 'down'} ${formatCurrency(Math.abs(delta))} over ${range === 'ALL' ? 'all time' : range}`}
+    >
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Net Worth</p>
-        <p className="text-[10px] text-muted-foreground">{startLabel} — {endLabel}</p>
+        <p className="type-label !text-white/60">Net Worth</p>
+        <p className="text-[10px] text-white/45 type-amount">{startLabel} — {endLabel}</p>
       </div>
-      <h2 className="text-3xl sm:text-4xl font-bold tabular-nums mt-0.5">
-        {formatCurrency(end)}
+
+      <h2 className="type-hero text-[40px] sm:text-5xl leading-tight text-white mt-1">
+        {formatCurrency(rolled)}
       </h2>
-      <p className={`text-sm font-medium mt-0.5 ${positive ? 'text-emerald-500' : 'text-red-500'}`}>
-        {positive ? '↗' : '↘'} {positive ? '+' : '-'}{formatCurrency(Math.abs(delta))}
+
+      <p className="text-sm font-semibold mt-0.5 type-amount" style={{ color: tint }}>
+        {positive ? '▲' : '▼'} {positive ? '+' : '−'}{formatCurrency(Math.abs(delta))}
         {!sparse && start > 0 && (
-          <span className="ml-1">({positive ? '+' : ''}{deltaPct.toFixed(2)}%)</span>
+          <span className="ml-1.5 opacity-90">({positive ? '+' : ''}{deltaPct.toFixed(2)}%)</span>
         )}
+        <span className="ml-1.5 text-white/40 font-normal normal-case">
+          {range === 'ALL' ? 'all time' : range}
+        </span>
       </p>
 
-      <div className="h-44 sm:h-56 -mx-1 mt-3">
+      <div className="h-40 sm:h-52 -mx-1 mt-3">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
             <defs>
-              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stopColor={lineColor} stopOpacity={0.35} />
-                <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
+              <linearGradient id="hero-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.28} />
+                <stop offset="100%" stopColor="#FFFFFF" stopOpacity={0} />
               </linearGradient>
             </defs>
             <YAxis hide domain={yDomain} />
             <Tooltip
-              cursor={{ stroke: lineColor, strokeOpacity: 0.4 }}
+              cursor={{ stroke: '#FFFFFF', strokeOpacity: 0.35 }}
               contentStyle={{
-                background: 'hsl(var(--card))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: 8,
+                background: 'rgba(10, 14, 12, 0.9)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 12,
                 fontSize: 12,
+                color: '#F2F4F6',
               }}
               labelFormatter={(label: string) => formatShortDate(label)}
               formatter={(value: number) => [formatCurrency(value), 'Net Worth']}
@@ -120,34 +148,35 @@ export function GrowthChart({ currentNetWorth }: { currentNetWorth: number | nul
             <Area
               type="monotone"
               dataKey="net_worth"
-              stroke={lineColor}
+              stroke="#FFFFFF"
+              strokeOpacity={0.9}
               strokeWidth={2}
-              fill={`url(#${gradId})`}
+              fill="url(#hero-fill)"
               isAnimationActive={false}
-              dot={sparse ? { r: 3, fill: lineColor, strokeWidth: 0 } : false}
+              dot={sparse ? { r: 3, fill: '#FFFFFF', strokeWidth: 0 } : false}
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
       {sparse && (
-        <p className="text-[11px] text-muted-foreground mt-1 text-center">
+        <p className="text-[11px] text-white/50 mt-1 text-center">
           The chart fills in as you use the app — one snapshot per day.
         </p>
       )}
 
       {/* Range pills */}
-      <div className="flex items-center justify-between gap-1 mt-3">
+      <div className="flex items-center justify-between gap-1 mt-3 relative z-10">
         {RANGES.map(r => {
           const active = r.key === range
           return (
             <button
               key={r.key}
-              onClick={() => setRange(r.key)}
-              className={`flex-1 h-8 rounded-md text-xs font-semibold transition-colors ${
+              onClick={() => { setRange(r.key); impactLight() }}
+              className={`flex-1 h-8 rounded-full text-xs font-semibold type-amount transition-colors ${
                 active
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                  ? 'bg-white/18 text-white'
+                  : 'text-white/50 hover:text-white/80'
               }`}
             >
               {r.key}

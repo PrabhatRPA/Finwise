@@ -165,6 +165,53 @@ async function yahooSparkBatch(
   return result
 }
 
+// ── Spark series (batched close-price history for sparklines) ───────────
+// One request returns a ~1-month daily close series for MANY symbols — powers
+// the holdings-row sparklines without an N+1 history call per ticker.
+// Cached in-memory for 10 minutes; missing/sparse symbols yield [] and the
+// Sparkline component renders a flat neutral line.
+const SPARK_TTL_MS = 10 * 60 * 1000
+const _sparkCache = new Map<string, { at: number; closes: number[] }>()
+
+export async function fetchSparkSeries(tickers: string[]): Promise<Map<string, number[]>> {
+  const out = new Map<string, number[]>()
+  const now = Date.now()
+  const need: string[] = []
+  for (const t of Array.from(new Set(tickers.map((x) => x.toUpperCase()).filter(Boolean)))) {
+    const hit = _sparkCache.get(t)
+    if (hit && now - hit.at < SPARK_TTL_MS) out.set(t, hit.closes)
+    else need.push(t)
+  }
+  if (need.length === 0) return out
+
+  for (const host of YAHOO_HOSTS) {
+    try {
+      const res = await CapacitorHttp.get({
+        url: `https://${host}.finance.yahoo.com/v7/finance/spark`,
+        params: { symbols: need.join(','), range: '1mo', interval: '1d' },
+        headers: { 'User-Agent': 'Mozilla/5.0 Nworth/1.0' },
+      })
+      if (res.status !== 200) continue
+      const list = res.data?.spark?.result ?? []
+      for (const item of list) {
+        const sym = String(item?.symbol ?? '').toUpperCase()
+        const resp = item?.response?.[0]
+        const closes: number[] = (resp?.indicators?.quote?.[0]?.close ?? [])
+          .filter((c: any) => c != null && isFinite(Number(c)))
+          .map(Number)
+        if (sym) {
+          out.set(sym, closes)
+          _sparkCache.set(sym, { at: now, closes })
+        }
+      }
+      break // one host succeeded
+    } catch {
+      // try next host
+    }
+  }
+  return out
+}
+
 // ── Stooq CSV (last-ditch; frequently geo-blocked / challenge-walled) ───
 async function stooq(ticker: string): Promise<PriceQuote | null> {
   try {

@@ -1,0 +1,73 @@
+'use client'
+
+// Premium holdings row: leading rounded-square category glyph on a tinted
+// background · ticker + shares secondary line · inline mini sparkline ·
+// trailing current value + % change stacked (colored by direction).
+// Tap anywhere on the row opens the ticker detail page; Edit/Delete stay in
+// the little trailing actions column supplied by the parent.
+
+import { Sparkline } from './sparkline'
+import { formatCurrency } from '@/lib/utils'
+
+const TYPE_GLYPH: Record<string, { glyph: string; tint: string }> = {
+  stock:       { glyph: '▲', tint: 'hsl(var(--positive) / 0.14)' },
+  etf:         { glyph: '◆', tint: 'hsl(210 80% 55% / 0.14)' },
+  mutual_fund: { glyph: '◈', tint: 'hsl(260 60% 60% / 0.14)' },
+  bond:        { glyph: '▤', tint: 'hsl(40 80% 50% / 0.16)' },
+  crypto:      { glyph: '◎', tint: 'hsl(30 95% 55% / 0.16)' },
+  reit:        { glyph: '⌂', tint: 'hsl(180 55% 45% / 0.16)' },
+}
+
+export interface HoldingRowProps {
+  holding: any
+  spark?: number[]                 // close series for the sparkline
+  onOpen?: (ticker: string) => void
+  actions?: React.ReactNode        // Edit/Delete cluster from the parent
+}
+
+export function HoldingRow({ holding: h, spark, onOpen, actions }: HoldingRowProps) {
+  const t = TYPE_GLYPH[h.security_type as string] ?? TYPE_GLYPH.stock
+  const pct = h.today_gain_loss_percent ?? 0
+  const pctClass = pct > 0 ? 'text-positive' : pct < 0 ? 'text-negative' : 'text-neutral'
+  const value = h.current_value ?? 0
+
+  return (
+    <div className="flex items-center gap-3 px-3 py-3">
+      <button
+        onClick={() => onOpen?.(h.ticker)}
+        className="flex items-center gap-3 flex-1 min-w-0 text-left"
+        aria-label={`${h.ticker}, ${formatCurrency(value)}, ${pct >= 0 ? 'up' : 'down'} ${Math.abs(pct).toFixed(2)} percent today`}
+      >
+        {/* Category glyph tile */}
+        <span
+          className="h-10 w-10 rounded-ds-sm flex items-center justify-center text-base shrink-0 text-foreground/80"
+          style={{ backgroundColor: t.tint }}
+          aria-hidden="true"
+        >
+          {t.glyph}
+        </span>
+
+        {/* Name + shares */}
+        <span className="min-w-0 flex-1">
+          <span className="block type-amount font-semibold text-[15px] truncate">{h.ticker}</span>
+          <span className="block text-xs text-muted-foreground truncate">
+            {h.shares ?? 0} sh · avg {formatCurrency(h.average_cost ?? 0)}
+          </span>
+        </span>
+
+        {/* Mini sparkline */}
+        <Sparkline data={spark ?? []} />
+
+        {/* Value + today % stacked */}
+        <span className="text-right shrink-0 w-[92px]">
+          <span className="block type-amount font-semibold text-[15px]">{formatCurrency(value)}</span>
+          <span className={`block type-amount text-xs font-medium ${pctClass}`}>
+            {pct > 0 ? '+' : ''}{pct.toFixed(2)}%
+          </span>
+        </span>
+      </button>
+
+      {actions && <div className="shrink-0">{actions}</div>}
+    </div>
+  )
+}
