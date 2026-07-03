@@ -3,57 +3,81 @@
 @tailwind utilities;
 
 @layer base {
+  /* ── Nworth design tokens ─────────────────────────────────────────────────
+     Two first-class themes:
+       "Paper Light" — default (:root): warm off-white, ink text, deep-green
+         accents, one gradient hero card with grain.
+       "Ledger Dark"  — (.dark): near-black terminal, high-contrast numerals,
+         signal-green gains / warm-red losses.
+     The .dark class continues to drive every legacy `dark:` utility; the
+     data-theme attribute mirrors it for DS-level hooks (grain, gradients). */
   :root {
-    /* Tell the WebView to render native controls (the <select> dropdown arrow,
-       scrollbars, etc.) with light-appropriate contrast. */
+    /* Native controls (select arrows, scrollbars) render light. */
     color-scheme: light;
-    /* Finwise — emerald finance theme (light) */
-    --background:     210 40% 98%;   /* slate-50 */
-    --foreground:     222 47% 11%;   /* slate-900 */
+    /* Paper Light */
+    --background:      45 24% 96%;   /* #F7F6F2 warm off-white */
+    --foreground:     216 10% 10%;   /* #17191C ink */
     --card:             0  0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 216 10% 10%;
     --popover:          0  0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary:        161 93% 30%;   /* emerald-600 */
+    --popover-foreground: 216 10% 10%;
+    --primary:        160 82% 31%;   /* #0E8F63 deep green */
     --primary-foreground: 0 0% 100%;
-    --secondary:      210 40% 96%;   /* slate-100 */
-    --secondary-foreground: 215 16% 47%;
-    --muted:          210 40% 96%;
-    --muted-foreground: 215 16% 47%; /* slate-500 */
-    --accent:         152 76% 94%;   /* emerald-50 */
-    --accent-foreground: 161 93% 25%;
-    --destructive:      0 84% 60%;
+    --secondary:       45 20% 93%;
+    --secondary-foreground: 215 8% 35%;
+    --muted:           45 20% 93%;
+    --muted-foreground: 215 8% 40%;  /* #5D646E — AA on bg */
+    --accent:         160 45% 92%;   /* pale green tint */
+    --accent-foreground: 160 82% 24%;
+    --destructive:      0 61% 54%;   /* #D14343 warm red */
     --destructive-foreground: 0 0% 98%;
-    --border:         214 32% 91%;   /* slate-200 */
-    --input:          214 32% 91%;
-    --ring:           161 93% 30%;
+    --border:          42 22% 88%;   /* #E8E4DB hairline */
+    --input:           42 22% 86%;
+    --ring:           160 82% 31%;
     --radius:         0.625rem;
+
+    /* DS tokens */
+    --positive:       160 82% 31%;   /* gains */
+    --negative:         0 61% 54%;   /* losses */
+    --neutral:         40  6% 51%;   /* flat / zero */
+    --grad-start:     157 53% 15%;   /* #123B2B pine  (hero card) */
+    --grad-end:       154 51% 27%;   /* #206B4A viridian */
+    --grad-foreground: 0 0% 100%;    /* text on the hero gradient */
+    --shadow-card: 0 1px 2px rgb(20 22 20 / 0.05), 0 8px 24px -12px rgb(20 40 30 / 0.18);
   }
 
   .dark {
-    /* Dark-render native controls so the <select> dropdown arrow (and other
-       native UI) stays visible on dark backgrounds. */
+    /* Native controls render dark. */
     color-scheme: dark;
-    /* Finwise — emerald finance theme (dark) */
-    --background:     222 47%  7%;   /* deep slate */
-    --foreground:     210 40% 96%;   /* slate-100 */
-    --card:           217 33% 11%;   /* slate-850 */
-    --card-foreground: 210 40% 96%;
-    --popover:        217 33% 11%;
-    --popover-foreground: 210 40% 96%;
-    --primary:        160 84% 50%;   /* emerald-400 — brighter on dark */
-    --primary-foreground: 0 0% 100%;
-    --secondary:      217 33% 17%;   /* slate-800 */
-    --secondary-foreground: 210 40% 90%;
-    --muted:          217 33% 17%;
-    --muted-foreground: 215 20% 58%; /* slate-400 */
-    --accent:         160 40% 16%;   /* dark emerald tint */
-    --accent-foreground: 160 84% 70%;
-    --destructive:      0 62% 40%;
+    /* Ledger Dark */
+    --background:     210 14%  6%;   /* #0C0E10 near-black, not pure */
+    --foreground:     210 20% 96%;   /* #F2F4F6 */
+    --card:           213 14% 10%;   /* #15181C elevated */
+    --card-foreground: 210 20% 96%;
+    --popover:        213 14% 10%;
+    --popover-foreground: 210 20% 96%;
+    --primary:        152 73% 53%;   /* #2FE08C signal green */
+    --primary-foreground: 210 14% 6%;
+    --secondary:      213 13% 14%;
+    --secondary-foreground: 210 15% 85%;
+    --muted:          213 13% 14%;
+    --muted-foreground: 212 10% 59%; /* #8B95A1 — AA on bg */
+    --accent:         152 35% 13%;   /* deep green tint */
+    --accent-foreground: 152 73% 65%;
+    --destructive:      0 100% 69%;  /* #FF6161 warm red */
     --destructive-foreground: 0 0% 98%;
-    --border:         217 33% 22%;   /* slate-700 */
-    --input:          217 33% 22%;
-    --ring:           160 84% 50%;
+    --border:         216 13% 15%;   /* #22262C hairline */
+    --input:          216 13% 17%;
+    --ring:           152 73% 53%;
+
+    /* DS tokens */
+    --positive:       152 73% 53%;
+    --negative:         0 100% 69%;
+    --neutral:        214  8% 52%;
+    --grad-start:     151 39% 12%;   /* #12291E green-black */
+    --grad-end:       210 14%  6%;   /* fades into the page */
+    --grad-foreground: 210 20% 96%;
+    --shadow-card: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 12px 32px -16px rgb(0 0 0 / 0.8);
   }
 }
 
@@ -85,7 +109,7 @@
   }
 }
 
-/* Subtle page-top glow in light mode */
+/* Subtle page-top glow, tinted from the theme's primary token */
 body::before {
   content: '';
   position: fixed;
@@ -93,12 +117,58 @@ body::before {
   left: 0;
   right: 0;
   height: 240px;
-  background: radial-gradient(ellipse 80% 120px at 50% -20px, hsl(161 93% 30% / 0.07) 0%, transparent 100%);
+  background: radial-gradient(ellipse 80% 120px at 50% -20px, hsl(var(--primary) / 0.06) 0%, transparent 100%);
   pointer-events: none;
   z-index: 0;
 }
 .dark body::before {
-  background: radial-gradient(ellipse 80% 120px at 50% -20px, hsl(160 84% 50% / 0.08) 0%, transparent 100%);
+  background: radial-gradient(ellipse 80% 120px at 50% -20px, hsl(var(--primary) / 0.07) 0%, transparent 100%);
+}
+
+/* ── Design-system utilities ────────────────────────────────────────────── */
+@layer utilities {
+  /* Hero numerals — SF Pro Rounded on iOS WebKit, heavy, tabular. */
+  .type-hero {
+    font-family: ui-rounded, -apple-system, system-ui, sans-serif;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  /* Row amounts / tickers — SF Mono on iOS, tabular so columns don't jitter. */
+  .type-amount {
+    font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Section micro-labels — "ASSETS", "NET WORTH", "HOLDINGS". */
+  .type-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: hsl(var(--muted-foreground));
+  }
+  /* Hero gradient surface (green-ink, never purple). */
+  .bg-hero-gradient {
+    background: linear-gradient(140deg, hsl(var(--grad-start)) 0%, hsl(var(--grad-end)) 100%);
+    color: hsl(var(--grad-foreground));
+  }
+  /* Grain/noise texture overlay — inline SVG turbulence, no network. */
+  .grain {
+    position: relative;
+  }
+  .grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  /* Elevation shadow from the theme token. */
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
 }
 
 /* Keyboard handling (see components/keyboard-manager.tsx):

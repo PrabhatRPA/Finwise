@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/lib/auth'
 import { ThemeProvider } from '@/lib/theme'
@@ -9,7 +8,6 @@ import { SplashHider } from '@/components/splash-hider'
 import { AppLockGate } from '@/components/app-lock-gate'
 import { FloatingNav } from '@/components/floating-nav'
 
-const inter = Inter({ subsets: ['latin'], display: 'swap' })
 
 export const metadata: Metadata = {
   title: 'Nworth — Track Everything. Share Nothing.',
@@ -35,11 +33,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var m=localStorage.getItem('theme');var dark;if(m==='dark'){dark=true}else if(m==='light'){dark=false}else{if(window.matchMedia('(prefers-color-scheme: dark)').matches){dark=true}else if(window.matchMedia('(prefers-color-scheme: light)').matches){dark=false}else{var h=new Date().getHours();dark=(h<7||h>=19)}}if(dark){document.documentElement.classList.add('dark')}}catch(e){}`,
+            __html: `try{var m=localStorage.getItem('theme');var dark;if(m==='dark'){dark=true}else if(m==='light'){dark=false}else{if(window.matchMedia('(prefers-color-scheme: dark)').matches){dark=true}else if(window.matchMedia('(prefers-color-scheme: light)').matches){dark=false}else{var h=new Date().getHours();dark=(h<7||h>=19)}}var d=document.documentElement;if(dark){d.classList.add('dark')}d.setAttribute('data-theme',dark?'ledger-dark':'paper-light')}catch(e){}`,
           }}
         />
       </head>
-      <body className={`${inter.className} flex flex-col min-h-screen`}>
+      {/* System font stack — renders SF Pro natively on iOS, no webfont download */}
+      <body className="font-sans flex flex-col min-h-screen">
         <ThemeProvider>
           <AuthProvider>
             <SplashHider />

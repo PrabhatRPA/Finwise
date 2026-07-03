@@ -50,11 +50,23 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Design-system semantic colors (gains / losses / flat)
+        positive: "hsl(var(--positive))",
+        negative: "hsl(var(--negative))",
+        neutral: "hsl(var(--neutral))",
+      },
+      fontFamily: {
+        // SF Pro Rounded on iOS WebKit; graceful system fallback elsewhere.
+        rounded: ["ui-rounded", "-apple-system", "system-ui", "sans-serif"],
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        // Continuous-corner scale for DS cards / bars
+        "ds-sm": "12px",
+        "ds-md": "20px",
+        "ds-lg": "28px",
       },
       keyframes: {
         "accordion-down": {

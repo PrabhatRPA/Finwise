@@ -6,12 +6,32 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 //   • mode  = what the USER picked: 'light' | 'dark' | 'system' (persisted)
 //   • theme = the RESOLVED appearance actually applied: 'light' | 'dark'
 //
+// Presentation names (design system): 'light' renders the "Paper Light" token
+// set, 'dark' renders "Ledger Dark". Stored values stay 'light'/'dark'/'system'
+// so no migration is needed and every legacy `dark:` utility keeps working; the
+// resolved theme is mirrored onto <html data-theme="paper-light|ledger-dark">
+// for DS-level styling hooks.
+//
 // In 'system' mode we follow the OS (prefers-color-scheme) and update live when
 // the OS flips. If the OS reports no preference at all, we fall back to the time
-// of day (day = light, night = dark). An explicit Light/Dark choice is saved and
-// always wins.
+// of day (day = light, night = dark). An explicit choice is saved and always wins.
 type Mode = 'light' | 'dark' | 'system'
 type Theme = 'light' | 'dark'
+
+// Apply the resolved theme to the document + native chrome (status bar).
+function applyTheme(t: Theme) {
+  document.documentElement.classList.toggle('dark', t === 'dark')
+  document.documentElement.setAttribute('data-theme', t === 'dark' ? 'ledger-dark' : 'paper-light')
+  // Status bar content must adapt per theme (light text on Ledger Dark).
+  ;(async () => {
+    try {
+      const { Capacitor } = await import('@capacitor/core')
+      if (!Capacitor.isNativePlatform()) return
+      const { StatusBar, Style } = await import('@capacitor/status-bar')
+      await StatusBar.setStyle({ style: t === 'dark' ? Style.Dark : Style.Light })
+    } catch { /* status bar plugin unavailable */ }
+  })()
+}
 
 const STORAGE_KEY = 'theme'
 // Daytime window for the no-OS-preference fallback: 07:00–18:59 = light.
@@ -68,7 +88,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (!mounted) return
     const t = resolve(mode)
     setThemeResolved(t)
-    document.documentElement.classList.toggle('dark', t === 'dark')
+    applyTheme(t)
     localStorage.setItem(STORAGE_KEY, mode)
   }, [mode, mounted])
 
@@ -79,7 +99,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const apply = () => {
       const t = systemTheme()
       setThemeResolved(t)
-      document.documentElement.classList.toggle('dark', t === 'dark')
+      applyTheme(t)
     }
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     mq.addEventListener?.('change', apply)
