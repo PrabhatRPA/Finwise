@@ -243,6 +243,44 @@ async function fetchHistory(ticker: string, period = '1y'): Promise<HistoryPoint
   return []
 }
 
+// ── News (Yahoo Finance search, keyless) ───────────────────────────────
+export interface NewsItem {
+  title: string
+  publisher: string
+  link: string
+  published: number | null   // unix seconds
+}
+
+// Yahoo's public search endpoint returns a `news` array alongside quote
+// matches — free and keyless, same hosts as the price/history fetchers.
+async function fetchNews(ticker: string): Promise<NewsItem[]> {
+  const upper = ticker.toUpperCase()
+  for (const host of YAHOO_HOSTS) {
+    try {
+      const res = await CapacitorHttp.get({
+        url: `https://${host}.finance.yahoo.com/v1/finance/search`,
+        params: { q: upper, newsCount: '12', quotesCount: '0', enableFuzzyQuery: 'false' },
+        headers: { 'User-Agent': 'Mozilla/5.0 Nworth/1.0' },
+      })
+      if (res.status !== 200) continue
+      const news: any[] = res.data?.news ?? []
+      if (!Array.isArray(news)) continue
+      const out: NewsItem[] = news
+        .filter((n) => n?.link && n?.title)
+        .map((n) => ({
+          title: String(n.title),
+          publisher: String(n.publisher ?? ''),
+          link: String(n.link),
+          published: typeof n.providerPublishTime === 'number' ? n.providerPublishTime : null,
+        }))
+      if (out.length > 0) return out
+    } catch {
+      // Try next host.
+    }
+  }
+  return []
+}
+
 // ── Cache (SQLite) ─────────────────────────────────────────────────────
 async function readCache(ticker: string, ignoreTtl = false): Promise<PriceQuote | null> {
   const row = await dbGet<any>(
@@ -310,6 +348,10 @@ export const nativeMarketApi = {
     // BenchmarkChart reads `res.data.data`; keep `history` too for any other
     // caller that expects the FastAPI `{ history: [...] }` shape.
     return { data: { ticker, period, data: history, history } }
+  },
+  getNews: async (ticker: string) => {
+    const news = await fetchNews(ticker)
+    return { data: { ticker, news } }
   },
   search: async (_query: string) => ({ data: [] }),
   suggestions: async (_query: string) => ({ data: [] }),

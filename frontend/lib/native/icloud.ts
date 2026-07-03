@@ -247,7 +247,7 @@ let _syncTimer: ReturnType<typeof setTimeout> | null = null
 let _armed = false
 export function armAutoSync(): void { _armed = true }
 
-export function scheduleAutoSync(delayMs = 2000): void {
+export function scheduleAutoSync(delayMs = 800): void {
   if (!Capacitor.isNativePlatform()) return
   if (!_armed) return
   // A write after reconciliation = a real user modification. Mark dirty so this
@@ -284,7 +284,13 @@ async function applyRemotePull(remote: RemoteMeta): Promise<void> {
 //
 // Ordering is by the monotonic revision, never the wall clock; modifiedAt is
 // only the conflict tiebreaker. Always arms auto-sync at the end.
+let _reconciling = false
 export async function reconcileICloud(): Promise<void> {
+  // Guard against overlapping runs — the 45s foreground poll and an
+  // appStateChange event can both fire, and a pull's importFullData shouldn't
+  // race a second reconcile.
+  if (_reconciling) return
+  _reconciling = true
   // Disarm while reconciling so the DELETE/INSERT churn of an incoming pull
   // can't mark us dirty or schedule a push. Re-armed in finally.
   _armed = false
@@ -344,5 +350,6 @@ export async function reconcileICloud(): Promise<void> {
     // best-effort — never block launch on sync
   } finally {
     armAutoSync()
+    _reconciling = false
   }
 }

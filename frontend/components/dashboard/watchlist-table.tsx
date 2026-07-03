@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -188,6 +189,11 @@ function WatchlistModal({ initial, onSave, onClose }: ModalProps) {
 // ─── main component ───────────────────────────────────────────────────────────
 
 export function WatchlistTable() {
+  const router = useRouter()
+  const openTicker = (t?: string) => {
+    const sym = (t || '').trim()
+    if (sym) router.push(`/ticker/?symbol=${encodeURIComponent(sym)}`)
+  }
   const [items, setItems] = useState<WatchlistItem[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -325,7 +331,13 @@ export function WatchlistTable() {
                     >
                       <td className="py-3 pr-4">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold">{item.ticker}</span>
+                          <button
+                            onClick={() => openTicker(item.ticker)}
+                            className="font-bold text-primary hover:underline"
+                            title={`View ${item.ticker} chart & news`}
+                          >
+                            {item.ticker}
+                          </button>
                           {item.alert_active && (
                             <span title="Alert active" className="text-yellow-500">🔔</span>
                           )}

@@ -73,11 +73,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   //   • On launch + every foreground: reconcile — pull the master if another
   //     device has a newer snapshot. This is also what arms auto-push, so seed
   //     writes during startup can't clobber the master.
+  //   • Every 45s while foregrounded: reconcile again, so a device left open
+  //     picks up the other device's edits without waiting for a foreground event
+  //     (this is the "too slow to appear" fix). Cheap when nothing changed —
+  //     reconcileICloud only imports when the remote revision advanced.
   //   • On background: push local changes up.
   // Dynamically imported so web/Tauri builds don't pull in the native modules.
   useEffect(() => {
     if (!user) return
     let remove: (() => void) | undefined
+    let poll: ReturnType<typeof setInterval> | undefined
     ;(async () => {
       try {
         const { Capacitor } = await import('@capacitor/core')
@@ -87,15 +92,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Initial launch reconciliation (pull master if newer; arm auto-push).
         reconcileICloud()
         const handle = await App.addListener('appStateChange', ({ isActive }) => {
-          if (isActive) reconcileICloud()   // foreground → pull if remote newer
-          else autoSyncIfEnabled()          // background → push local changes
+          if (isActive) {
+            reconcileICloud()                 // foreground → pull if remote newer
+            if (!poll) poll = setInterval(() => { reconcileICloud() }, 45_000)
+          } else {
+            autoSyncIfEnabled()               // background → push local changes
+            if (poll) { clearInterval(poll); poll = undefined }  // pause polling in background
+          }
         })
+        // Start polling immediately for the current (foreground) session.
+        poll = setInterval(() => { reconcileICloud() }, 45_000)
         remove = () => { handle.remove() }
       } catch {
         // native modules unavailable — skip
       }
     })()
-    return () => { remove?.() }
+    return () => { remove?.(); if (poll) clearInterval(poll) }
   }, [user])
 
   const login = async (username: string, password: string) => {

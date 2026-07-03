@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { APP_NAME, APP_TAGLINE, APP_VERSION } from '@/lib/constants'
+import { Disclaimer } from '@/components/disclaimer'
 
 function BrandMark({ size = 56 }: { size?: number }) {
   return (
@@ -209,6 +210,9 @@ export default function AboutPage() {
           <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 mt-0.5">•</span><span>Export your data any time as JSON or CSV — you own it.</span></li>
         </ul>
       </section>
+
+      {/* Disclaimer & Terms */}
+      <Disclaimer variant="full" />
 
       {/* Footer */}
       <footer className="text-center text-xs text-muted-foreground space-y-1 pt-2">

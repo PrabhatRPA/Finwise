@@ -126,6 +126,7 @@ const remoteMarketApi = {
   getPrice: (ticker: string) => api.get(`/market/price/${ticker}`),
   getHistory: (ticker: string, period: string = '1y') =>
     api.get(`/market/history/${ticker}?period=${period}`),
+  getNews: (ticker: string) => api.get(`/market/news/${ticker}`),
   batchPrices: (tickers: string[]) => api.post('/market/batch-prices', { tickers }),
   search: (query: string) => api.get(`/market/search?query=${query}`),
   suggestions: (query: string) => api.get(`/market/suggestions?query=${query}`),

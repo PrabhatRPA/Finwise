@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { aiApi } from '@/lib/api'
+import { Disclaimer } from '@/components/disclaimer'
 
 interface AIAnalysisCardProps {
   holdings: any[]
@@ -241,6 +242,8 @@ export function AIAnalysisCard({ holdings }: AIAnalysisCardProps) {
           </CardContent>
         </Card>
       </div>
+
+      <Disclaimer variant="ai" />
     </div>
   )
 }

@@ -7,12 +7,27 @@ import { Badge } from '@/components/ui/badge'
 import { dataApi } from '@/lib/api'
 import {
   getICloudStatus,
-  syncToICloud,
   restoreFromICloud,
+  reconcileICloud,
   isAutoSyncEnabled,
   setAutoSync,
   type ICloudStatus,
 } from '@/lib/native/icloud'
+
+// "2 minutes ago" style relative time for the last-synced indicator.
+function relativeTime(iso?: string): string | null {
+  if (!iso) return null
+  const then = Date.parse(iso)
+  if (!isFinite(then)) return null
+  const secs = Math.max(0, Math.round((Date.now() - then) / 1000))
+  if (secs < 45) return 'just now'
+  const mins = Math.round(secs / 60)
+  if (mins < 60) return `${mins} min ago`
+  const hrs = Math.round(mins / 60)
+  if (hrs < 24) return `${hrs} hr${hrs === 1 ? '' : 's'} ago`
+  const days = Math.round(hrs / 24)
+  return `${days} day${days === 1 ? '' : 's'} ago`
+}
 
 interface BackupRecord {
   filename: string
@@ -154,14 +169,19 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
     setIcloudBusy('sync')
     setIcloudMsg('')
     try {
-      const ok = await syncToICloud()
-      if (ok) {
-        setIcloudMsgType('success')
-        setIcloudMsg('Synced to iCloud successfully.')
-      } else {
+      const status = await getICloudStatus()
+      if (!status.available) {
         setIcloudMsgType('error')
         setIcloudMsg('iCloud is not available. In iOS Settings → [Your Name] → iCloud, turn on iCloud Drive, then tap iCloud Drive and make sure Nworth is enabled.')
+        return
       }
+      // Two-way: push local edits if any, else pull the latest from another
+      // device. reconcileICloud handles both directions and the conflict rules
+      // (never clobbers a newer remote; never lets empty wipe real data).
+      await reconcileICloud()
+      onDataChanged?.()
+      setIcloudMsgType('success')
+      setIcloudMsg('Synced with iCloud.')
       await refreshICloud()
     } catch (e: any) {
       setIcloudMsgType('error')
@@ -387,6 +407,17 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
               {icloudBusy === 'restore' ? 'Restoring…' : 'Restore from iCloud'}
             </Button>
           </div>
+
+          {/* Last-synced status */}
+          {icloud?.available && (
+            <p className="text-xs text-muted-foreground">
+              {icloudBusy === 'sync'
+                ? 'Syncing…'
+                : icloud.lastSyncAt
+                  ? <>Last synced <span className="font-medium text-foreground">{relativeTime(icloud.lastSyncAt)}</span>.</>
+                  : 'Not synced yet on this device.'}
+            </p>
+          )}
 
           {/* Auto-sync toggle */}
           <div className="flex items-center justify-between gap-3 pt-1">

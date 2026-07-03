@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -107,6 +108,14 @@ type FormState = typeof EMPTY_FORM
 
 export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: HoldingsTableProps) {
   const { accounts, totalValue } = usePortfolioStore()
+  const router = useRouter()
+
+  // Open the ticker detail page (price chart + news + AI). Static export means
+  // we pass the symbol as a query param rather than a dynamic route segment.
+  const openTicker = (t?: string) => {
+    const sym = (t || '').trim()
+    if (sym) router.push(`/ticker/?symbol=${encodeURIComponent(sym)}`)
+  }
 
   const [sortBy, setSortBy] = useState<SortField>('ticker')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
@@ -204,7 +213,15 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
   // Render a single desktop-table cell for the given column + holding.
   const renderCell = (id: SortField, h: any): React.ReactNode => {
     switch (id) {
-      case 'ticker':       return <span className="font-medium">{h.ticker}</span>
+      case 'ticker':       return (
+        <button
+          onClick={() => openTicker(h.ticker)}
+          className="font-medium text-primary hover:underline"
+          title={`View ${h.ticker} chart & news`}
+        >
+          {h.ticker}
+        </button>
+      )
       case 'type':         return (
         <span className="capitalize text-xs border border-border rounded-full px-2 py-0.5 text-muted-foreground">
           {h.security_type || 'stock'}
@@ -572,7 +589,12 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-base">{h.ticker}</span>
+                          <button
+                            onClick={() => openTicker(h.ticker)}
+                            className="font-semibold text-base text-primary hover:underline"
+                          >
+                            {h.ticker}
+                          </button>
                           <span className="capitalize text-[10px] border border-border rounded-full px-1.5 py-px text-muted-foreground">
                             {h.security_type || 'stock'}
                           </span>
