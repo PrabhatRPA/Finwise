@@ -1,11 +1,15 @@
 'use client'
 
-// Wraps the whole app. When App Lock is on (native + biometry available + a
-// signed-in session exists), it covers the UI with a lock screen and requires
-// Face ID / Touch ID / passcode:
-//   • on cold launch, before any authenticated screen is shown, and
+// Requires Face ID / Touch ID / passcode to use the app:
+//   • on cold launch, before authenticated content is usable, and
 //   • when returning to the foreground after >APP_LOCK_GRACE_MS in background.
-// No-op on web/desktop and when the user isn't signed in (e.g. the login page).
+// The login session still persists (no username/password re-entry).
+//
+// IMPORTANT: this always renders {children} and draws the lock as a full-screen
+// overlay on top when locked. It must NOT conditionally replace children —
+// doing so diverges from the server-prerendered HTML and causes a hydration
+// mismatch in the Capacitor WebView (which showed up as a duplicated navbar).
+// No-op on web/desktop and when signed out.
 
 import { useEffect, useRef, useState } from 'react'
 import { Capacitor } from '@capacitor/core'
@@ -26,10 +30,9 @@ async function shouldEnforceLock(): Promise<boolean> {
 }
 
 export function AppLockGate({ children }: { children: React.ReactNode }) {
-  const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform()
-  // Start locked on native so nothing sensitive paints before we've decided.
-  const [locked, setLocked] = useState(isNative)
-  const [decided, setDecided] = useState(!isNative)
+  // Deterministic initial state (false) so the first client render matches the
+  // server-prerendered HTML — no hydration mismatch, no ghost navbar.
+  const [locked, setLocked] = useState(false)
   const [prompting, setPrompting] = useState(false)
   const bgSince = useRef<number | null>(null)
   const unlocking = useRef(false)
@@ -47,18 +50,14 @@ export function AppLockGate({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // Initial decision on mount.
+  // Initial decision on mount (client only).
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const enforce = await shouldEnforceLock()
-      if (cancelled) return
-      setDecided(true)
-      if (enforce) {
+      if (await shouldEnforceLock()) {
+        if (cancelled) return
         setLocked(true)
         unlock()
-      } else {
-        setLocked(false)
       }
     })()
     return () => { cancelled = true }
@@ -67,7 +66,7 @@ export function AppLockGate({ children }: { children: React.ReactNode }) {
 
   // Re-lock after a long background stint.
   useEffect(() => {
-    if (!isNative) return
+    if (typeof window === 'undefined' || !Capacitor.isNativePlatform()) return
     let remove: (() => void) | undefined
     ;(async () => {
       try {
@@ -77,7 +76,6 @@ export function AppLockGate({ children }: { children: React.ReactNode }) {
             bgSince.current = Date.now()
             return
           }
-          // Foreground: re-lock if we were away long enough and a lock applies.
           const away = bgSince.current ? Date.now() - bgSince.current : 0
           bgSince.current = null
           if (away > APP_LOCK_GRACE_MS && await shouldEnforceLock()) {
@@ -89,8 +87,7 @@ export function AppLockGate({ children }: { children: React.ReactNode }) {
       } catch { /* native App plugin unavailable */ }
     })()
     return () => { remove?.() }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isNative])
+  }, [])
 
   const signOut = async () => {
     await clearToken()
@@ -98,38 +95,36 @@ export function AppLockGate({ children }: { children: React.ReactNode }) {
     window.location.href = '/login'
   }
 
-  // While deciding on native, render nothing over the (already-showing) splash.
-  if (!decided && isNative) return null
-
-  if (locked) {
-    return (
-      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-background px-6 text-center">
-        <div className="h-16 w-16 rounded-2xl bg-primary/15 text-primary flex items-center justify-center">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"
-            strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8">
-            <rect x="4" y="11" width="16" height="10" rx="2" />
-            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-          </svg>
+  return (
+    <>
+      {children}
+      {locked && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-background px-6 text-center">
+          <div className="h-16 w-16 rounded-2xl bg-primary/15 text-primary flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"
+              strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8">
+              <rect x="4" y="11" width="16" height="10" rx="2" />
+              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+            </svg>
+          </div>
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold">{APP_NAME} is locked</h1>
+            <p className="text-sm text-muted-foreground">
+              Unlock with Face ID, Touch ID, or your passcode to continue.
+            </p>
+          </div>
+          <button
+            onClick={unlock}
+            disabled={prompting}
+            className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm disabled:opacity-60"
+          >
+            {prompting ? 'Waiting…' : 'Unlock'}
+          </button>
+          <button onClick={signOut} className="text-sm text-muted-foreground hover:text-foreground">
+            Sign out instead
+          </button>
         </div>
-        <div className="space-y-1">
-          <h1 className="text-xl font-bold">{APP_NAME} is locked</h1>
-          <p className="text-sm text-muted-foreground">
-            Unlock with Face ID, Touch ID, or your passcode to continue.
-          </p>
-        </div>
-        <button
-          onClick={unlock}
-          disabled={prompting}
-          className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm disabled:opacity-60"
-        >
-          {prompting ? 'Waiting…' : 'Unlock'}
-        </button>
-        <button onClick={signOut} className="text-sm text-muted-foreground hover:text-foreground">
-          Sign out instead
-        </button>
-      </div>
-    )
-  }
-
-  return <>{children}</>
+      )}
+    </>
+  )
 }

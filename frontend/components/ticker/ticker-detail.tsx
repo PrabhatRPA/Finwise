@@ -319,6 +319,23 @@ export function TickerDetail({ symbol }: { symbol: string }) {
       </Card>
 
       <Disclaimer variant="market" />
+
+      {/* Floating back button — always reachable no matter how far the user has
+          scrolled, so they don't have to scroll back up to the header link. */}
+      <button
+        type="button"
+        onClick={() => router.back()}
+        aria-label="Back"
+        className="fixed left-4 z-40 h-11 w-11 rounded-full bg-primary text-primary-foreground
+          shadow-lg flex items-center justify-center hover:opacity-90 active:scale-95 transition"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+          strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+          <line x1="19" y1="12" x2="5" y2="12" />
+          <polyline points="12 19 5 12 12 5" />
+        </svg>
+      </button>
     </div>
   )
 }
