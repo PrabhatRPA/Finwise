@@ -218,8 +218,11 @@ export function TickerDetail({ symbol }: { symbol: string }) {
   }
 
   // Period return (first → last close) drives the line + header colour.
+  const periodChangeDollar = series.length >= 2
+    ? series[series.length - 1].close - series[0].close
+    : 0
   const periodChangePct = series.length >= 2 && series[0].close > 0
-    ? ((series[series.length - 1].close - series[0].close) / series[0].close) * 100
+    ? (periodChangeDollar / series[0].close) * 100
     : 0
   const up = periodChangePct >= 0
   const lineColor = up ? '#10b981' : '#ef4444'
@@ -335,8 +338,9 @@ export function TickerDetail({ symbol }: { symbol: string }) {
           ) : (
             <>
               <div className="flex items-baseline gap-2">
-                <span className={`text-sm font-semibold ${up ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {up ? '+' : ''}{periodChangePct.toFixed(2)}%
+                <span className={`type-amount text-sm font-semibold ${up ? 'text-positive' : 'text-negative'}`}>
+                  {up ? '▲ +' : '▼ −'}{formatCurrency(Math.abs(periodChangeDollar))}
+                  <span className="ml-1">({up ? '+' : ''}{periodChangePct.toFixed(2)}%)</span>
                 </span>
                 <span className="text-xs text-muted-foreground">over {range}</span>
               </div>

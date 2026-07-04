@@ -211,7 +211,8 @@ export function WatchlistTable() {
       // only renders the in-app banner — see lib/native/notifications.ts
       // for the platform-aware firing path (Capacitor LocalNotifications
       // on iOS/Android, window.Notification on web/Tauri).
-      const active = list.filter(i => i.alert_active)
+      // Banner only for un-dismissed episodes (dismiss stamps the episode).
+      const active = list.filter(i => i.alert_active && !i.alert_dismissed)
       setAlerts(active)
     } catch {
       // silently ignore — backend may not be running

@@ -16,6 +16,9 @@ const RANGES = [
   { id: '3M', period: '3mo' },
   { id: '6M', period: '6mo' },
   { id: '1Y', period: '1y' },
+  { id: '2Y', period: '2y' },
+  { id: '5Y', period: '5y' },
+  { id: 'ALL', period: 'max' },
 ] as const
 type RangeId = typeof RANGES[number]['id']
 
@@ -133,12 +136,12 @@ export function TruePerformanceChart({ holdings }: { holdings: any[] }) {
           </p>
           <p className="text-xs text-muted-foreground">over {range}</p>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-1 max-w-[280px] justify-end">
           {RANGES.map(r => (
             <button
               key={r.id}
               onClick={() => setRange(r.id)}
-              className={`px-2.5 py-1 text-[11px] rounded-full type-amount font-semibold transition-colors ${
+              className={`flex-1 min-w-0 px-1 py-1 text-[10px] rounded-full type-amount font-semibold transition-colors ${
                 range === r.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
               }`}
               style={{ minHeight: 0, minWidth: 0 }}
@@ -163,7 +166,7 @@ export function TruePerformanceChart({ holdings }: { holdings: any[] }) {
               </linearGradient>
             </defs>
             <XAxis dataKey="date" tick={{ fontSize: 9 }} interval="preserveStartEnd" minTickGap={48}
-              tickFormatter={(d: string) => d.slice(5)} />
+              tickFormatter={(d: string) => (range === '2Y' || range === '5Y' || range === 'ALL') ? d.slice(0, 7) : d.slice(5)} />
             <YAxis hide domain={['auto', 'auto']} />
             <Tooltip
               formatter={(v: any) => [formatCurrency(v as number), 'Portfolio']}

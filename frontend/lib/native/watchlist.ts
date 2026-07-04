@@ -42,14 +42,21 @@ async function enrichAndCheckAlerts(rows: WatchRow[]) {
       else if (r.target_direction === 'below') alertActive = currentPrice <= r.target_price
     }
 
-    // Persist the "alert ever triggered" flag once it first goes active so
-    // we can show "🔔 triggered" in the UI even after the user dismisses.
+    // Episode model: `alert_triggered` marks "currently in a crossed episode"
+    // and `last_notified_at` doubles as the DISMISSED-AT stamp for that
+    // episode. Dismissing must NOT clear alert_triggered — alert_active is
+    // recomputed from the live price each load, so it would just re-trigger
+    // (and re-fire the push) immediately. Instead:
+    //   • first crossing  → alert_triggered=1, dismissed stamp cleared, push fired
+    //   • Dismiss         → last_notified_at=now (banner hidden, episode kept)
+    //   • price un-crosses → episode reset, so a future re-cross alerts again
     if (alertActive && !r.alert_triggered) {
       await run(
-        `UPDATE watchlist SET alert_triggered = 1, last_notified_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        `UPDATE watchlist SET alert_triggered = 1, last_notified_at = NULL WHERE id = ?`,
         [r.id],
       )
       r.alert_triggered = 1
+      r.last_notified_at = null
 
       // Fire the OS-level notification once per crossing if the user wants it.
       if (r.notification_method === 'push' || r.notification_method === 'both') {
@@ -62,6 +69,14 @@ async function enrichAndCheckAlerts(rows: WatchRow[]) {
           direction: r.target_direction!,
         })
       }
+    } else if (!alertActive && r.alert_triggered) {
+      // Price moved back across the target — close the episode.
+      await run(
+        `UPDATE watchlist SET alert_triggered = 0, last_notified_at = NULL WHERE id = ?`,
+        [r.id],
+      )
+      r.alert_triggered = 0
+      r.last_notified_at = null
     }
 
     out.push({
@@ -71,6 +86,7 @@ async function enrichAndCheckAlerts(rows: WatchRow[]) {
       pct_to_target: pctToTarget,
       alert_active: alertActive,
       alert_triggered: r.alert_triggered === 1,
+      alert_dismissed: r.last_notified_at != null,
     })
   }
   return out
@@ -156,8 +172,12 @@ export const nativeWatchlistApi = {
 
   acknowledgeAlert: async (id: number) => {
     const userId = await requireSessionUserId()
+    // Dismiss = stamp the current episode, keep alert_triggered so the row
+    // still shows 🔔 and, crucially, the push doesn't re-fire while the price
+    // stays across the target. (Clearing alert_triggered here was the bug —
+    // the next load recomputed alert_active and brought the banner back.)
     await run(
-      `UPDATE watchlist SET alert_triggered = 0 WHERE id = ? AND user_id = ?`,
+      `UPDATE watchlist SET last_notified_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`,
       [id, userId],
     )
     return { data: { success: true } }

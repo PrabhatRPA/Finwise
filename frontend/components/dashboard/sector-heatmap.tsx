@@ -88,6 +88,19 @@ export function SectorHeatmap({ holdings }: { holdings: any[] }) {
           />
         </Treemap>
       </ResponsiveContainer>
+      {/* Legend — small tiles can't fit their label, so every sector is
+          always identifiable here (name · value · today %). */}
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        {tiles.map((t) => (
+          <span key={t.name} className="inline-flex items-center gap-1.5 text-[11px]">
+            <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: tileColor(t.pct) }} />
+            <span className="text-muted-foreground">{t.name}</span>
+            <span className={`type-amount font-semibold ${t.pct > 0 ? 'text-positive' : t.pct < 0 ? 'text-negative' : 'text-neutral'}`}>
+              {t.pct >= 0 ? '+' : ''}{t.pct.toFixed(2)}%
+            </span>
+          </span>
+        ))}
+      </div>
       <p className="text-[10px] text-muted-foreground">
         Tile size = position value · color = today’s value-weighted move (±3% caps the intensity).
       </p>

@@ -415,6 +415,7 @@ export interface WatchlistItem {
   day_change_percent?: number
   pct_to_target?: number
   alert_active: boolean
+  alert_dismissed?: boolean   // current episode dismissed — hide the banner
 }
 
 export interface PropertyItem {
