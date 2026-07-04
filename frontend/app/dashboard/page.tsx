@@ -26,6 +26,10 @@ import { WatchlistTable } from '@/components/dashboard/watchlist-table'
 import { PropertiesTable } from '@/components/dashboard/properties-table'
 import { PortfolioNews } from '@/components/dashboard/portfolio-news'
 import { StatStrip } from '@/components/ds/stat-strip'
+import { TruePerformanceChart } from '@/components/dashboard/true-performance-chart'
+import { MoversChart } from '@/components/dashboard/movers-chart'
+import { SectorHeatmap } from '@/components/dashboard/sector-heatmap'
+import { DebtPayoffChart } from '@/components/dashboard/debt-payoff-chart'
 
 // (The old 5-up SummaryStat tile row was replaced by the design-system
 // StatStrip — ASSETS / LIABILITIES / NET CHANGE — under the hero card.)
@@ -415,6 +419,7 @@ export default function DashboardPage() {
 
         <TabsContent value="debts" className="space-y-4">
           <DebtsTable onDebtChanged={fetchData} />
+          <DebtPayoffChart />
         </TabsContent>
 
         <TabsContent value="properties" className="space-y-4">
@@ -458,6 +463,21 @@ export default function DashboardPage() {
         </TabsContent>
 
         <TabsContent value="performance" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Portfolio Performance</CardTitle>
+              <p className="text-sm text-muted-foreground">Your portfolio&apos;s value over time, rebuilt from each holding&apos;s price history</p>
+            </CardHeader>
+            <CardContent><TruePerformanceChart holdings={holdings} /></CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>Today&apos;s Movers</CardTitle></CardHeader>
+            <CardContent><MoversChart holdings={holdings} /></CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>Sector Map</CardTitle></CardHeader>
+            <CardContent><SectorHeatmap holdings={holdings} /></CardContent>
+          </Card>
           <Card>
             <CardHeader><CardTitle>Holdings Gain / Loss</CardTitle></CardHeader>
             <CardContent><PortfolioPerformanceChart holdings={holdings} /></CardContent>

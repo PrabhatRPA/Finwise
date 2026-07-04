@@ -90,6 +90,79 @@ export function effectiveLoanBalance(loan: any, asOf: Date = new Date()): number
   return amortizeLoan(loan, asOf).effective_balance
 }
 
+// ── Debt payoff projection (Debt-Free Countdown chart) ──────────────────────
+// Walks every payable loan's balance forward month-by-month from its current
+// (amortized) balance until zero. Returns the monthly total-debt series plus
+// each loan's estimated payoff date. Loans without a positive monthly payment
+// (or whose payment doesn't cover interest) can never reach zero — they're
+// returned in `unpayable` so the UI can call them out instead of projecting
+// a lie.
+export interface DebtProjection {
+  months: { date: string; total: number }[]        // YYYY-MM, starting this month
+  payoffs: { loan_name: string; date: string; months: number }[]
+  unpayable: { loan_name: string; reason: string }[]
+  debtFreeDate: string | null                      // YYYY-MM when total first hits 0
+}
+
+export function projectDebtSchedule(loans: any[], maxMonths = 480): DebtProjection {
+  const now = new Date()
+  const monthLabel = (i: number) => {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  }
+
+  interface Track { name: string; bal: number; r: number; pmt: number; paidOffAt: number | null }
+  const tracks: Track[] = []
+  const unpayable: DebtProjection['unpayable'] = []
+
+  for (const l of loans) {
+    if (l.status && l.status !== 'active') continue
+    const bal = effectiveLoanBalance(l)
+    if (bal <= 0) continue
+    const pmt = Number(l.monthly_payment ?? 0)
+    const r = (Number(l.interest_rate ?? 0) / 100) / 12
+    if (!(pmt > 0)) {
+      unpayable.push({ loan_name: l.loan_name, reason: 'no monthly payment set' })
+      continue
+    }
+    if (pmt <= bal * r) {
+      unpayable.push({ loan_name: l.loan_name, reason: 'payment doesn’t cover interest' })
+      continue
+    }
+    tracks.push({ name: l.loan_name, bal, r, pmt, paidOffAt: null })
+  }
+
+  const months: DebtProjection['months'] = []
+  const total0 = tracks.reduce((s, t) => s + t.bal, 0)
+  months.push({ date: monthLabel(0), total: total0 })
+
+  let i = 0
+  while (i < maxMonths && tracks.some((t) => t.bal > 0)) {
+    i++
+    for (const t of tracks) {
+      if (t.bal <= 0) continue
+      const interest = t.bal * t.r
+      const principal = Math.min(t.pmt - interest, t.bal)
+      t.bal = Math.max(0, t.bal - principal)
+      if (t.bal === 0 && t.paidOffAt === null) t.paidOffAt = i
+    }
+    months.push({ date: monthLabel(i), total: tracks.reduce((s, t) => s + t.bal, 0) })
+  }
+
+  const payoffs = tracks
+    .filter((t) => t.paidOffAt !== null)
+    .map((t) => ({ loan_name: t.name, date: monthLabel(t.paidOffAt!), months: t.paidOffAt! }))
+    .sort((a, b) => a.months - b.months)
+
+  const debtFree = months.find((m) => m.total <= 0)
+  return {
+    months,
+    payoffs,
+    unpayable,
+    debtFreeDate: debtFree && tracks.length > 0 ? debtFree.date : null,
+  }
+}
+
 export const nativeLoansApi = {
   getAll: async (includePaidOff = false) => {
     const userId = await requireSessionUserId()
