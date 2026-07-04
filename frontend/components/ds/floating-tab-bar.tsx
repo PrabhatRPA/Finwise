@@ -132,10 +132,11 @@ export function FloatingTabBar() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed left-4 right-4 z-50 h-[64px] rounded-ds-lg border border-white/10
-        bg-card/70 backdrop-blur-xl shadow-card flex items-stretch px-2"
-      style={{ bottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-border/60
+        bg-card/85 backdrop-blur-xl flex items-stretch px-2 h-auto"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
+      <div className="flex items-stretch flex-1 h-[60px]">
       {left.map(item)}
 
       {/* Center add button — slightly raised but discreet, brand mark beneath
@@ -165,6 +166,7 @@ export function FloatingTabBar() {
       </div>
 
       {right.map(item)}
+      </div>
     </nav>
   )
 }
