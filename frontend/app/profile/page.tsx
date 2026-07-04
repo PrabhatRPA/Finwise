@@ -192,9 +192,14 @@ export default function ProfilePage() {
               </button>
             </div>
           )}
-          {!user.username.startsWith('apple_') && (
-            <p className="text-xs sm:text-sm text-muted-foreground">@{user.username}</p>
-          )}
+          {/* Always show the underlying account id: Apple users see their
+              stable Apple-derived id (correlates their synced devices);
+              password users see their @username. */}
+          <p className="text-[11px] sm:text-xs text-muted-foreground type-amount truncate">
+            {user.username.startsWith('apple_')
+              ? `Apple ID · ${user.username}`
+              : `@${user.username}`}
+          </p>
           {nameMsg && <p className="text-xs text-muted-foreground mt-0.5">{nameMsg}</p>}
         </div>
       </header>
@@ -408,8 +413,13 @@ export default function ProfilePage() {
           />
           <Row
             label="Data management"
-            sub="iCloud sync, imports, automatic backups."
+            sub="iCloud sync, imports, backups."
             onClick={() => router.push('/documents?focus=manage')}
+          />
+          <Row
+            label="Automatic backups"
+            sub="Scheduled on-device snapshots you can restore anytime."
+            onClick={() => router.push('/documents?focus=backups')}
           />
           <Row
             label="Remove demo / all data"

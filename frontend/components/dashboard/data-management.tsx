@@ -621,7 +621,7 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
       </Card>
 
       {/* ── Automatic Backups ── */}
-      <Card>
+      <Card id="auto-backups" className="scroll-mt-4">
         <CardHeader className="flex flex-row items-start justify-between gap-4">
           <div>
             <CardTitle className="text-base">Automatic Backups</CardTitle>

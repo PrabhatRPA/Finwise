@@ -273,7 +273,7 @@ export default function DashboardPage() {
     netWorthData?.investments ?? (totalValue || netWorthData?.totalValue || 0)
 
   return (
-    <div className="mx-auto max-w-screen-xl px-3 sm:px-4 pt-3 pb-6 sm:pt-3 sm:pb-8 space-y-3 sm:space-y-4">
+    <div className="mx-auto max-w-screen-xl px-3 sm:px-4 pt-1 pb-6 sm:pb-8 space-y-3 sm:space-y-4">
 
       {showOnboarding && (
         <WelcomeDemoModal
@@ -283,16 +283,23 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* ── Page header ── single row: title + search.
-          The subtitle moved into the navbar center. Refresh moved next to
-          the View dropdown below. Upload Documents moved into the navbar. */}
-      <header className="flex items-center justify-between gap-3">
-        <h1 className="text-lg sm:text-2xl font-bold tracking-tight leading-tight shrink-0">Dashboard</h1>
+      {/* ── Page header ── brand + compact search on one line (the old top
+          navbar is gone; this row is the app's masthead now). */}
+      <header className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 shrink-0">
+          <svg width="24" height="24" viewBox="0 0 36 36" aria-hidden="true">
+            <rect width="36" height="36" rx="9" fill="hsl(var(--primary))" />
+            <rect x="6" y="24" width="5.5" height="8" rx="1.5" fill="rgba(255,255,255,0.45)" />
+            <rect x="15.25" y="18" width="5.5" height="14" rx="1.5" fill="rgba(255,255,255,0.70)" />
+            <rect x="24.5" y="12" width="5.5" height="20" rx="1.5" fill="#fff" />
+          </svg>
+          <h1 className="text-lg sm:text-2xl font-bold tracking-tight leading-tight">Nworth</h1>
+        </div>
         <Input
-          placeholder="Search holdings…"
+          placeholder="Search…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="h-9 text-sm w-full max-w-xs"
+          className="h-9 text-sm flex-1 min-w-0 max-w-xs ml-auto"
         />
       </header>
 

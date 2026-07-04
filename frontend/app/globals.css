@@ -132,7 +132,7 @@
      top inset + a small breather), and the last row of any page stays clear
      of the floating tab bar (64px bar + 12px inset + breathing room). */
   main {
-    padding-top: calc(env(safe-area-inset-top) + 8px);
+    padding-top: env(safe-area-inset-top);
     padding-bottom: 104px;
   }
 }

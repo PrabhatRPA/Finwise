@@ -121,7 +121,8 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
   }
 
   // Sparkline series for the mobile rows — ONE batched spark call for every
-  // ticker (10-min cached in market.ts). Missing symbols render a flat line.
+  // ticker (10-min cached in market.ts; empty results are never cached, so
+  // re-running on each holdings refresh self-heals a failed first fetch).
   const [sparks, setSparks] = useState<Map<string, number[]>>(new Map())
   useEffect(() => {
     const tickers = holdings.map((h: any) => h.ticker).filter(Boolean)
@@ -131,8 +132,7 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
       .then((m) => { if (!cancelled) setSparks(m) })
       .catch(() => { /* flat lines */ })
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [holdings.map((h: any) => h.ticker).join(',')])
+  }, [holdings])
 
   // The floating tab bar's ⊕ button broadcasts this to open the Add modal.
   useEffect(() => {

@@ -174,10 +174,14 @@ async function yahooSparkBatch(
 const SPARK_TTL_MS = 10 * 60 * 1000
 const _sparkCache = new Map<string, { at: number; closes: number[] }>()
 
+// One spark batch. `lastSessionOnly` slices each series to just the FINAL
+// trading day present in the response — that's how "the last available 1-day
+// chart" works on weekends/holidays/after-hours (fetch 5d, keep the last day).
 async function sparkBatchSeries(
   symbols: string[],
   range: string,
   interval: string,
+  lastSessionOnly = false,
 ): Promise<Map<string, number[]>> {
   const out = new Map<string, number[]>()
   if (symbols.length === 0) return out
@@ -192,10 +196,18 @@ async function sparkBatchSeries(
       const list = res.data?.spark?.result ?? []
       for (const item of list) {
         const sym = String(item?.symbol ?? '').toUpperCase()
-        const closes: number[] = (item?.response?.[0]?.indicators?.quote?.[0]?.close ?? [])
-          .filter((c: any) => c != null && isFinite(Number(c)))
-          .map(Number)
-        if (sym) out.set(sym, closes)
+        const resp = item?.response?.[0]
+        const stamps: number[] = resp?.timestamp ?? []
+        const rawCloses: any[] = resp?.indicators?.quote?.[0]?.close ?? []
+        let pairs = rawCloses
+          .map((c: any, i: number) => ({ c: Number(c), ts: Number(stamps[i] ?? 0) }))
+          .filter((p) => p.c != null && isFinite(p.c) && p.c > 0)
+        if (lastSessionOnly && pairs.length > 0) {
+          const dayOf = (ts: number) => Math.floor(ts / 86400)
+          const lastDay = dayOf(pairs[pairs.length - 1].ts)
+          pairs = pairs.filter((p) => dayOf(p.ts) === lastDay)
+        }
+        if (sym) out.set(sym, pairs.map((p) => p.c))
       }
       return out // one host succeeded
     } catch {
@@ -216,27 +228,40 @@ export async function fetchSparkSeries(tickers: string[]): Promise<Map<string, n
   }
   if (need.length === 0) return out
 
-  // Primary: today's intraday chart (5-minute bars).
-  const intraday = await sparkBatchSeries(need, '1d', '5m')
-  const sparse: string[] = []
-  for (const t of need) {
-    const closes = intraday.get(t) ?? []
-    if (closes.length >= 2) {
-      out.set(t, closes)
-      _sparkCache.set(t, { at: now, closes })
-    } else {
-      sparse.push(t)
-    }
+  const remember = (t: string, closes: number[]) => {
+    out.set(t, closes)
+    // Only cache USABLE series. Caching an empty result was the bug that froze
+    // rows on flat lines for 10 minutes (a failed first fetch stuck; only
+    // newly-added tickers — absent from the cache — ever showed a chart).
+    if (closes.length >= 2) _sparkCache.set(t, { at: now, closes })
   }
 
-  // Fallback for sparse symbols: one more batched call at 1-month daily.
+  // 1) Today's intraday chart (5-minute bars).
+  const intraday = await sparkBatchSeries(need, '1d', '5m')
+  let sparse: string[] = []
+  for (const t of need) {
+    const closes = intraday.get(t) ?? []
+    if (closes.length >= 2) remember(t, closes)
+    else sparse.push(t)
+  }
+
+  // 2) Market closed (weekend/holiday) or thin listing → last AVAILABLE
+  //    session sliced out of a 5-day intraday series.
+  if (sparse.length > 0) {
+    const lastSession = await sparkBatchSeries(sparse, '5d', '15m', true)
+    const still: string[] = []
+    for (const t of sparse) {
+      const closes = lastSession.get(t) ?? []
+      if (closes.length >= 2) remember(t, closes)
+      else still.push(t)
+    }
+    sparse = still
+  }
+
+  // 3) Final fallback: 1-month daily trend.
   if (sparse.length > 0) {
     const monthly = await sparkBatchSeries(sparse, '1mo', '1d')
-    for (const t of sparse) {
-      const closes = monthly.get(t) ?? []
-      out.set(t, closes)
-      _sparkCache.set(t, { at: now, closes })
-    }
+    for (const t of sparse) remember(t, monthly.get(t) ?? [])
   }
   return out
 }

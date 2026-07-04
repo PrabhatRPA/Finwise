@@ -111,6 +111,7 @@ export default function DocumentsPage() {
       upload: 'upload-section',
       export: 'export-data',
       manage: 'data-management-section',
+      backups: 'auto-backups',
       demo: 'demo-data',
     }
     const id = target[focus] ?? 'upload-section'
