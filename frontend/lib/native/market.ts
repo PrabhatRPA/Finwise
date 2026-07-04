@@ -245,25 +245,42 @@ export async function fetchSparkSeries(tickers: string[]): Promise<Map<string, n
     else sparse.push(t)
   }
 
-  // 2) Market closed (weekend/holiday) or thin listing → last AVAILABLE
-  //    session sliced out of a 5-day intraday series.
+  // 2) Whatever the spark endpoint couldn't serve falls back to the v8 CHART
+  //    endpoint — the SAME fetcher the ticker-detail page uses, so if the
+  //    detail page can draw a 1D line, the row sparkline can too. Yahoo's v8
+  //    chart returns the last available session for range=1d even on
+  //    weekends/holidays. Limited concurrency; 1-month daily as last resort.
   if (sparse.length > 0) {
-    const lastSession = await sparkBatchSeries(sparse, '5d', '15m', true)
-    const still: string[] = []
-    for (const t of sparse) {
-      const closes = lastSession.get(t) ?? []
-      if (closes.length >= 2) remember(t, closes)
-      else still.push(t)
-    }
-    sparse = still
-  }
-
-  // 3) Final fallback: 1-month daily trend.
-  if (sparse.length > 0) {
-    const monthly = await sparkBatchSeries(sparse, '1mo', '1d')
-    for (const t of sparse) remember(t, monthly.get(t) ?? [])
+    await mapLimit(sparse, 5, async (t) => {
+      try {
+        let closes = (await fetchHistory(t, '1d'))
+          .map((p) => p.close)
+          .filter((c): c is number => c != null && isFinite(c) && c > 0)
+        if (closes.length < 2) {
+          closes = (await fetchHistory(t, '1mo'))
+            .map((p) => p.close)
+            .filter((c): c is number => c != null && isFinite(c) && c > 0)
+        }
+        remember(t, closes)
+      } catch {
+        remember(t, [])
+      }
+    })
   }
   return out
+}
+
+// Run `fn` over items with at most `limit` in flight.
+async function mapLimit<T>(items: T[], limit: number, fn: (t: T) => Promise<void>): Promise<void> {
+  const queue = items.slice()
+  const workers = Array.from({ length: Math.min(limit, queue.length) }, async () => {
+    while (queue.length > 0) {
+      const item = queue.shift()
+      if (item === undefined) break
+      await fn(item)
+    }
+  })
+  await Promise.all(workers)
 }
 
 // ── Stooq CSV (last-ditch; frequently geo-blocked / challenge-walled) ───

@@ -296,7 +296,7 @@ export default function DashboardPage() {
           <h1 className="text-lg sm:text-2xl font-bold tracking-tight leading-tight">Nworth</h1>
         </div>
         <Input
-          placeholder="Search…"
+          placeholder="Search holdings"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="h-9 text-sm flex-1 min-w-0 max-w-xs ml-auto"
@@ -336,7 +336,7 @@ export default function DashboardPage() {
               onChange={(e) => setActiveTab(e.target.value)}
               className="w-full h-10 rounded-md border border-input bg-background text-foreground px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="holdings">{holdings.length > 0 ? `Holdings (${holdings.length})` : 'Holdings'}</option>
+              <option value="holdings">Holdings</option>
               <option value="accounts">Cash &amp; Accounts</option>
               <option value="watchlist">Watchlist</option>
               <option value="debts">Debts</option>
@@ -364,15 +364,11 @@ export default function DashboardPage() {
 
         {/* Tablet + desktop: tab bar + refresh button */}
         <div className="hidden md:flex items-center gap-2 mb-3">
-          <TabsList className="grid grid-cols-9 flex-1">
-          <TabsTrigger value="holdings">
-            Holdings
-            {holdings.length > 0 && (
-              <span className="ml-1.5 type-amount text-[10px] font-semibold px-1.5 py-px rounded-full bg-primary/15 text-primary">
-                {holdings.length}
-              </span>
-            )}
-          </TabsTrigger>
+          {/* Scrollable flex row (was grid-cols-9, which squeezed labels into
+              each other at landscape/tablet widths). Triggers keep natural
+              width and never wrap; the list scrolls if space runs out. */}
+          <TabsList className="flex flex-1 overflow-x-auto justify-start [&>button]:shrink-0 [&>button]:whitespace-nowrap">
+          <TabsTrigger value="holdings">Holdings</TabsTrigger>
           <TabsTrigger value="accounts">Cash</TabsTrigger>
           <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
           <TabsTrigger value="debts">Debts</TabsTrigger>

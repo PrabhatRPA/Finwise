@@ -552,7 +552,14 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
       {/* ── Holdings Table Card ── */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>Holdings</CardTitle>
+          <CardTitle>
+            Holdings
+            {holdings.length > 0 && (
+              <span className="ml-2 align-middle type-amount text-[11px] font-semibold px-2 py-0.5 rounded-full bg-primary/15 text-primary">
+                {holdings.length}
+              </span>
+            )}
+          </CardTitle>
           <Button onClick={openAdd} size="sm">+ Add Holding</Button>
         </CardHeader>
 
