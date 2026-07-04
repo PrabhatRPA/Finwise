@@ -6,6 +6,7 @@
 // Tap anywhere on the row opens the ticker detail page; Edit/Delete stay in
 // the little trailing actions column supplied by the parent.
 
+import { useState } from 'react'
 import { Sparkline } from './sparkline'
 import { formatCurrency } from '@/lib/utils'
 
@@ -16,6 +17,54 @@ const TYPE_GLYPH: Record<string, { glyph: string; tint: string }> = {
   bond:        { glyph: '▤', tint: 'hsl(40 80% 50% / 0.16)' },
   crypto:      { glyph: '◎', tint: 'hsl(30 95% 55% / 0.16)' },
   reit:        { glyph: '⌂', tint: 'hsl(180 55% 45% / 0.16)' },
+}
+
+// Free, keyless logo CDNs, tried in order. Failures are remembered for the
+// session so a 404 never re-fires on re-render; when every source fails the
+// tile falls back to the category glyph.
+function logoSources(ticker: string): string[] {
+  const t = encodeURIComponent(ticker.toUpperCase())
+  return [
+    `https://assets.parqet.com/logos/symbol/${t}?format=png&size=64`,
+    `https://financialmodelingprep.com/image-stock/${t}.png`,
+  ]
+}
+const _logoFailed = new Set<string>()   // "TICKER:idx" that 404'd this session
+
+function TickerLogo({ ticker, glyph, tint }: { ticker: string; glyph: string; tint: string }) {
+  const srcs = logoSources(ticker)
+  const firstAlive = srcs.findIndex((_, i) => !_logoFailed.has(`${ticker}:${i}`))
+  const [idx, setIdx] = useState(firstAlive === -1 ? srcs.length : firstAlive)
+
+  if (idx >= srcs.length) {
+    return (
+      <span
+        className="h-10 w-10 rounded-ds-sm flex items-center justify-center text-base shrink-0 text-foreground/80"
+        style={{ backgroundColor: tint }}
+        aria-hidden="true"
+      >
+        {glyph}
+      </span>
+    )
+  }
+  return (
+    <span
+      className="h-10 w-10 rounded-ds-sm overflow-hidden shrink-0 flex items-center justify-center bg-white"
+      aria-hidden="true"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={srcs[idx]}
+        alt=""
+        loading="lazy"
+        className="h-full w-full object-contain p-1"
+        onError={() => {
+          _logoFailed.add(`${ticker}:${idx}`)
+          setIdx(i => i + 1)
+        }}
+      />
+    </span>
+  )
 }
 
 export interface HoldingRowProps {
@@ -38,14 +87,8 @@ export function HoldingRow({ holding: h, spark, onOpen, actions }: HoldingRowPro
         className="flex items-center gap-3 flex-1 min-w-0 text-left"
         aria-label={`${h.ticker}, ${formatCurrency(value)}, ${pct >= 0 ? 'up' : 'down'} ${Math.abs(pct).toFixed(2)} percent today`}
       >
-        {/* Category glyph tile */}
-        <span
-          className="h-10 w-10 rounded-ds-sm flex items-center justify-center text-base shrink-0 text-foreground/80"
-          style={{ backgroundColor: t.tint }}
-          aria-hidden="true"
-        >
-          {t.glyph}
-        </span>
+        {/* Real ticker logo (free CDNs) with glyph-tile fallback */}
+        <TickerLogo ticker={(h.ticker || '').toUpperCase()} glyph={t.glyph} tint={t.tint} />
 
         {/* Name + shares */}
         <span className="min-w-0 flex-1">

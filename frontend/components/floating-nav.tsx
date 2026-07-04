@@ -24,10 +24,10 @@ export function FloatingNav() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // No floaters on the splash/auth routes.
+  // No floaters on the splash/auth routes, or when the user chose Hide.
   const isAuth = pathname === '/' || pathname === '' ||
     pathname?.startsWith('/login') || pathname?.startsWith('/register')
-  if (isAuth) return null
+  if (isAuth || side === 'hide') return null
 
   // "Back" only where it's meaningful — not on the home dashboard.
   const isHome = pathname?.startsWith('/dashboard')

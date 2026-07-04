@@ -16,14 +16,36 @@ import {
   promptBiometric,
   type BiometryStatus,
 } from '@/lib/native/biometric'
-import { connectAppleId, getAppleUserId } from '@/lib/native/auth'
+import { connectAppleId, getAppleUserId, updateFullName } from '@/lib/native/auth'
 import { isAppLockEnabled, setAppLockEnabled } from '@/lib/native/app-lock'
 import { getFloatSide, setFloatSide, type FloatSide } from '@/lib/float-side'
 import { ThemePicker } from '@/components/ds/theme-picker'
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { user, isLoading, logout } = useAuth()
+  const { user, isLoading, logout, refreshUser } = useAuth()
+
+  // Inline display-name editing (Apple accounts especially — their username is
+  // a cryptic stable id; the visible name is user-editable).
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
+  const [nameBusy, setNameBusy] = useState(false)
+  const [nameMsg, setNameMsg] = useState('')
+
+  const saveName = async () => {
+    setNameBusy(true)
+    setNameMsg('')
+    try {
+      await updateFullName(nameDraft)
+      await refreshUser()
+      setEditingName(false)
+      setNameMsg('Name updated.')
+    } catch (e: any) {
+      setNameMsg(e?.message ?? 'Could not update name.')
+    } finally {
+      setNameBusy(false)
+    }
+  }
 
   const [biometryStatus, setBiometryStatus] = useState<BiometryStatus | null>(null)
   const [biometricOn, setBiometricOn] = useState(false)
@@ -119,18 +141,61 @@ export default function ProfilePage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 sm:py-8 space-y-5">
 
-      {/* Header */}
+      {/* Header — display name is editable (Apple accounts keep their cryptic
+          id as the stable key; the visible name is the user's to set). */}
       <header className="flex items-center gap-3">
-        <div className="h-14 w-14 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xl font-bold">
+        <div className="h-14 w-14 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xl font-bold shrink-0">
           {initials}
         </div>
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold truncate">
-            {user.full_name || user.email || user.username}
-          </h1>
+        <div className="min-w-0 flex-1">
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <input
+                value={nameDraft}
+                onChange={e => setNameDraft(e.target.value)}
+                placeholder="Your name"
+                autoFocus
+                maxLength={60}
+                className="flex-1 min-w-0 px-3 py-2 rounded-md border border-input bg-background text-foreground
+                  text-base font-semibold focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <button
+                onClick={saveName}
+                disabled={nameBusy}
+                className="shrink-0 px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
+              >
+                {nameBusy ? '…' : 'Save'}
+              </button>
+              <button
+                onClick={() => setEditingName(false)}
+                className="shrink-0 px-2 py-2 rounded-md border border-border text-sm text-muted-foreground"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold truncate">
+                {user.full_name || user.email || user.username}
+              </h1>
+              <button
+                onClick={() => { setNameDraft(user.full_name ?? ''); setEditingName(true) }}
+                aria-label="Edit name"
+                className="shrink-0 h-8 w-8 flex items-center justify-center rounded-md border border-border
+                  text-muted-foreground hover:text-foreground hover:bg-accent"
+                style={{ minHeight: 0, minWidth: 0 }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                  <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+              </button>
+            </div>
+          )}
           {!user.username.startsWith('apple_') && (
             <p className="text-xs sm:text-sm text-muted-foreground">@{user.username}</p>
           )}
+          {nameMsg && <p className="text-xs text-muted-foreground mt-0.5">{nameMsg}</p>}
         </div>
       </header>
 
@@ -151,10 +216,11 @@ export default function ProfilePage() {
           <div className="mt-4 pt-4 border-t">
             <p className="text-sm font-medium mb-1">Floating buttons</p>
             <p className="text-xs text-muted-foreground mb-2">
-              Choose which side the floating back / scroll-to-top buttons sit on.
+              Which side the floating back / scroll-to-top buttons sit on — or hide them
+              and use the bottom bar to get around.
             </p>
-            <div className="grid grid-cols-2 gap-2">
-              {(['left', 'right'] as const).map(s => (
+            <div className="grid grid-cols-3 gap-2">
+              {(['left', 'right', 'hide'] as const).map(s => (
                 <button
                   key={s}
                   onClick={() => { setFloatSide(s); setFloatSideState(s) }}
@@ -331,9 +397,19 @@ export default function ProfilePage() {
             onClick={() => router.push('/help')}
           />
           <Row
+            label="Import data"
+            sub="Upload a photo/PDF of a statement — AI extracts your holdings."
+            onClick={() => router.push('/documents?focus=upload')}
+          />
+          <Row
             label="Manage exports & backups"
             sub="Download CSV/JSON, restore from a snapshot."
-            onClick={() => router.push('/documents')}
+            onClick={() => router.push('/documents?focus=export')}
+          />
+          <Row
+            label="Data management"
+            sub="iCloud sync, imports, automatic backups."
+            onClick={() => router.push('/documents?focus=manage')}
           />
           <Row
             label="Remove demo / all data"

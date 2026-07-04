@@ -160,6 +160,19 @@ export async function signInWithApple(): Promise<{ isNewUser: boolean }> {
   return { isNewUser: true }
 }
 
+// Update the signed-in user's display name. Apple sign-in accounts keep their
+// cryptic apple_… username as the stable primary identifier, but the user can
+// set/edit the human name shown across the app.
+export async function updateFullName(name: string): Promise<void> {
+  const userId = await getSessionUserId()
+  if (!userId) throw new Error('Not signed in.')
+  const trimmed = name.trim().slice(0, 60)
+  await run(
+    `UPDATE users SET full_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    [trimmed || null, userId],
+  )
+}
+
 // Helper for other modules to read the current user's apple_user_id.
 export async function getAppleUserId(): Promise<string | null> {
   const userId = await getSessionUserId()

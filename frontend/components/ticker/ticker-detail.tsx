@@ -238,17 +238,18 @@ export function TickerDetail({ symbol }: { symbol: string }) {
       {/* Chart */}
       <Card>
         <CardContent className="pt-5 space-y-3">
-          {/* Range buttons */}
-          <div className="flex items-center gap-1 flex-wrap">
+          {/* Range buttons — compact equal-width pills so all 8 fit one line */}
+          <div className="flex items-center gap-1">
             {RANGES.map(r => (
               <button
                 key={r.id}
                 onClick={() => setRange(r.id)}
-                className={`px-2.5 py-1 text-xs rounded-full type-amount font-medium transition-colors ${
+                className={`flex-1 min-w-0 px-0 py-1.5 text-[10px] rounded-full type-amount font-semibold transition-colors ${
                   range === r.id
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground hover:bg-muted/80'
                 }`}
+                style={{ minHeight: 0, minWidth: 0 }}
               >
                 {r.id}
               </button>

@@ -13,7 +13,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import { impactLight } from './haptics'
 
-type ItemId = 'home' | 'insights' | 'accounts' | 'settings'
+type ItemId = 'home' | 'insights' | 'news' | 'settings'
 
 const TABS: { id: ItemId; label: string; tab?: string; href?: string; icon: (active: boolean) => React.ReactNode }[] = [
   {
@@ -36,12 +36,12 @@ const TABS: { id: ItemId; label: string; tab?: string; href?: string; icon: (act
     ),
   },
   {
-    id: 'accounts', label: 'Accounts', tab: 'accounts',
+    id: 'news', label: 'News', tab: 'news',
     icon: (a) => (
-      <svg viewBox="0 0 24 24" fill={a ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8"
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={a ? 2.3 : 1.8}
         strokeLinecap="round" strokeLinejoin="round" className="h-[22px] w-[22px]">
-        <rect x="3" y="6" width="18" height="13" rx="2" />
-        <path d="M3 10h18" />
+        <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-4 0V9" />
+        <path d="M11 6h6M11 10h6M11 14h6M11 18h3" />
       </svg>
     ),
   },
@@ -86,7 +86,7 @@ export function FloatingTabBar() {
   const activeId: ItemId | null =
     pathname?.startsWith('/profile') ? 'settings'
     : onDashboard
-      ? (tabParam === 'performance' ? 'insights' : tabParam === 'accounts' ? 'accounts' : 'home')
+      ? (tabParam === 'performance' ? 'insights' : tabParam === 'news' ? 'news' : 'home')
       : null
 
   const go = (t: typeof TABS[number]) => {
@@ -135,20 +135,30 @@ export function FloatingTabBar() {
     >
       {left.map(item)}
 
-      {/* Raised center add button */}
+      {/* Center add button — slightly raised but discreet, brand mark beneath
+          (the Nworth logo moved here from the old top bar). */}
       <div className="relative flex-1 flex items-center justify-center">
         <button
           onClick={addHolding}
           aria-label="Add holding"
-          className="absolute -top-5 h-14 w-14 rounded-full bg-primary text-primary-foreground
-            shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+          className="absolute -top-2.5 h-11 w-11 rounded-full bg-primary/90 text-primary-foreground
+            shadow-md flex items-center justify-center active:scale-95 transition-transform"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
-            strokeLinecap="round" className="h-6 w-6">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" className="h-5 w-5">
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
         </button>
+        <span className="absolute bottom-1 flex items-center gap-0.5 pointer-events-none select-none" aria-hidden="true">
+          <svg width="9" height="9" viewBox="0 0 36 36">
+            <rect width="36" height="36" rx="9" fill="hsl(var(--primary))" opacity="0.9" />
+            <rect x="6" y="24" width="5.5" height="8" rx="1.5" fill="rgba(255,255,255,0.5)" />
+            <rect x="15.25" y="18" width="5.5" height="14" rx="1.5" fill="rgba(255,255,255,0.75)" />
+            <rect x="24.5" y="12" width="5.5" height="20" rx="1.5" fill="#fff" />
+          </svg>
+          <span className="text-[8px] font-bold tracking-[0.08em] text-muted-foreground">NWORTH</span>
+        </span>
       </div>
 
       {right.map(item)}

@@ -4,10 +4,11 @@ import { cn } from '@/lib/utils'
 export type CardProps = {
   children?: ReactNode
   className?: string
+  id?: string   // anchor for deep-link scrolling (Settings → focus areas)
 }
 
-export const Card = ({ children, className }: CardProps) => (
-  <div className={cn('rounded-lg border border-border bg-card text-card-foreground shadow-sm', className)}>
+export const Card = ({ children, className, id }: CardProps) => (
+  <div id={id} className={cn('rounded-lg border border-border bg-card text-card-foreground shadow-sm', className)}>
     {children}
   </div>
 )

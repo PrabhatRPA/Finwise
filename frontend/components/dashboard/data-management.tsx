@@ -461,7 +461,7 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
       </Card>
 
       {/* ── Export ── */}
-      <Card>
+      <Card id="export-data" className="scroll-mt-4">
         <CardHeader>
           <CardTitle className="text-base">Export Data</CardTitle>
           <p className="text-sm text-muted-foreground">

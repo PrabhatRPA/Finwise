@@ -117,8 +117,6 @@ export default function DashboardPage() {
     return () => { window.removeEventListener('nworth:tab-change', read); window.removeEventListener('popstate', read) }
   }, [])
 
-  // Today's portfolio P&L for the stat strip's NET CHANGE.
-  const todayChange = holdings.reduce((s: number, h: any) => s + (h.today_gain_loss ?? 0), 0)
 
   // First-run onboarding: offer to load the demo dataset. Shown once per user,
   // only when their account is still empty (so a returning user whose flag was
@@ -302,12 +300,16 @@ export default function DashboardPage() {
           oversized rolling numeral + delta + history chart + range pills. */}
       <GrowthChart currentNetWorth={netWorthData?.net_worth ?? displayTotalValue} />
 
-      {/* ── Stat strip ── ASSETS / LIABILITIES / NET CHANGE (today's P&L). */}
+      {/* ── Stat strip ── Portfolio / Cash / Debt / Property / Net Worth.
+          Each tile jumps to its tab (the holdings count moved onto the
+          Holdings tab itself). */}
       <StatStrip
         items={[
-          { label: 'Assets', value: formatCompactCurrency(netWorthData?.total_assets ?? displayTotalValue), tone: 'default' },
-          { label: 'Liabilities', value: formatCompactCurrency(netWorthData?.total_liabilities ?? 0), tone: (netWorthData?.total_liabilities ?? 0) > 0 ? 'negative' : 'neutral' },
-          { label: 'Net Change', value: `${todayChange >= 0 ? '+' : '−'}${formatCompactCurrency(Math.abs(todayChange))}`, tone: todayChange > 0 ? 'positive' : todayChange < 0 ? 'negative' : 'neutral' },
+          { label: 'Portfolio', value: formatCompactCurrency(displayTotalValue), tone: 'positive', onTap: () => setActiveTab('holdings') },
+          { label: 'Cash', value: formatCompactCurrency(netWorthData?.cash ?? 0), tone: 'default', onTap: () => setActiveTab('accounts') },
+          { label: 'Debt', value: formatCompactCurrency(netWorthData?.total_liabilities ?? 0), tone: (netWorthData?.total_liabilities ?? 0) > 0 ? 'negative' : 'neutral', onTap: () => setActiveTab('debts') },
+          { label: 'Property', value: formatCompactCurrency(netWorthData?.real_estate ?? 0), tone: 'default', onTap: () => setActiveTab('properties') },
+          { label: 'Net Worth', value: formatCompactCurrency(netWorthData?.net_worth ?? 0), tone: 'accent', onTap: () => setActiveTab('performance') },
         ]}
       />
 
@@ -327,7 +329,7 @@ export default function DashboardPage() {
               onChange={(e) => setActiveTab(e.target.value)}
               className="w-full h-10 rounded-md border border-input bg-background text-foreground px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="holdings">Holdings</option>
+              <option value="holdings">{holdings.length > 0 ? `Holdings (${holdings.length})` : 'Holdings'}</option>
               <option value="accounts">Cash &amp; Accounts</option>
               <option value="watchlist">Watchlist</option>
               <option value="debts">Debts</option>
@@ -356,7 +358,14 @@ export default function DashboardPage() {
         {/* Tablet + desktop: tab bar + refresh button */}
         <div className="hidden md:flex items-center gap-2 mb-3">
           <TabsList className="grid grid-cols-9 flex-1">
-          <TabsTrigger value="holdings">Holdings</TabsTrigger>
+          <TabsTrigger value="holdings">
+            Holdings
+            {holdings.length > 0 && (
+              <span className="ml-1.5 type-amount text-[10px] font-semibold px-1.5 py-px rounded-full bg-primary/15 text-primary">
+                {holdings.length}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="accounts">Cash</TabsTrigger>
           <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
           <TabsTrigger value="debts">Debts</TabsTrigger>

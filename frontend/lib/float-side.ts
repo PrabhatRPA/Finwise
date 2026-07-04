@@ -10,12 +10,13 @@ import { useEffect, useState } from 'react'
 const KEY = 'float_side'
 const EVENT = 'float-side-change'
 
-export type FloatSide = 'left' | 'right'
+export type FloatSide = 'left' | 'right' | 'hide'
 
 export function getFloatSide(): FloatSide {
   if (typeof window === 'undefined') return 'right'
   try {
-    return window.localStorage.getItem(KEY) === 'left' ? 'left' : 'right'
+    const v = window.localStorage.getItem(KEY)
+    return v === 'left' || v === 'hide' ? v : 'right'
   } catch {
     return 'right'
   }

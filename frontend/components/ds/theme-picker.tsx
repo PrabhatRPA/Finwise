@@ -27,6 +27,10 @@ const LEDGER: PreviewColors = {
   bg: '#0C0E10', card: '#15181C', text: '#F2F4F6', sub: '#3A404A',
   gradA: '#12291E', gradB: '#0C0E10', up: '#2FE08C',
 }
+const COLORFUL: PreviewColors = {
+  bg: '#EFF6FF', card: '#FFFFFF', text: '#1A1D2E', sub: '#C9D2F0',
+  gradA: '#3D6BF2', gradB: '#8A4DF0', up: '#12AE72',
+}
 
 // Tiny mock dashboard: hero gradient block with a "number" and delta bar,
 // then two holding-row skeletons.
@@ -67,6 +71,7 @@ function MiniSystem() {
 const OPTIONS = [
   { mode: 'dark' as const, name: 'Ledger Dark', preview: <MiniDash c={LEDGER} /> },
   { mode: 'light' as const, name: 'Paper Light', preview: <MiniDash c={PAPER} /> },
+  { mode: 'colorful' as const, name: 'Colorful', preview: <MiniDash c={COLORFUL} /> },
   { mode: 'system' as const, name: 'System', preview: <MiniSystem /> },
 ]
 
@@ -74,7 +79,7 @@ export function ThemePicker() {
   const { mode, setMode } = useTheme()
 
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-2 gap-2">
       {OPTIONS.map((o) => {
         const active = mode === o.mode
         return (

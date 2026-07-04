@@ -15,13 +15,21 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 // In 'system' mode we follow the OS (prefers-color-scheme) and update live when
 // the OS flips. If the OS reports no preference at all, we fall back to the time
 // of day (day = light, night = dark). An explicit choice is saved and always wins.
-type Mode = 'light' | 'dark' | 'system'
-type Theme = 'light' | 'dark'
+type Mode = 'light' | 'dark' | 'colorful' | 'system'
+type Theme = 'light' | 'dark' | 'colorful'
+
+const DATA_THEME: Record<Theme, string> = {
+  light: 'paper-light',
+  dark: 'ledger-dark',
+  colorful: 'colorful',
+}
 
 // Apply the resolved theme to the document + native chrome (status bar).
+// Only Ledger Dark sets the .dark class (legacy dark: utilities); Paper Light
+// and Colorful are light-family themes.
 function applyTheme(t: Theme) {
   document.documentElement.classList.toggle('dark', t === 'dark')
-  document.documentElement.setAttribute('data-theme', t === 'dark' ? 'ledger-dark' : 'paper-light')
+  document.documentElement.setAttribute('data-theme', DATA_THEME[t])
   // Status bar content must adapt per theme (light text on Ledger Dark).
   ;(async () => {
     try {
@@ -78,7 +86,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setMounted(true)
     const stored = localStorage.getItem(STORAGE_KEY)
     const initial: Mode =
-      stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system'
+      stored === 'light' || stored === 'dark' || stored === 'colorful' || stored === 'system' ? stored : 'system'
     setModeState(initial)
     setThemeResolved(resolve(initial))
   }, [])

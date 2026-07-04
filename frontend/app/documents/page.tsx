@@ -100,13 +100,22 @@ export default function DocumentsPage() {
     }
   }, [authLoading, isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Deep link from Profile → "Remove demo / all data": scroll straight to the
-  // demo / clear-data controls so the user doesn't have to hunt for them.
+  // Deep links from Settings: ?focus=<area> scrolls straight to that section
+  // so the user never has to hunt. upload → the AI upload card, export → the
+  // Export Data card, manage → the Data Management area, demo → demo/clear.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (!new URLSearchParams(window.location.search).has('focus')) return
+    const focus = new URLSearchParams(window.location.search).get('focus')
+    if (!focus) return
+    const target: Record<string, string> = {
+      upload: 'upload-section',
+      export: 'export-data',
+      manage: 'data-management-section',
+      demo: 'demo-data',
+    }
+    const id = target[focus] ?? 'upload-section'
     const t = setTimeout(() => {
-      document.getElementById('demo-data')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 350)
     return () => clearTimeout(t)
   }, [])
@@ -315,7 +324,7 @@ export default function DocumentsPage() {
       </header>
 
       {/* Upload Card */}
-      <Card>
+      <Card id="upload-section" className="scroll-mt-4">
         <CardHeader><CardTitle>Upload a Document</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -650,7 +659,7 @@ export default function DocumentsPage() {
       </Card>
 
       {/* Data Management — export, import, backups */}
-      <div>
+      <div id="data-management-section" className="scroll-mt-4">
         <h2 className="text-xl font-semibold tracking-tight mb-4">Data Management</h2>
         <DataManagement onDataChanged={() => {}} />
       </div>

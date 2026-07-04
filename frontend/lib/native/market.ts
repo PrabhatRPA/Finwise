@@ -166,12 +166,44 @@ async function yahooSparkBatch(
 }
 
 // ── Spark series (batched close-price history for sparklines) ───────────
-// One request returns a ~1-month daily close series for MANY symbols — powers
-// the holdings-row sparklines without an N+1 history call per ticker.
-// Cached in-memory for 10 minutes; missing/sparse symbols yield [] and the
-// Sparkline component renders a flat neutral line.
+// The holdings-row sparklines show the DAY chart: one batched request pulls
+// intraday 5-minute closes for MANY symbols. Symbols that come back sparse
+// (<2 intraday points — thin listings, some funds) get one batched fallback
+// at 1-month daily so the row still shows a real trend line, never a flat gap.
+// Cached in-memory for 10 minutes.
 const SPARK_TTL_MS = 10 * 60 * 1000
 const _sparkCache = new Map<string, { at: number; closes: number[] }>()
+
+async function sparkBatchSeries(
+  symbols: string[],
+  range: string,
+  interval: string,
+): Promise<Map<string, number[]>> {
+  const out = new Map<string, number[]>()
+  if (symbols.length === 0) return out
+  for (const host of YAHOO_HOSTS) {
+    try {
+      const res = await CapacitorHttp.get({
+        url: `https://${host}.finance.yahoo.com/v7/finance/spark`,
+        params: { symbols: symbols.join(','), range, interval },
+        headers: { 'User-Agent': 'Mozilla/5.0 Nworth/1.0' },
+      })
+      if (res.status !== 200) continue
+      const list = res.data?.spark?.result ?? []
+      for (const item of list) {
+        const sym = String(item?.symbol ?? '').toUpperCase()
+        const closes: number[] = (item?.response?.[0]?.indicators?.quote?.[0]?.close ?? [])
+          .filter((c: any) => c != null && isFinite(Number(c)))
+          .map(Number)
+        if (sym) out.set(sym, closes)
+      }
+      return out // one host succeeded
+    } catch {
+      // try next host
+    }
+  }
+  return out
+}
 
 export async function fetchSparkSeries(tickers: string[]): Promise<Map<string, number[]>> {
   const out = new Map<string, number[]>()
@@ -184,29 +216,26 @@ export async function fetchSparkSeries(tickers: string[]): Promise<Map<string, n
   }
   if (need.length === 0) return out
 
-  for (const host of YAHOO_HOSTS) {
-    try {
-      const res = await CapacitorHttp.get({
-        url: `https://${host}.finance.yahoo.com/v7/finance/spark`,
-        params: { symbols: need.join(','), range: '1mo', interval: '1d' },
-        headers: { 'User-Agent': 'Mozilla/5.0 Nworth/1.0' },
-      })
-      if (res.status !== 200) continue
-      const list = res.data?.spark?.result ?? []
-      for (const item of list) {
-        const sym = String(item?.symbol ?? '').toUpperCase()
-        const resp = item?.response?.[0]
-        const closes: number[] = (resp?.indicators?.quote?.[0]?.close ?? [])
-          .filter((c: any) => c != null && isFinite(Number(c)))
-          .map(Number)
-        if (sym) {
-          out.set(sym, closes)
-          _sparkCache.set(sym, { at: now, closes })
-        }
-      }
-      break // one host succeeded
-    } catch {
-      // try next host
+  // Primary: today's intraday chart (5-minute bars).
+  const intraday = await sparkBatchSeries(need, '1d', '5m')
+  const sparse: string[] = []
+  for (const t of need) {
+    const closes = intraday.get(t) ?? []
+    if (closes.length >= 2) {
+      out.set(t, closes)
+      _sparkCache.set(t, { at: now, closes })
+    } else {
+      sparse.push(t)
+    }
+  }
+
+  // Fallback for sparse symbols: one more batched call at 1-month daily.
+  if (sparse.length > 0) {
+    const monthly = await sparkBatchSeries(sparse, '1mo', '1d')
+    for (const t of sparse) {
+      const closes = monthly.get(t) ?? []
+      out.set(t, closes)
+      _sparkCache.set(t, { at: now, closes })
     }
   }
   return out
