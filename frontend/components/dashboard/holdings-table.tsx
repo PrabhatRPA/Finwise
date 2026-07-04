@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn, formatCurrency } from '@/lib/utils'
 import { holdingsApi, accountsApi } from '@/lib/api'
 import { usePortfolioStore } from '@/lib/store'
-import { HoldingRow } from '@/components/ds/holding-row'
+import { HoldingRow, TickerLogo, typeGlyph } from '@/components/ds/holding-row'
+import { Sparkline } from '@/components/ds/sparkline'
 import { notifySuccess } from '@/components/ds/haptics'
 import { fetchSparkSeries } from '@/lib/native/market'
 
@@ -17,11 +18,12 @@ import { fetchSparkSeries } from '@/lib/native/market'
 // Every data column the desktop holdings table can show. The actions (edit /
 // delete) column is fixed and always rendered last, so it isn't listed here.
 type SortField =
-  | 'ticker' | 'shares' | 'price' | 'today_pct' | 'today_dollar' | 'day_change'
+  | 'ticker' | 'chart' | 'shares' | 'price' | 'today_pct' | 'today_dollar' | 'day_change'
   | 'avg_cost' | 'gain_dollar' | 'gain' | 'value' | 'allocation' | 'type'
 
 const COLUMN_DEFS: Record<SortField, { label: string; align: 'left' | 'right'; title?: string }> = {
   ticker:       { label: 'Ticker',       align: 'left' },
+  chart:        { label: '1D',           align: 'left', title: "Today's price sparkline (sorts by Today %)" },
   shares:       { label: 'Shares',       align: 'right' },
   price:        { label: 'Price',        align: 'right' },
   today_pct:    { label: 'Today %',      align: 'right', title: "Today's % change in position value" },
@@ -38,13 +40,15 @@ const COLUMN_DEFS: Record<SortField, { label: string; align: 'left' | 'right'; t
 // Default order requested by the user. New columns added to COLUMN_DEFS in
 // future are appended automatically by mergeColumnPrefs().
 const DEFAULT_COLUMN_ORDER: SortField[] = [
-  'ticker', 'shares', 'price', 'today_pct', 'today_dollar', 'day_change',
+  'ticker', 'chart', 'shares', 'price', 'today_pct', 'today_dollar', 'day_change',
   'avg_cost', 'gain_dollar', 'gain', 'value', 'allocation', 'type',
 ]
 
 interface ColPref { id: SortField; visible: boolean }
 const DEFAULT_COLS: ColPref[] = DEFAULT_COLUMN_ORDER.map(id => ({ id, visible: true }))
-const COLS_STORAGE_KEY = 'holdings_columns_v1'
+// v2: the new 1D-sparkline column ships in its intended slot (a bumped key
+// re-defaults saved layouts once; users can still customize afterwards).
+const COLS_STORAGE_KEY = 'holdings_columns_v2'
 
 // Merge a saved preference with the current registry: keep the saved order &
 // visibility, drop columns that no longer exist, and append any new ones. This
@@ -212,6 +216,7 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
       case 'price':    va = a.current_price ?? 0;                vb = b.current_price ?? 0; break
       case 'value':    va = a.current_value ?? 0;                vb = b.current_value ?? 0; break
       case 'today_pct':    va = a.today_gain_loss_percent ?? 0;                            vb = b.today_gain_loss_percent ?? 0; break
+      case 'chart':        va = a.today_gain_loss_percent ?? 0;                            vb = b.today_gain_loss_percent ?? 0; break
       case 'today_dollar': va = a.today_gain_loss ?? 0;                                    vb = b.today_gain_loss ?? 0; break
       case 'day_change':   va = a.day_change ?? 0;                                         vb = b.day_change ?? 0; break
       case 'gain':        va = a.total_gain_loss_percent ?? 0;                             vb = b.total_gain_loss_percent ?? 0; break
@@ -254,11 +259,21 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
       case 'ticker':       return (
         <button
           onClick={() => openTicker(h.ticker)}
-          className="font-medium text-primary hover:underline"
+          className="flex items-center gap-2 font-medium text-primary hover:underline"
           title={`View ${h.ticker} chart & news`}
+          style={{ minHeight: 0, minWidth: 0 }}
         >
+          <TickerLogo
+            ticker={(h.ticker || '').toUpperCase()}
+            glyph={typeGlyph(h.security_type).glyph}
+            tint={typeGlyph(h.security_type).tint}
+            size="sm"
+          />
           {h.ticker}
         </button>
+      )
+      case 'chart':        return (
+        <Sparkline data={sparks.get((h.ticker || '').toUpperCase()) ?? []} width={64} height={22} />
       )
       case 'type':         return (
         <span className="capitalize text-xs border border-border rounded-full px-2 py-0.5 text-muted-foreground">

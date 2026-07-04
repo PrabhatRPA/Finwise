@@ -31,15 +31,18 @@ function logoSources(ticker: string): string[] {
 }
 const _logoFailed = new Set<string>()   // "TICKER:idx" that 404'd this session
 
-function TickerLogo({ ticker, glyph, tint }: { ticker: string; glyph: string; tint: string }) {
+export function TickerLogo({ ticker, glyph, tint, size = 'md' }: {
+  ticker: string; glyph: string; tint: string; size?: 'sm' | 'md'
+}) {
   const srcs = logoSources(ticker)
   const firstAlive = srcs.findIndex((_, i) => !_logoFailed.has(`${ticker}:${i}`))
   const [idx, setIdx] = useState(firstAlive === -1 ? srcs.length : firstAlive)
+  const box = size === 'sm' ? 'h-7 w-7 rounded-md' : 'h-10 w-10 rounded-ds-sm'
 
   if (idx >= srcs.length) {
     return (
       <span
-        className="h-10 w-10 rounded-ds-sm flex items-center justify-center text-base shrink-0 text-foreground/80"
+        className={`${box} flex items-center justify-center ${size === 'sm' ? 'text-xs' : 'text-base'} shrink-0 text-foreground/80`}
         style={{ backgroundColor: tint }}
         aria-hidden="true"
       >
@@ -49,7 +52,7 @@ function TickerLogo({ ticker, glyph, tint }: { ticker: string; glyph: string; ti
   }
   return (
     <span
-      className="h-10 w-10 rounded-ds-sm overflow-hidden shrink-0 flex items-center justify-center bg-white"
+      className={`${box} overflow-hidden shrink-0 flex items-center justify-center bg-white`}
       aria-hidden="true"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -65,6 +68,12 @@ function TickerLogo({ ticker, glyph, tint }: { ticker: string; glyph: string; ti
       />
     </span>
   )
+}
+
+// Category glyph lookup, exported so the desktop table can reuse the same
+// logo-with-fallback tile.
+export function typeGlyph(securityType?: string) {
+  return TYPE_GLYPH[securityType as string] ?? TYPE_GLYPH.stock
 }
 
 export interface HoldingRowProps {
