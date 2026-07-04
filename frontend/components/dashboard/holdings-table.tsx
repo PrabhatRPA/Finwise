@@ -142,6 +142,19 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Mobile rows: show position VALUE or share PRICE in the trailing slot.
+  const [rowDisplay, setRowDisplay] = useState<'value' | 'price'>('value')
+  useEffect(() => {
+    try {
+      const v = window.localStorage.getItem('holdings_row_display')
+      if (v === 'price' || v === 'value') setRowDisplay(v)
+    } catch {}
+  }, [])
+  const changeRowDisplay = (v: 'value' | 'price') => {
+    setRowDisplay(v)
+    try { window.localStorage.setItem('holdings_row_display', v) } catch {}
+  }
+
   const [sortBy, setSortBy] = useState<SortField>('ticker')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
@@ -595,6 +608,23 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
               The 12-column desktop table doesn't fit on a phone screen, so
               under md we render each holding as a stacked card with the key
               numbers up top and a Edit / Delete row at the bottom. */}
+          {/* Mobile: Value ↔ Price display toggle for the row's trailing figure */}
+          <div className="md:hidden flex justify-end mb-2">
+            <div className="inline-flex rounded-full bg-muted p-0.5">
+              {(['value', 'price'] as const).map(v => (
+                <button
+                  key={v}
+                  onClick={() => changeRowDisplay(v)}
+                  className={`px-3 py-1 text-[11px] font-semibold rounded-full capitalize transition-colors ${
+                    rowDisplay === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+                  }`}
+                  style={{ minHeight: 0, minWidth: 0 }}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="md:hidden rounded-ds-md border divide-y divide-border bg-card shadow-card row-stagger overflow-hidden">
             {sorted.length === 0 ? (
               <div className="text-center py-10 text-muted-foreground text-sm">
@@ -613,6 +643,7 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
                   holding={h}
                   spark={sparks.get((h.ticker || '').toUpperCase())}
                   onOpen={openTicker}
+                  display={rowDisplay}
                   actions={
                     <div className="flex flex-col gap-1 items-center">
                       <button

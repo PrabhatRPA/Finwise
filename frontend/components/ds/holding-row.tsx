@@ -72,13 +72,14 @@ export interface HoldingRowProps {
   spark?: number[]                 // close series for the sparkline
   onOpen?: (ticker: string) => void
   actions?: React.ReactNode        // Edit/Delete cluster from the parent
+  display?: 'value' | 'price'      // trailing figure: position value or share price
 }
 
-export function HoldingRow({ holding: h, spark, onOpen, actions }: HoldingRowProps) {
+export function HoldingRow({ holding: h, spark, onOpen, actions, display = 'value' }: HoldingRowProps) {
   const t = TYPE_GLYPH[h.security_type as string] ?? TYPE_GLYPH.stock
   const pct = h.today_gain_loss_percent ?? 0
   const pctClass = pct > 0 ? 'text-positive' : pct < 0 ? 'text-negative' : 'text-neutral'
-  const value = h.current_value ?? 0
+  const value = display === 'price' ? (h.current_price ?? 0) : (h.current_value ?? 0)
 
   return (
     <div className="flex items-center gap-3 px-3 py-3">

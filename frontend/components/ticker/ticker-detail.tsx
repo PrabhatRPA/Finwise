@@ -7,7 +7,7 @@ import {
 import ReactMarkdown from 'react-markdown'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { marketApi, aiApi, watchlistApi } from '@/lib/api'
+import { marketApi, aiApi, watchlistApi, holdingsApi } from '@/lib/api'
 import { usePortfolioStore } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils'
 import { Disclaimer } from '@/components/disclaimer'
@@ -75,7 +75,7 @@ interface NewsItem { title: string; publisher: string; link: string; published: 
 
 export function TickerDetail({ symbol }: { symbol: string }) {
   const ticker = symbol.toUpperCase()
-  const { holdings } = usePortfolioStore()
+  const { holdings, setHoldings } = usePortfolioStore() as any
 
   // The user's holding for this ticker (if held) — powers the company name
   // and the COST BASIS / SHARES / TYPE metadata cards.
@@ -108,6 +108,47 @@ export function TickerDetail({ symbol }: { symbol: string }) {
 
   const [watchBusy, setWatchBusy] = useState(false)
   const [watchMsg, setWatchMsg] = useState('')
+
+  // Inline edit for the held position (shares / avg cost) right on this page.
+  const [editOpen, setEditOpen] = useState(false)
+  const [editShares, setEditShares] = useState('')
+  const [editCost, setEditCost] = useState('')
+  const [editBusy, setEditBusy] = useState(false)
+  const [editErr, setEditErr] = useState('')
+
+  const openEdit = () => {
+    if (!held) return
+    setEditShares(String(held.shares ?? ''))
+    setEditCost(String(held.average_cost ?? ''))
+    setEditErr('')
+    setEditOpen(true)
+  }
+
+  const saveEdit = async () => {
+    if (!held) return
+    const shares = Number(editShares)
+    const avgCost = Number(editCost)
+    if (!shares || shares <= 0) { setEditErr('Shares must be greater than 0.'); return }
+    if (isNaN(avgCost) || avgCost < 0) { setEditErr('Average cost must be 0 or more.'); return }
+    setEditBusy(true)
+    setEditErr('')
+    try {
+      await holdingsApi.update(held.id, {
+        ticker,
+        shares,
+        average_cost: avgCost,
+        security_type: held.security_type || 'stock',
+      })
+      // Refresh the store so this page (and the dashboard) reflect the edit.
+      const res = await holdingsApi.getAll(false)
+      setHoldings(res.data.holdings ?? [])
+      setEditOpen(false)
+    } catch (e: any) {
+      setEditErr(e?.response?.data?.detail || e?.message || 'Failed to save.')
+    } finally {
+      setEditBusy(false)
+    }
+  }
 
   const addToWatchlist = async () => {
     setWatchBusy(true)
@@ -196,20 +237,39 @@ export function TickerDetail({ symbol }: { symbol: string }) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="type-amount text-2xl font-bold tracking-tight">{ticker}</h1>
-            {companyName && <p className="text-sm text-muted-foreground truncate">{companyName}</p>}
+            {/* Company + security type as small print under the ticker */}
+            <p className="text-xs text-muted-foreground truncate">
+              {companyName ? `${companyName} · ` : ''}
+              <span className="uppercase tracking-wide">{String(held?.security_type || 'stock').replace('_', ' ')}</span>
+            </p>
           </div>
-          <button
-            onClick={addToWatchlist}
-            disabled={watchBusy}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border
-              text-sm font-medium text-foreground hover:bg-accent disabled:opacity-50"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-              strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-            </svg>
-            {watchBusy ? 'Adding…' : 'Watchlist'}
-          </button>
+          <div className="shrink-0 flex items-center gap-1.5">
+            {held && (
+              <button
+                onClick={openEdit}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border
+                  text-sm font-medium text-foreground hover:bg-accent"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+                Edit
+              </button>
+            )}
+            <button
+              onClick={addToWatchlist}
+              disabled={watchBusy}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border
+                text-sm font-medium text-foreground hover:bg-accent disabled:opacity-50"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+              {watchBusy ? 'Adding…' : 'Watch'}
+            </button>
+          </div>
         </div>
         <div className="mt-2 flex items-baseline gap-3 flex-wrap">
           <span className="type-hero text-4xl">
@@ -224,16 +284,26 @@ export function TickerDetail({ symbol }: { symbol: string }) {
         {watchMsg && <p className="text-xs text-muted-foreground mt-1">{watchMsg}</p>}
       </header>
 
-      {/* Metadata cards — only when this ticker is one of the user's holdings */}
-      {held && (
-        <StatStrip
-          items={[
-            { label: 'Cost Basis', value: formatCurrency((held.average_cost ?? 0) * (held.shares ?? 0)), tone: 'default' },
-            { label: 'Shares', value: String(held.shares ?? 0), tone: 'default' },
-            { label: 'Type', value: String(held.security_type || 'stock').replace('_', ' '), tone: 'neutral' },
-          ]}
-        />
-      )}
+      {/* Metadata cards — only when this ticker is one of the user's holdings.
+          VALUE = the position's current worth, colored by total gain/loss with
+          the % since purchase alongside (type moved up under the ticker). */}
+      {held && (() => {
+        const gainPct = held.total_gain_loss_percent ?? 0
+        const tone = gainPct > 0 ? 'positive' as const : gainPct < 0 ? 'negative' as const : 'default' as const
+        return (
+          <StatStrip
+            items={[
+              { label: 'Cost Basis', value: formatCurrency((held.average_cost ?? 0) * (held.shares ?? 0)), tone: 'default' },
+              { label: 'Shares', value: String(held.shares ?? 0), tone: 'default' },
+              {
+                label: 'Value',
+                value: `${formatCurrency(held.current_value ?? 0)} (${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(1)}%)`,
+                tone,
+              },
+            ]}
+          />
+        )
+      })()}
 
       {/* Chart */}
       <Card>
@@ -388,6 +458,57 @@ export function TickerDetail({ symbol }: { symbol: string }) {
       </Card>
 
       <Disclaimer variant="market" />
+
+      {/* Edit-holding modal (shares / avg cost) — same update path as the
+          Holdings tab, refreshed into the shared store on save. */}
+      {editOpen && held && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setEditOpen(false)} />
+          <div className="relative bg-card text-card-foreground border border-border rounded-ds-md shadow-2xl w-full max-w-sm mx-4 p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold">Edit {ticker}</h2>
+              <button onClick={() => setEditOpen(false)} className="text-muted-foreground hover:text-foreground text-2xl leading-none" aria-label="Close">×</button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Shares</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={editShares}
+                  onChange={e => setEditShares(e.target.value)}
+                  min="0"
+                  step="any"
+                  className="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm
+                    focus:outline-none focus:ring-2 focus:ring-ring type-amount"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Avg Cost (USD)</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={editCost}
+                  onChange={e => setEditCost(e.target.value)}
+                  min="0"
+                  step="any"
+                  className="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm
+                    focus:outline-none focus:ring-2 focus:ring-ring type-amount"
+                />
+              </div>
+            </div>
+            {editErr && (
+              <p className="text-sm text-negative border border-negative/30 bg-negative/10 rounded-md p-2">{editErr}</p>
+            )}
+            <div className="flex gap-2">
+              <Button onClick={saveEdit} disabled={editBusy} className="flex-1" size="sm">
+                {editBusy ? 'Saving…' : 'Save Changes'}
+              </Button>
+              <Button variant="outline" onClick={() => setEditOpen(false)} className="flex-1" size="sm">Cancel</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
