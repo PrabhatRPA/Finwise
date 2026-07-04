@@ -11,6 +11,9 @@ import { marketApi, aiApi, watchlistApi } from '@/lib/api'
 import { usePortfolioStore } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils'
 import { Disclaimer } from '@/components/disclaimer'
+import { StatStrip } from '@/components/ds/stat-strip'
+import { selectionTick } from '@/components/ds/haptics'
+import { useRef } from 'react'
 
 // Time-range buttons → Yahoo period + a tick formatter appropriate to the span.
 // 1D is intraday (5-minute bars) — the closest thing to a live view.
@@ -74,11 +77,23 @@ export function TickerDetail({ symbol }: { symbol: string }) {
   const ticker = symbol.toUpperCase()
   const { holdings } = usePortfolioStore()
 
-  // Company name from the user's holdings, if this ticker is one of them.
-  const companyName: string | undefined = useMemo(() => {
-    const h = holdings.find((x: any) => (x.ticker || '').toUpperCase() === ticker) as any
-    return h?.security_name || h?.company_name || undefined
-  }, [holdings, ticker])
+  // The user's holding for this ticker (if held) — powers the company name
+  // and the COST BASIS / SHARES / TYPE metadata cards.
+  const held: any = useMemo(
+    () => holdings.find((x: any) => (x.ticker || '').toUpperCase() === ticker) as any,
+    [holdings, ticker],
+  )
+  const companyName: string | undefined = held?.security_name || held?.company_name || undefined
+
+  // Haptic detent when the scrubbed datapoint changes.
+  const scrubIndex = useRef<number | null>(null)
+  const onScrub = (st: any) => {
+    const i = st?.isTooltipActive ? st?.activeTooltipIndex : null
+    if (i != null && i !== scrubIndex.current) {
+      scrubIndex.current = i
+      selectionTick()
+    }
+  }
 
   const [range, setRange] = useState<RangeId>('1Y')
   const [quote, setQuote] = useState<Quote | null>(null)
@@ -180,7 +195,7 @@ export function TickerDetail({ symbol }: { symbol: string }) {
       <header>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight">{ticker}</h1>
+            <h1 className="type-amount text-2xl font-bold tracking-tight">{ticker}</h1>
             {companyName && <p className="text-sm text-muted-foreground truncate">{companyName}</p>}
           </div>
           <button
@@ -196,18 +211,29 @@ export function TickerDetail({ symbol }: { symbol: string }) {
             {watchBusy ? 'Adding…' : 'Watchlist'}
           </button>
         </div>
-        <div className="mt-2 flex items-baseline gap-3">
-          <span className="text-3xl font-bold">
+        <div className="mt-2 flex items-baseline gap-3 flex-wrap">
+          <span className="type-hero text-4xl">
             {quote ? formatCurrency(quote.price) : '—'}
           </span>
           {quote && (
-            <span className={`text-sm font-medium ${dayColor}`}>
-              {dayChange >= 0 ? '+' : ''}{formatCurrency(dayChange)} ({dayChange >= 0 ? '+' : ''}{dayPct.toFixed(2)}%) today
+            <span className={`type-amount text-sm font-medium ${dayColor}`}>
+              {dayChange >= 0 ? '▲ +' : '▼ −'}{formatCurrency(Math.abs(dayChange))} ({dayChange >= 0 ? '+' : ''}{dayPct.toFixed(2)}%) today
             </span>
           )}
         </div>
         {watchMsg && <p className="text-xs text-muted-foreground mt-1">{watchMsg}</p>}
       </header>
+
+      {/* Metadata cards — only when this ticker is one of the user's holdings */}
+      {held && (
+        <StatStrip
+          items={[
+            { label: 'Cost Basis', value: formatCurrency((held.average_cost ?? 0) * (held.shares ?? 0)), tone: 'default' },
+            { label: 'Shares', value: String(held.shares ?? 0), tone: 'default' },
+            { label: 'Type', value: String(held.security_type || 'stock').replace('_', ' '), tone: 'neutral' },
+          ]}
+        />
+      )}
 
       {/* Chart */}
       <Card>
@@ -218,7 +244,7 @@ export function TickerDetail({ symbol }: { symbol: string }) {
               <button
                 key={r.id}
                 onClick={() => setRange(r.id)}
-                className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
+                className={`px-2.5 py-1 text-xs rounded-full type-amount font-medium transition-colors ${
                   range === r.id
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -243,8 +269,14 @@ export function TickerDetail({ symbol }: { symbol: string }) {
                 </span>
                 <span className="text-xs text-muted-foreground">over {range}</span>
               </div>
+              {/* Interactive scrub: drag shows the value/date lollipop; each new
+                  datapoint under the finger fires a light haptic detent. */}
               <ResponsiveContainer width="100%" height={260}>
-                <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                <LineChart
+                  data={chartData}
+                  margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
+                  onMouseMove={onScrub}
+                >
                   <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.15} />
                   <XAxis dataKey="x" tick={{ fontSize: 9 }} interval="preserveStartEnd" minTickGap={40} />
                   <YAxis
@@ -255,10 +287,20 @@ export function TickerDetail({ symbol }: { symbol: string }) {
                   />
                   <Tooltip
                     formatter={(v: any) => [formatCurrency(v as number), 'Close']}
-                    contentStyle={{ fontSize: 12 }}
+                    contentStyle={{ fontSize: 12, borderRadius: 12 }}
                     labelStyle={{ fontSize: 11, color: '#9ca3af' }}
+                    cursor={{ stroke: lineColor, strokeOpacity: 0.5, strokeDasharray: '2 3' }}
                   />
-                  <Line type="monotone" dataKey="close" stroke={lineColor} strokeWidth={2} dot={false} connectNulls />
+                  <Line
+                    type="monotone"
+                    dataKey="close"
+                    stroke={lineColor}
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 5, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+                    connectNulls
+                    isAnimationActive={false}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </>

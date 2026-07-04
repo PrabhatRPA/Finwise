@@ -7,6 +7,7 @@ import { KeyboardManager } from '@/components/keyboard-manager'
 import { SplashHider } from '@/components/splash-hider'
 import { AppLockGate } from '@/components/app-lock-gate'
 import { FloatingNav } from '@/components/floating-nav'
+import { FloatingTabBar } from '@/components/ds/floating-tab-bar'
 
 
 export const metadata: Metadata = {
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {children}
               </main>
               <FloatingNav />
+              <FloatingTabBar />
             </AppLockGate>
           </AuthProvider>
         </ThemeProvider>

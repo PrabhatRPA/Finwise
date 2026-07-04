@@ -44,7 +44,8 @@ export function FloatingNav() {
   return (
     <div
       className={`fixed z-40 flex flex-col gap-2 ${sideClass}`}
-      style={{ bottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
+      /* Sit above the floating tab bar (64px bar + 12px inset + 12px gap). */
+      style={{ bottom: 'calc(env(safe-area-inset-bottom) + 88px)' }}
     >
       {/* Top button — scroll to top */}
       {showTop && (

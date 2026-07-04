@@ -9,6 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn, formatCurrency } from '@/lib/utils'
 import { holdingsApi, accountsApi } from '@/lib/api'
 import { usePortfolioStore } from '@/lib/store'
+import { HoldingRow } from '@/components/ds/holding-row'
+import { notifySuccess } from '@/components/ds/haptics'
+import { fetchSparkSeries } from '@/lib/native/market'
 
 // ── Customizable columns ────────────────────────────────────────────────────
 // Every data column the desktop holdings table can show. The actions (edit /
@@ -116,6 +119,28 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
     const sym = (t || '').trim()
     if (sym) router.push(`/ticker/?symbol=${encodeURIComponent(sym)}`)
   }
+
+  // Sparkline series for the mobile rows — ONE batched spark call for every
+  // ticker (10-min cached in market.ts). Missing symbols render a flat line.
+  const [sparks, setSparks] = useState<Map<string, number[]>>(new Map())
+  useEffect(() => {
+    const tickers = holdings.map((h: any) => h.ticker).filter(Boolean)
+    if (tickers.length === 0) return
+    let cancelled = false
+    fetchSparkSeries(tickers)
+      .then((m) => { if (!cancelled) setSparks(m) })
+      .catch(() => { /* flat lines */ })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [holdings.map((h: any) => h.ticker).join(',')])
+
+  // The floating tab bar's ⊕ button broadcasts this to open the Add modal.
+  useEffect(() => {
+    const onAdd = () => openAdd()
+    window.addEventListener('nworth:add-holding', onAdd)
+    return () => window.removeEventListener('nworth:add-holding', onAdd)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const [sortBy, setSortBy] = useState<SortField>('ticker')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
@@ -328,6 +353,7 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
         await holdingsApi.update(editingId, payload)
       } else {
         await holdingsApi.create(payload)
+        notifySuccess()   // success haptic on adding an asset
       }
 
       closeModal()
@@ -562,7 +588,7 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
               The 12-column desktop table doesn't fit on a phone screen, so
               under md we render each holding as a stacked card with the key
               numbers up top and a Edit / Delete row at the bottom. */}
-          <div className="md:hidden rounded-md border divide-y divide-border">
+          <div className="md:hidden rounded-ds-md border divide-y divide-border bg-card shadow-card row-stagger overflow-hidden">
             {sorted.length === 0 ? (
               <div className="text-center py-10 text-muted-foreground text-sm">
                 {q ? `No holdings match "${searchQuery}".` : (
@@ -574,81 +600,43 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
                 )}
               </div>
             ) : (
-              sorted.map(h => {
-                const gainPct = h.total_gain_loss_percent ?? 0
-                const gainColor = gainPct > 0
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : gainPct < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
-                const todayPct = h.today_gain_loss_percent ?? 0
-                const todayColor = todayPct > 0
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : todayPct < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
-                const alloc = totalValue > 0 ? ((h.current_value ?? 0) / totalValue * 100) : 0
-                return (
-                  <div key={h.id ?? h.ticker} className="p-3 space-y-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => openTicker(h.ticker)}
-                            className="font-semibold text-base text-primary hover:underline"
-                          >
-                            {h.ticker}
-                          </button>
-                          <span className="capitalize text-[10px] border border-border rounded-full px-1.5 py-px text-muted-foreground">
-                            {h.security_type || 'stock'}
-                          </span>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {h.shares ?? 0} sh · avg {formatCurrency(h.average_cost ?? 0)}
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div className="font-semibold text-base">{formatCurrency(h.current_value ?? 0)}</div>
-                        <div className={`text-xs font-medium ${gainColor}`}>
-                          {gainPct > 0 ? '+' : ''}{gainPct.toFixed(2)}%
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div>
-                        <div className="text-muted-foreground">Price</div>
-                        <div className="font-medium">
-                          {h.current_price && h.current_price > 0
-                            ? formatCurrency(h.current_price)
-                            : <span className="text-muted-foreground">—</span>}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">Today</div>
-                        <div className={`font-medium ${todayColor}`}>
-                          {todayPct > 0 ? '+' : ''}{todayPct.toFixed(2)}%
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">Alloc</div>
-                        <div className="font-medium">{alloc.toFixed(1)}%</div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 pt-1">
+              sorted.map(h => (
+                <HoldingRow
+                  key={h.id ?? h.ticker}
+                  holding={h}
+                  spark={sparks.get((h.ticker || '').toUpperCase())}
+                  onOpen={openTicker}
+                  actions={
+                    <div className="flex flex-col gap-1 items-center">
                       <button
                         onClick={() => openEdit(h)}
-                        className="flex-1 py-1.5 text-xs border border-border rounded-md hover:bg-accent"
+                        aria-label={`Edit ${h.ticker}`}
+                        className="h-7 w-7 flex items-center justify-center rounded-md border border-border
+                          text-muted-foreground hover:text-foreground hover:bg-accent"
+                        style={{ minHeight: 0, minWidth: 0 }}
                       >
-                        Edit
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                          strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                          <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                        </svg>
                       </button>
                       <button
                         onClick={() => setConfirmDelete(h)}
                         disabled={deletingId === h.id}
-                        className="px-3 py-1.5 text-xs border border-border rounded-md hover:bg-red-50 hover:border-red-300 hover:text-red-600 dark:hover:bg-red-950/30 transition-colors disabled:opacity-40"
                         aria-label={`Delete ${h.ticker}`}
+                        className="h-7 w-7 flex items-center justify-center rounded-md border border-border
+                          text-muted-foreground hover:text-negative hover:bg-accent disabled:opacity-40"
+                        style={{ minHeight: 0, minWidth: 0 }}
                       >
-                        {deletingId === h.id ? '…' : 'Delete'}
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                          strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
                       </button>
                     </div>
-                  </div>
-                )
-              })
+                  }
+                />
+              ))
             )}
           </div>
 

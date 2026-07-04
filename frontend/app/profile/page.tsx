@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth'
-import { useTheme } from '@/lib/theme'
 import { APP_NAME, APP_TAGLINE, APP_VERSION } from '@/lib/constants'
 import { AIProviderSettings } from '@/components/dashboard/ai-provider-settings'
 import {
@@ -20,11 +19,11 @@ import {
 import { connectAppleId, getAppleUserId } from '@/lib/native/auth'
 import { isAppLockEnabled, setAppLockEnabled } from '@/lib/native/app-lock'
 import { getFloatSide, setFloatSide, type FloatSide } from '@/lib/float-side'
+import { ThemePicker } from '@/components/ds/theme-picker'
 
 export default function ProfilePage() {
   const router = useRouter()
   const { user, isLoading, logout } = useAuth()
-  const { mode, setMode } = useTheme()
 
   const [biometryStatus, setBiometryStatus] = useState<BiometryStatus | null>(null)
   const [biometricOn, setBiometricOn] = useState(false)
@@ -141,21 +140,8 @@ export default function ProfilePage() {
           <CardTitle className="text-base">Appearance</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-2">
-            {(['light', 'dark', 'system'] as const).map(t => (
-              <button
-                key={t}
-                onClick={() => setMode(t)}
-                className={`h-10 rounded-md border text-sm font-medium capitalize transition-colors ${
-                  mode === t
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'border-border hover:bg-accent'
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
+          {/* Theme picker — live mini-preview per theme, not text labels. */}
+          <ThemePicker />
           <p className="text-xs text-muted-foreground mt-2">
             <span className="font-medium">System</span> follows your device&apos;s
             appearance; if the device has no preference it switches by time of day.

@@ -25,49 +25,10 @@ import { DebtsTable } from '@/components/dashboard/debts-table'
 import { WatchlistTable } from '@/components/dashboard/watchlist-table'
 import { PropertiesTable } from '@/components/dashboard/properties-table'
 import { PortfolioNews } from '@/components/dashboard/portfolio-news'
+import { StatStrip } from '@/components/ds/stat-strip'
 
-// Tiny stat tile — used in the 5-up summary row.
-//
-// Layout is identical across all 5 tiles: tiny uppercase label on top, bold
-// compact value below. The cell is rendered as a <div> (not <button>) when
-// `onAction` is provided so that the global `@media (pointer: coarse)` rule
-// in globals.css — which inflates real buttons to 44px — doesn't make the
-// interactive tile taller than the static ones.
-function SummaryStat({
-  label, value, valueClass, onAction,
-}: {
-  label: string
-  value: string
-  valueClass?: string
-  onAction?: () => void
-}) {
-  const interactive = !!onAction
-  return (
-    <div
-      onClick={onAction}
-      className={`rounded-md border border-border bg-card px-1.5 py-1.5 sm:px-3 sm:py-2 overflow-hidden select-none ${
-        interactive
-          ? 'cursor-pointer hover:bg-accent/30 active:bg-accent/60 transition-colors'
-          : ''
-      }`}
-    >
-      <p className="text-[9px] sm:text-[10px] uppercase tracking-wide text-muted-foreground font-medium flex items-center gap-0.5 min-w-0">
-        <span className="truncate">{label}</span>
-        {interactive && (
-          // Pencil icon — small affordance that this tile is tappable.
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-               strokeLinecap="round" strokeLinejoin="round"
-               className="h-2.5 w-2.5 opacity-50 shrink-0" aria-hidden="true">
-            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-          </svg>
-        )}
-      </p>
-      <p className={`text-xs sm:text-lg font-bold tabular-nums truncate mt-0.5 ${valueClass ?? ''}`}>
-        {value}
-      </p>
-    </div>
-  )
-}
+// (The old 5-up SummaryStat tile row was replaced by the design-system
+// StatStrip — ASSETS / LIABILITIES / NET CHANGE — under the hero card.)
 
 // Last-known net-worth snapshot, cached so the dashboard shows real numbers on
 // load instead of flashing $0 (which made the growth chart briefly render a
@@ -129,7 +90,35 @@ export default function DashboardPage() {
   // removed when the Cash tile became non-tappable. The Accounts tab
   // handles full CRUD (name / type / institution / balance).
   // Controlled tab state so the mobile <select> and the desktop TabsList stay in sync.
-  const [activeTab, setActiveTab] = useState('holdings')
+  const [activeTab, setActiveTabState] = useState('holdings')
+
+  // Two-way ?tab= sync with the floating tab bar: URL param is the source of
+  // truth. In-page tab changes write it back (replaceState — no history spam)
+  // and broadcast so the bar's active state updates.
+  const setActiveTab = (t: string) => {
+    setActiveTabState(t)
+    try {
+      const url = new URL(window.location.href)
+      url.searchParams.set('tab', t)
+      window.history.replaceState(null, '', url.toString())
+      window.dispatchEvent(new Event('nworth:tab-change'))
+    } catch { /* ignore */ }
+  }
+  useEffect(() => {
+    const read = () => {
+      try {
+        const t = new URLSearchParams(window.location.search).get('tab')
+        if (t) setActiveTabState(t)
+      } catch { /* ignore */ }
+    }
+    read()
+    window.addEventListener('nworth:tab-change', read)
+    window.addEventListener('popstate', read)
+    return () => { window.removeEventListener('nworth:tab-change', read); window.removeEventListener('popstate', read) }
+  }, [])
+
+  // Today's portfolio P&L for the stat strip's NET CHANGE.
+  const todayChange = holdings.reduce((s: number, h: any) => s + (h.today_gain_loss ?? 0), 0)
 
   // First-run onboarding: offer to load the demo dataset. Shown once per user,
   // only when their account is still empty (so a returning user whose flag was
@@ -309,22 +298,18 @@ export default function DashboardPage() {
         />
       </header>
 
-      {/* ── Summary stat row ──
-          Always 5 columns. Each cell is just a tiny uppercase label + a
-          compact-formatted value ($7.2K, $1.5M). No icons, no descriptions,
-          no left stripe — packs into a single phone-width row at ~72px each. */}
-      <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
-        <SummaryStat label="Portfolio" value={formatCompactCurrency(displayTotalValue)} valueClass="text-emerald-600 dark:text-emerald-400" />
-        <SummaryStat label="Cash" value={formatCompactCurrency(netWorthData?.cash ?? 0)} valueClass="text-amber-600 dark:text-amber-400" />
-        <SummaryStat label="Debt" value={formatCompactCurrency(netWorthData?.total_liabilities ?? 0)} valueClass={(netWorthData?.total_liabilities ?? 0) > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-foreground'} />
-        <SummaryStat label="Holdings" value={String(holdings.length)} valueClass="text-violet-600 dark:text-violet-400" />
-        <SummaryStat label="Net Worth" value={formatCompactCurrency(netWorthData?.net_worth ?? 0)} valueClass="text-blue-600 dark:text-blue-400" />
-      </div>
-
-      {/* ── Growth chart ── live net worth + time-range area chart.
-          Pulls daily snapshots from portfolio_history. A new snapshot is
-          recorded on every dashboard load (one per day max, UPSERT). */}
+      {/* ── Hero net-worth card ── the top element per the design system:
+          oversized rolling numeral + delta + history chart + range pills. */}
       <GrowthChart currentNetWorth={netWorthData?.net_worth ?? displayTotalValue} />
+
+      {/* ── Stat strip ── ASSETS / LIABILITIES / NET CHANGE (today's P&L). */}
+      <StatStrip
+        items={[
+          { label: 'Assets', value: formatCompactCurrency(netWorthData?.total_assets ?? displayTotalValue), tone: 'default' },
+          { label: 'Liabilities', value: formatCompactCurrency(netWorthData?.total_liabilities ?? 0), tone: (netWorthData?.total_liabilities ?? 0) > 0 ? 'negative' : 'neutral' },
+          { label: 'Net Change', value: `${todayChange >= 0 ? '+' : '−'}${formatCompactCurrency(Math.abs(todayChange))}`, tone: todayChange > 0 ? 'positive' : todayChange < 0 ? 'negative' : 'neutral' },
+        ]}
+      />
 
       {/* ── Tabs ──
           The 7-button tab bar wraps horribly on a phone. On mobile we show

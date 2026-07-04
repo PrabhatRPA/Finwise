@@ -82,24 +82,11 @@ function InfoIcon() {
   )
 }
 
-function ProfileChevronIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 opacity-70" aria-hidden="true">
-      <polyline points="9 18 15 12 9 6" />
-    </svg>
-  )
-}
-
 export function Navbar() {
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading } = useAuth()
   const { theme, setTheme } = useTheme()
   const pathname = usePathname()
   const router = useRouter()
-
-  const initials = user
-    ? (user.full_name || user.username || '?')[0].toUpperCase()
-    : '?'
 
   return (
     <nav
@@ -161,37 +148,18 @@ export function Navbar() {
             {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
           </button>
 
-          {/* Upload Documents — icon button (mobile) / icon+label (tablet+) */}
+          {/* Upload Documents — kept for discoverability on tablet+/desktop only;
+              on phones the floating tab bar + Settings rows own navigation. */}
           {!isLoading && isAuthenticated && (
             <button
               onClick={() => router.push('/documents')}
               title="Upload documents"
               aria-label="Upload documents"
-              className="h-9 inline-flex items-center justify-center gap-1.5 px-2 sm:px-3 rounded-lg border border-border
+              className="hidden sm:inline-flex h-9 items-center justify-center gap-1.5 px-3 rounded-lg border border-border
                 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             >
               <UploadIcon />
-              <span className="hidden sm:inline text-sm font-medium">Documents</span>
-            </button>
-          )}
-
-          {/* Profile chip — same h-9, initial + chevron on mobile, full label on tablet+.
-              Replaces the old "Sign out" shortcut. The Profile page houses
-              sign-out plus all per-user settings (theme, Face ID, etc). */}
-          {!isLoading && isAuthenticated && user && (
-            <button
-              onClick={() => router.push('/profile')}
-              title="Profile"
-              aria-label="Profile"
-              className="h-9 inline-flex items-center gap-1.5 rounded-lg border border-border px-1.5 sm:px-2.5 text-sm
-                text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            >
-              <span className="h-6 w-6 rounded-full bg-primary/15 text-primary flex items-center
-                justify-center text-[11px] font-bold flex-shrink-0 select-none">
-                {initials}
-              </span>
-              <span className="hidden sm:inline">Profile</span>
-              <span className="sm:hidden"><ProfileChevronIcon /></span>
+              <span className="text-sm font-medium">Documents</span>
             </button>
           )}
         </div>

@@ -93,7 +93,10 @@ export function FloatingTabBar() {
     impactLight()
     if (t.href) { router.push(t.href); return }
     router.push(`/dashboard/?tab=${t.tab}`)
-    window.dispatchEvent(new Event('nworth:tab-change'))
+    // router.push commits the URL asynchronously — nudge listeners twice so
+    // both the bar highlight and the dashboard's tab state settle.
+    setTimeout(() => window.dispatchEvent(new Event('nworth:tab-change')), 50)
+    setTimeout(() => window.dispatchEvent(new Event('nworth:tab-change')), 300)
   }
 
   const addHolding = () => {
