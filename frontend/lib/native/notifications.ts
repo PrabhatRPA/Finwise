@@ -67,3 +67,58 @@ export async function firePriceAlert(args: AlertArgs): Promise<void> {
     fireWeb(args)
   }
 }
+
+// ── Settings-page helpers ────────────────────────────────────────────────────
+
+export type NotifStatus = 'granted' | 'denied' | 'prompt' | 'unavailable'
+
+export async function getNotificationStatus(): Promise<NotifStatus> {
+  if (!isNative()) return 'unavailable'
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications')
+    const perm = await LocalNotifications.checkPermissions()
+    if (perm.display === 'granted') return 'granted'
+    if (perm.display === 'denied') return 'denied'
+    return 'prompt'
+  } catch {
+    return 'unavailable'
+  }
+}
+
+// Ask iOS for permission (shows the system prompt the first time; after a
+// hard denial iOS won't re-prompt — the user must flip it in iOS Settings).
+export async function requestNotificationPermission(): Promise<NotifStatus> {
+  if (!isNative()) return 'unavailable'
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications')
+    const req = await LocalNotifications.requestPermissions()
+    return req.display === 'granted' ? 'granted' : 'denied'
+  } catch {
+    return 'unavailable'
+  }
+}
+
+// Schedule a test alert 5 s out so the user can background the app and watch
+// the banner arrive — proves the watchlist alert path end-to-end.
+export async function sendTestNotification(): Promise<boolean> {
+  if (!isNative()) return false
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications')
+    const perm = await LocalNotifications.checkPermissions()
+    if (perm.display !== 'granted') {
+      const req = await LocalNotifications.requestPermissions()
+      if (req.display !== 'granted') return false
+    }
+    await LocalNotifications.schedule({
+      notifications: [{
+        id: 999901,
+        title: 'Nworth test notification',
+        body: 'Price alerts are working — this is how a watchlist alert will look.',
+        schedule: { at: new Date(Date.now() + 5000) },
+      }],
+    })
+    return true
+  } catch {
+    return false
+  }
+}

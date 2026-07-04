@@ -20,6 +20,12 @@ import { connectAppleId, getAppleUserId, updateFullName } from '@/lib/native/aut
 import { isAppLockEnabled, setAppLockEnabled } from '@/lib/native/app-lock'
 import { getFloatSide, setFloatSide, type FloatSide } from '@/lib/float-side'
 import { ThemePicker } from '@/components/ds/theme-picker'
+import {
+  getNotificationStatus,
+  requestNotificationPermission,
+  sendTestNotification,
+  type NotifStatus,
+} from '@/lib/native/notifications'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -31,6 +37,37 @@ export default function ProfilePage() {
   const [nameDraft, setNameDraft] = useState('')
   const [nameBusy, setNameBusy] = useState(false)
   const [nameMsg, setNameMsg] = useState('')
+
+  // Watchlist push-notification permission state.
+  const [notifStatus, setNotifStatus] = useState<NotifStatus | null>(null)
+  const [notifBusy, setNotifBusy] = useState(false)
+  const [notifMsg, setNotifMsg] = useState('')
+
+  const handleEnableNotifications = async () => {
+    setNotifBusy(true)
+    setNotifMsg('')
+    try {
+      const s = await requestNotificationPermission()
+      setNotifStatus(s)
+      if (s === 'granted') setNotifMsg('Notifications enabled.')
+      else if (s === 'denied') setNotifMsg('iOS blocked the prompt — enable Nworth in iOS Settings → Notifications.')
+    } finally {
+      setNotifBusy(false)
+    }
+  }
+
+  const handleTestNotification = async () => {
+    setNotifBusy(true)
+    setNotifMsg('')
+    try {
+      const ok = await sendTestNotification()
+      setNotifMsg(ok
+        ? 'Test scheduled — lock or background the app; the banner arrives in ~5 seconds.'
+        : 'Could not schedule. Check that notifications are allowed for Nworth in iOS Settings.')
+    } finally {
+      setNotifBusy(false)
+    }
+  }
 
   const saveName = async () => {
     setNameBusy(true)
@@ -75,6 +112,7 @@ export default function ProfilePage() {
     })
     if (native) {
       isAppLockEnabled().then(v => { if (!cancelled) setAppLockOn(v) }).catch(() => {})
+      getNotificationStatus().then(s => { if (!cancelled) setNotifStatus(s) }).catch(() => {})
     }
     if (native) {
       getAppleUserId().then(id => { if (!cancelled) setAppleLinked(!!id) }).catch(() => {})
@@ -386,6 +424,43 @@ export default function ProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Notifications — watchlist price alerts arrive as OS notifications */}
+      {isNative && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Notifications</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">Watchlist price alerts</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {notifStatus === 'granted' && 'Enabled — you’ll get an alert when a watchlist ticker crosses its target price.'}
+                  {notifStatus === 'prompt' && 'Not enabled yet. Allow notifications so price alerts can reach you.'}
+                  {notifStatus === 'denied' && 'Blocked. Open iOS Settings → Notifications → Nworth and allow notifications.'}
+                  {notifStatus === null && 'Checking…'}
+                </p>
+              </div>
+              {notifStatus === 'prompt' && (
+                <Button size="sm" onClick={handleEnableNotifications} disabled={notifBusy}>
+                  {notifBusy ? '…' : 'Enable'}
+                </Button>
+              )}
+              {notifStatus === 'granted' && (
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium shrink-0">✓ Allowed</span>
+              )}
+            </div>
+
+            {notifStatus === 'granted' && (
+              <Button size="sm" variant="outline" onClick={handleTestNotification} disabled={notifBusy} className="text-xs">
+                {notifBusy ? 'Scheduling…' : 'Send test notification (5s)'}
+              </Button>
+            )}
+            {notifMsg && <p className="text-xs text-muted-foreground">{notifMsg}</p>}
+          </CardContent>
+        </Card>
+      )}
 
       {/* AI Provider — full settings, moved here from the AI Insights tab */}
       <AIProviderSettings />

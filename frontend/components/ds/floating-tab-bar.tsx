@@ -94,9 +94,12 @@ export function FloatingTabBar() {
     if (t.href) { router.push(t.href); return }
     router.push(`/dashboard/?tab=${t.tab}`)
     // router.push commits the URL asynchronously — nudge listeners twice so
-    // both the bar highlight and the dashboard's tab state settle.
-    setTimeout(() => window.dispatchEvent(new Event('nworth:tab-change')), 50)
-    setTimeout(() => window.dispatchEvent(new Event('nworth:tab-change')), 300)
+    // both the bar highlight and the dashboard's tab state settle. The scroll
+    // hint lands the user on the section itself (Home returns to the top).
+    const scroll = t.id === 'home' ? 'top' : 'tabs'
+    const fire = () => window.dispatchEvent(new CustomEvent('nworth:tab-change', { detail: { scroll } }))
+    setTimeout(fire, 50)
+    setTimeout(fire, 300)
   }
 
   const addHolding = () => {

@@ -45,6 +45,11 @@ const config: CapacitorConfig = {
     StatusBar: {
       style: 'dark',
     },
+    LocalNotifications: {
+      // Watchlist alerts fire while the app is open (price checks run in-app);
+      // without this iOS silently suppresses foreground banners.
+      presentationOptions: ['banner', 'sound'],
+    },
   },
   ios: {
     // 'never' = let the body fill the viewport edge-to-edge. We handle the

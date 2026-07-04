@@ -105,10 +105,18 @@ export default function DashboardPage() {
     } catch { /* ignore */ }
   }
   useEffect(() => {
-    const read = () => {
+    const read = (e?: Event) => {
       try {
         const t = new URLSearchParams(window.location.search).get('tab')
         if (t) setActiveTabState(t)
+        // The floating tab bar attaches a scroll hint so tapping Insights/News
+        // lands the user ON the section instead of leaving them at the hero.
+        const scroll = (e as CustomEvent | undefined)?.detail?.scroll
+        if (scroll === 'top') {
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        } else if (scroll === 'tabs') {
+          document.getElementById('dashboard-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
       } catch { /* ignore */ }
     }
     read()
@@ -324,6 +332,7 @@ export default function DashboardPage() {
           The 7-button tab bar wraps horribly on a phone. On mobile we show
           a single <select> dropdown bound to the same Tabs state; on md+
           the original 7-col tab bar renders normally. */}
+      <div id="dashboard-tabs" style={{ scrollMarginTop: 'calc(env(safe-area-inset-top) + 8px)' }}>
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         {/* Mobile: View dropdown + Refresh button side-by-side */}
         <div className="md:hidden mb-3 flex items-end gap-2">
@@ -477,6 +486,7 @@ export default function DashboardPage() {
           <AIAnalysisCard holdings={holdings} />
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   )
 }
