@@ -128,28 +128,26 @@ export function TruePerformanceChart({ holdings }: { holdings: any[] }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <p className={`type-amount text-lg font-bold ${up ? 'text-positive' : 'text-negative'}`}>
-            {up ? '▲ +' : '▼ −'}{formatCurrency(Math.abs(delta))}
-            <span className="ml-1.5 text-sm font-semibold">({up ? '+' : ''}{pct.toFixed(2)}%)</span>
-          </p>
-          <p className="text-xs text-muted-foreground">over {range}</p>
-        </div>
-        <div className="flex items-center gap-1 flex-1 max-w-[280px] justify-end">
-          {RANGES.map(r => (
-            <button
-              key={r.id}
-              onClick={() => setRange(r.id)}
-              className={`flex-1 min-w-0 px-1 py-1 text-[10px] rounded-full type-amount font-semibold transition-colors ${
-                range === r.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-              }`}
-              style={{ minHeight: 0, minWidth: 0 }}
-            >
-              {r.id}
-            </button>
-          ))}
-        </div>
+      {/* Compact Δ line, then the full-width range row so all 7 pills always
+          fit on one line (same pattern as the ticker page). */}
+      <p className={`type-amount text-sm font-semibold ${up ? 'text-positive' : 'text-negative'}`}>
+        {up ? '▲ +' : '▼ −'}{formatCurrency(Math.abs(delta))}
+        <span className="ml-1">({up ? '+' : ''}{pct.toFixed(2)}%)</span>
+        <span className="ml-1.5 text-xs text-muted-foreground font-normal">over {range}</span>
+      </p>
+      <div className="flex items-center gap-1">
+        {RANGES.map(r => (
+          <button
+            key={r.id}
+            onClick={() => setRange(r.id)}
+            className={`flex-1 min-w-0 px-0 py-1.5 text-[10px] rounded-full type-amount font-semibold transition-colors ${
+              range === r.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+            }`}
+            style={{ minHeight: 0, minWidth: 0 }}
+          >
+            {r.id}
+          </button>
+        ))}
       </div>
 
       {loading ? (
