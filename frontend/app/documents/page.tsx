@@ -112,6 +112,7 @@ export default function DocumentsPage() {
       export: 'export-data',
       manage: 'data-management-section',
       backups: 'auto-backups',
+      icloud: 'icloud-sync',
       demo: 'demo-data',
     }
     const id = target[focus] ?? 'upload-section'

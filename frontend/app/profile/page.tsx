@@ -487,6 +487,11 @@ export default function ProfilePage() {
             onClick={() => router.push('/documents?focus=export')}
           />
           <Row
+            label="iCloud sync"
+            sub="Sync your portfolio across your iPhone and iPad."
+            onClick={() => router.push('/documents?focus=icloud')}
+          />
+          <Row
             label="Data management"
             sub="iCloud sync, imports, backups."
             onClick={() => router.push('/documents?focus=manage')}

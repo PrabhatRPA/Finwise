@@ -365,7 +365,7 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
   return (
     <div className="space-y-6">
       {/* ── iCloud Sync ── */}
-      <Card>
+      <Card id="icloud-sync" className="scroll-mt-4">
         <CardHeader>
           <CardTitle className="text-base">iCloud Sync</CardTitle>
           <p className="text-sm text-muted-foreground">
