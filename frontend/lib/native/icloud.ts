@@ -28,6 +28,13 @@ const AUTO_SYNC_KEY = 'icloud_auto_sync'      // '1' = on, '0' = off (default on
 //   • modifiedAt: wall-clock, used ONLY as a tiebreaker for true concurrent
 //     conflicts (both devices edited offline since the last common revision).
 const SYNCED_REV_KEY = 'icloud_synced_rev'    // revision this device last pushed/pulled
+// File mtime (epoch ms) of the remote snapshot we last acted on — the cheap
+// fast-path: if the current version's mtime hasn't moved and we're not dirty,
+// reconcile can return without downloading/parsing anything.
+const REMOTE_MTIME_KEY = 'icloud_remote_mtime'
+// KV doorbell key — a tiny beacon that propagates in seconds and wakes other
+// running devices ("device X pushed revision N at T — check now").
+const BEACON_KEY = 'nworth_sync_beacon'
 const DIRTY_KEY = 'icloud_dirty'              // '1' = unsynced local user edits
 const LOCAL_MODIFIED_KEY = 'icloud_local_modified' // ISO of last local user edit
 const DEVICE_ID_KEY = 'icloud_device_id'      // stable per-install id (diagnostics + tiebreak)
@@ -59,17 +66,22 @@ async function getDeviceId(): Promise<string> {
 }
 
 // Parsed view of the remote snapshot's sync metadata.
-interface RemoteMeta { exists: boolean; contents: string; payload: any | null; revision: number; modifiedAt: string }
+interface RemoteMeta {
+  exists: boolean; contents: string; payload: any | null; revision: number
+  modifiedAt: string   // in-payload wall-clock (conflict tiebreak)
+  fileMtime: number    // iCloud file mtime (fast-path marker)
+}
 async function readRemote(): Promise<RemoteMeta> {
   const res = await IcloudSync.read({ fileName: SNAPSHOT_FILE })
-  if (!res.exists || !res.contents) return { exists: false, contents: '', payload: null, revision: 0, modifiedAt: '' }
+  const fileMtime = res.modifiedAt ?? 0
+  if (!res.exists || !res.contents) return { exists: false, contents: '', payload: null, revision: 0, modifiedAt: '', fileMtime }
   try {
     const payload = JSON.parse(res.contents)
     const revision = Number.isFinite(payload?.revision) ? payload.revision : 0
     const modifiedAt = payload?.sync_modified_at ?? payload?.exported_at ?? ''
-    return { exists: true, contents: res.contents, payload, revision, modifiedAt }
+    return { exists: true, contents: res.contents, payload, revision, modifiedAt, fileMtime }
   } catch {
-    return { exists: true, contents: res.contents, payload: null, revision: 0, modifiedAt: '' }
+    return { exists: true, contents: res.contents, payload: null, revision: 0, modifiedAt: '', fileMtime }
   }
 }
 
@@ -85,8 +97,11 @@ function isSnapshotEmpty(payload: any): boolean {
 interface IcloudSyncPlugin {
   isAvailable(): Promise<{ available: boolean }>
   write(opts: { fileName: string; contents: string }): Promise<{ success: boolean; modifiedAt?: number }>
-  read(opts: { fileName: string }): Promise<{ exists: boolean; contents?: string; modifiedAt?: number }>
-  info(opts: { fileName: string }): Promise<{ available: boolean; exists: boolean; modifiedAt?: number; deviceName?: string }>
+  read(opts: { fileName: string }): Promise<{ exists: boolean; contents?: string; modifiedAt?: number; stale?: boolean }>
+  info(opts: { fileName: string }): Promise<{ available: boolean; exists: boolean; modifiedAt?: number; deviceName?: string; stale?: boolean }>
+  kvSet(opts: { key: string; value: string }): Promise<{ success: boolean }>
+  kvGet(opts: { key: string }): Promise<{ value: string }>
+  addListener?(event: string, cb: (data: any) => void): Promise<{ remove: () => void }>
 }
 
 // On web/Tauri there is no native plugin — every method degrades to
@@ -96,6 +111,8 @@ const webFallback: IcloudSyncPlugin = {
   write: async () => ({ success: false }),
   read: async () => ({ exists: false }),
   info: async () => ({ available: false, exists: false }),
+  kvSet: async () => ({ success: false }),
+  kvGet: async () => ({ value: '' }),
 }
 
 const IcloudSync = Capacitor.isNativePlatform()
@@ -156,6 +173,21 @@ export async function syncToICloud(): Promise<boolean> {
     await Preferences.set({ key: LAST_SYNC_KEY, value: new Date().toISOString() })
     await setSyncedRevision(nextRevision)
     await setDirty(false)   // our local edits are now safely in iCloud
+    // Fast-path marker: this device is current with the version it just wrote.
+    if (res.modifiedAt) {
+      await Preferences.set({ key: REMOTE_MTIME_KEY, value: String(res.modifiedAt) })
+    }
+    // Ring the doorbell so other RUNNING devices pull within seconds.
+    try {
+      await IcloudSync.kvSet({
+        key: BEACON_KEY,
+        value: JSON.stringify({
+          rev: nextRevision,
+          mtime: res.modifiedAt ?? Date.now(),
+          device: await getDeviceId(),
+        }),
+      })
+    } catch { /* beacon is best-effort */ }
     return true
   }
   return false
@@ -202,7 +234,9 @@ export async function restoreFromICloud(): Promise<{ message: string }> {
     const rev = Number.isFinite(v?.revision) ? v.revision : 0
     await setSyncedRevision(rev)
     await setDirty(false)
+    if (res.modifiedAt) await Preferences.set({ key: REMOTE_MTIME_KEY, value: String(res.modifiedAt) })
   } catch { /* ignore */ }
+  try { window.dispatchEvent(new Event('nworth:data-synced')) } catch {}
   return { message: out.data?.message ?? 'Restored from iCloud.' }
 }
 
@@ -267,6 +301,12 @@ async function applyRemotePull(remote: RemoteMeta): Promise<void> {
   try { window.localStorage.removeItem('last_net_worth_snapshot') } catch {}
   await setSyncedRevision(remote.revision)
   await setDirty(false)
+  if (remote.fileMtime) {
+    await Preferences.set({ key: REMOTE_MTIME_KEY, value: String(remote.fileMtime) })
+  }
+  // Tell mounted screens fresh data just landed so it appears without any
+  // user action (dashboard listens and silently refetches).
+  try { window.dispatchEvent(new Event('nworth:data-synced')) } catch {}
 }
 
 // Reconcile local data with the iCloud snapshot on launch / foreground, then arm
@@ -299,6 +339,25 @@ export async function reconcileICloud(): Promise<void> {
     if (!(await isAutoSyncEnabled())) return
     const { available } = await IcloudSync.isAvailable()
     if (!available) return
+
+    // FAST-PATH: when we have no local edits pending, a cheap metadata probe
+    // decides whether anything changed at all. info() guarantees the mtime is
+    // the CURRENT iCloud version's (the Swift layer force-refreshes); if it
+    // matches the version we last acted on, there is nothing to do — no
+    // download, no JSON parse, no DB churn. This is what makes the 30s poll
+    // and every-refresh triggers essentially free.
+    if (!(await isDirty())) {
+      try {
+        const probe = await IcloudSync.info({ fileName: SNAPSHOT_FILE })
+        const marker = (await Preferences.get({ key: REMOTE_MTIME_KEY })).value
+        if (
+          probe.exists && !probe.stale && probe.modifiedAt &&
+          marker && String(probe.modifiedAt) === marker
+        ) {
+          return
+        }
+      } catch { /* probe failed — fall through to the full path */ }
+    }
 
     const remote = await readRemote()
     const localPayload = await buildSnapshotPayload('icloud')
@@ -345,11 +404,44 @@ export async function reconcileICloud(): Promise<void> {
     } else {
       // Remote is not ahead of us. Push only if we have pending local edits.
       if (dirty && !localEmpty) await syncToICloud()
+      // Already in sync — remember this version's mtime so the fast-path can
+      // short-circuit the next checks.
+      else if (remote.fileMtime) {
+        await Preferences.set({ key: REMOTE_MTIME_KEY, value: String(remote.fileMtime) })
+      }
     }
   } catch {
     // best-effort — never block launch on sync
   } finally {
     armAutoSync()
     _reconciling = false
+  }
+}
+
+// ── Doorbell listener ────────────────────────────────────────────────────────
+// Another device's push writes a beacon into the iCloud Key-Value store, which
+// propagates in seconds and fires natively while this app is running. On a
+// foreign beacon with a newer revision, pull immediately — this is what makes
+// "edit on iPhone → appears on iPad within seconds" work without polling.
+export async function initSyncListeners(): Promise<() => void> {
+  if (!Capacitor.isNativePlatform()) return () => {}
+  try {
+    const handle = await (IcloudSync as any).addListener?.('kvChanged', async (data: any) => {
+      try {
+        const raw = data?.[BEACON_KEY]
+        if (!raw) return
+        const beacon = JSON.parse(raw)
+        const myDevice = await getDeviceId()
+        if (beacon?.device && beacon.device !== myDevice) {
+          const syncedRev = await getSyncedRevision()
+          if (!Number.isFinite(beacon.rev) || beacon.rev > syncedRev) {
+            reconcileICloud()
+          }
+        }
+      } catch { /* malformed beacon — ignore */ }
+    })
+    return () => { handle?.remove?.() }
+  } catch {
+    return () => {}
   }
 }

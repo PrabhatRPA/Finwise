@@ -163,6 +163,10 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
   useEffect(() => {
     refreshICloud()
     isAutoSyncEnabled().then(setAutoSyncState).catch(() => {})
+    // Keep "Last synced" live when a background pull lands.
+    const onSynced = () => refreshICloud()
+    window.addEventListener('nworth:data-synced', onSynced)
+    return () => window.removeEventListener('nworth:data-synced', onSynced)
   }, [refreshICloud])
 
   const handleICloudSync = async () => {

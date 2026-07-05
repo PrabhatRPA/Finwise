@@ -88,21 +88,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { Capacitor } = await import('@capacitor/core')
         if (!Capacitor.isNativePlatform()) return
         const { App } = await import('@capacitor/app')
-        const { autoSyncIfEnabled, reconcileICloud } = await import('./native/icloud')
+        const { autoSyncIfEnabled, reconcileICloud, initSyncListeners } = await import('./native/icloud')
         // Initial launch reconciliation (pull master if newer; arm auto-push).
         reconcileICloud()
+        // Doorbell: other devices' pushes wake us within seconds via the
+        // iCloud Key-Value beacon (no waiting for the next poll tick).
+        const stopBeacon = await initSyncListeners()
         const handle = await App.addListener('appStateChange', ({ isActive }) => {
           if (isActive) {
             reconcileICloud()                 // foreground → pull if remote newer
-            if (!poll) poll = setInterval(() => { reconcileICloud() }, 45_000)
+            if (!poll) poll = setInterval(() => { reconcileICloud() }, 30_000)
           } else {
             autoSyncIfEnabled()               // background → push local changes
             if (poll) { clearInterval(poll); poll = undefined }  // pause polling in background
           }
         })
         // Start polling immediately for the current (foreground) session.
-        poll = setInterval(() => { reconcileICloud() }, 45_000)
-        remove = () => { handle.remove() }
+        // 30s + the metadata fast-path makes each tick essentially free.
+        poll = setInterval(() => { reconcileICloud() }, 30_000)
+        remove = () => { handle.remove(); stopBeacon() }
       } catch {
         // native modules unavailable — skip
       }

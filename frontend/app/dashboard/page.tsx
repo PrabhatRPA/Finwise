@@ -108,6 +108,15 @@ export default function DashboardPage() {
       window.dispatchEvent(new Event('nworth:tab-change'))
     } catch { /* ignore */ }
   }
+  // When an iCloud pull lands (background sync), silently refetch so the
+  // synced data appears on screen without any user action.
+  useEffect(() => {
+    const onSynced = () => fetchData(true)
+    window.addEventListener('nworth:data-synced', onSynced)
+    return () => window.removeEventListener('nworth:data-synced', onSynced)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     const read = (e?: Event) => {
       try {
@@ -362,7 +371,7 @@ export default function DashboardPage() {
           </div>
           <Button
             size="sm"
-            onClick={async () => { await systemApi.forceRefreshPrices().catch(() => {}); fetchData(true, 8, true) }}
+            onClick={async () => { import('@/lib/native/icloud').then(m => m.reconcileICloud()).catch(() => {}); await systemApi.forceRefreshPrices().catch(() => {}); fetchData(true, 8, true) }}
             disabled={isRefreshing}
             className="h-10 shrink-0"
           >
@@ -393,7 +402,7 @@ export default function DashboardPage() {
         </TabsList>
           <Button
             size="sm"
-            onClick={async () => { await systemApi.forceRefreshPrices().catch(() => {}); fetchData(true, 8, true) }}
+            onClick={async () => { import('@/lib/native/icloud').then(m => m.reconcileICloud()).catch(() => {}); await systemApi.forceRefreshPrices().catch(() => {}); fetchData(true, 8, true) }}
             disabled={isRefreshing}
           >
             {isRefreshing ? (
