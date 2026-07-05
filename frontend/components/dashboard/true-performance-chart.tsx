@@ -12,6 +12,8 @@ import { marketApi } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 
 const RANGES = [
+  { id: '1D', period: '1d' },
+  { id: '1W', period: '5d' },
   { id: '1M', period: '1mo' },
   { id: '3M', period: '3mo' },
   { id: '6M', period: '6mo' },
@@ -22,8 +24,10 @@ const RANGES = [
 ] as const
 type RangeId = typeof RANGES[number]['id']
 
+interface HistRow { date: string; timestamp?: number; close: number | null }
+
 // (ticker, period) → history rows, cached ~10 min so range flips are instant.
-const _histCache = new Map<string, { at: number; rows: { date: string; close: number | null }[] }>()
+const _histCache = new Map<string, { at: number; rows: HistRow[] }>()
 const HIST_TTL = 10 * 60 * 1000
 
 async function historyFor(ticker: string, period: string) {
@@ -31,9 +35,19 @@ async function historyFor(ticker: string, period: string) {
   const hit = _histCache.get(key)
   if (hit && Date.now() - hit.at < HIST_TTL) return hit.rows
   const res: any = await marketApi.getHistory(ticker, period)
-  const rows = (res.data?.data ?? res.data?.history ?? []) as { date: string; close: number | null }[]
+  const rows = (res.data?.data ?? res.data?.history ?? []) as HistRow[]
   if (rows.length > 0) _histCache.set(key, { at: Date.now(), rows })
   return rows
+}
+
+// Format an epoch-seconds tick for the active range.
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+function fmtTick(ts: number, range: RangeId): string {
+  const d = new Date(ts * 1000)
+  if (range === '1D') return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+  if (range === '1W' || range === '1M' || range === '3M' || range === '6M') return `${MONTHS[d.getMonth()]} ${d.getDate()}`
+  if (range === '1Y') return `${MONTHS[d.getMonth()]} ${d.getDate()}`
+  return `${MONTHS[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`
 }
 
 // Small concurrency limiter (mirrors market.ts's mapLimit).
@@ -46,7 +60,9 @@ async function mapLimit<T>(items: T[], limit: number, fn: (t: T) => Promise<void
 
 export function TruePerformanceChart({ holdings }: { holdings: any[] }) {
   const [range, setRange] = useState<RangeId>('3M')
-  const [series, setSeries] = useState<{ date: string; value: number }[]>([])
+  // Keyed by epoch SECONDS, not date strings — intraday (1D/1W) bars all share
+  // one calendar date, so date-keying would collapse them to a single point.
+  const [series, setSeries] = useState<{ t: number; value: number }[]>([])
   const [loading, setLoading] = useState(true)
 
   // shares per ticker (merge duplicates)
@@ -68,17 +84,18 @@ export function TruePerformanceChart({ holdings }: { holdings: any[] }) {
     const period = RANGES.find(r => r.id === range)!.period
 
     ;(async () => {
-      // date → per-ticker close
-      const byTicker = new Map<string, Map<string, number>>()
-      const allDates = new Set<string>()
+      // epoch-seconds → per-ticker close
+      const byTicker = new Map<string, Map<number, number>>()
+      const allTs = new Set<number>()
       await mapLimit(tickers, 5, async (t) => {
         try {
           const rows = await historyFor(t, period)
-          const m = new Map<string, number>()
+          const m = new Map<number, number>()
           for (const r of rows) {
-            if (r.close != null && isFinite(r.close) && r.close > 0) {
-              m.set(r.date, r.close)
-              allDates.add(r.date)
+            const ts = r.timestamp ?? Math.floor(Date.parse(`${r.date}T00:00:00Z`) / 1000)
+            if (r.close != null && isFinite(r.close) && r.close > 0 && isFinite(ts)) {
+              m.set(ts, r.close)
+              allTs.add(ts)
             }
           }
           if (m.size > 0) byTicker.set(t, m)
@@ -86,18 +103,18 @@ export function TruePerformanceChart({ holdings }: { holdings: any[] }) {
       })
       if (cancelled) return
 
-      const dates = Array.from(allDates).sort()
-      // Forward-fill each ticker so one symbol's missing day never zeroes the
-      // total, and note the first date where EVERY ticker has reported at
+      const stamps = Array.from(allTs).sort((a, b) => a - b)
+      // Forward-fill each ticker so one symbol's missing bar never zeroes the
+      // total, and note the first stamp where EVERY ticker has reported at
       // least once — leading partial sums would read as a fake cliff.
       const lastClose = new Map<string, number>()
-      const out: { date: string; value: number }[] = []
+      const out: { t: number; value: number }[] = []
       let firstFullIdx = 0
       let seenFull = false
-      for (const d of dates) {
+      for (const ts of stamps) {
         let total = 0
         for (const [t, closes] of Array.from(byTicker.entries())) {
-          const c = closes.get(d)
+          const c = closes.get(ts)
           if (c != null) lastClose.set(t, c)
           const use = lastClose.get(t)
           if (use != null) total += use * (shareMap.get(t) ?? 0)
@@ -106,7 +123,7 @@ export function TruePerformanceChart({ holdings }: { holdings: any[] }) {
           seenFull = true
           firstFullIdx = out.length
         }
-        out.push({ date: d, value: total })
+        out.push({ t: ts, value: total })
       }
       setSeries(out.slice(firstFullIdx))
       setLoading(false)
@@ -163,10 +180,11 @@ export function TruePerformanceChart({ holdings }: { holdings: any[] }) {
                 <stop offset="100%" stopColor={color} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <XAxis dataKey="date" tick={{ fontSize: 9 }} interval="preserveStartEnd" minTickGap={48}
-              tickFormatter={(d: string) => (range === '2Y' || range === '5Y' || range === 'ALL') ? d.slice(0, 7) : d.slice(5)} />
+            <XAxis dataKey="t" tick={{ fontSize: 9 }} interval="preserveStartEnd" minTickGap={48}
+              tickFormatter={(ts: number) => fmtTick(ts, range)} />
             <YAxis hide domain={['auto', 'auto']} />
             <Tooltip
+              labelFormatter={(ts: any) => fmtTick(Number(ts), range)}
               formatter={(v: any) => [formatCurrency(v as number), 'Portfolio']}
               contentStyle={{ fontSize: 12, borderRadius: 12 }}
             />
