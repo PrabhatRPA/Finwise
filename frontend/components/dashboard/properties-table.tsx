@@ -111,9 +111,11 @@ function PropertyModal({ initial, rentcastConfigured, onSave, onClose }: ModalPr
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    {/* z-[60] keeps the sheet above the z-50 floating tab bar; 80vh cap keeps
+        the Save/Cancel row clear of it. */}
+    <div className="fixed inset-0 z-[60] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-card text-card-foreground border border-border rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[80vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-xl font-bold">{isEdit ? 'Edit Property' : 'Add Property'}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
@@ -138,8 +140,7 @@ function PropertyModal({ initial, rentcastConfigured, onSave, onClose }: ModalPr
           {/* Address */}
           <div>
             <label className="block text-sm font-medium mb-1">
-              Street address
-              {!rentcastConfigured && <span className="text-muted-foreground font-normal text-xs ml-1">(used for Rentcast valuation)</span>}
+              Street address <span className="text-muted-foreground font-normal text-xs">(optional)</span>
             </label>
             <Input value={form.address} onChange={set('address')} placeholder="123 Main St" />
           </div>
@@ -167,13 +168,11 @@ function PropertyModal({ initial, rentcastConfigured, onSave, onClose }: ModalPr
           {/* Values */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium mb-1">
-                Manual value <span className="text-muted-foreground font-normal text-xs">(overrides API)</span>
-              </label>
+              <label className="block text-sm font-medium mb-1">Current value</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
                 <Input type="number" min="0" step="1000" value={form.manual_value}
-                  onChange={set('manual_value')} placeholder="Leave blank to use API" className="pl-6" />
+                  onChange={set('manual_value')} placeholder="e.g. 450000" className="pl-6" />
               </div>
             </div>
             <div>
@@ -201,13 +200,6 @@ function PropertyModal({ initial, rentcastConfigured, onSave, onClose }: ModalPr
               className="border rounded-md px-3 py-2 text-sm w-full resize-none bg-background"
             />
           </div>
-
-          {!rentcastConfigured && (
-            <p className="text-xs text-muted-foreground bg-muted/40 rounded p-2">
-              <span className="font-medium">Tip:</span> Add <code>RENTCAST_API_KEY</code> to <code>backend/.env</code> to auto-fetch property valuations.
-              Free plan at <span className="underline">rentcast.io</span> (50 calls/month).
-            </p>
-          )}
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
