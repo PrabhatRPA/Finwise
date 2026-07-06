@@ -80,6 +80,44 @@
     --shadow-card: 0 2px 4px rgb(80 90 220 / 0.06), 0 10px 28px -14px rgb(80 90 220 / 0.25);
   }
 
+  /* "Liquid Glass" — frosted-material appearance in the spirit of Apple's
+     iOS 26 design language, rendered with WebKit's backdrop material pipeline
+     (this app's UI is HTML in a WKWebView; SwiftUI .glassEffect() has no
+     views here to attach to — see theme docs). Surfaces are translucent and
+     blur whatever scrolls beneath them over a soft gradient wallpaper.
+     Light-family: no .dark class. Solid fallbacks under Reduce Transparency /
+     Increase Contrast live below. */
+  :root[data-theme="liquid-glass"] {
+    color-scheme: light;
+    --background:     213  45% 96%;  /* ice */
+    --foreground:     222  25% 12%;  /* deep ink — AA on frosted white */
+    --card:             0   0% 100%; /* used at alpha via the overrides below */
+    --card-foreground: 222 25% 12%;
+    --popover:          0   0% 100%;
+    --popover-foreground: 222 25% 12%;
+    --primary:        211 100% 45%;  /* iOS-blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary:      215  45% 94%;
+    --secondary-foreground: 218 20% 30%;
+    --muted:          215  45% 94%;
+    --muted-foreground: 218 14% 38%;
+    --accent:         211  90% 93%;
+    --accent-foreground: 211 90% 35%;
+    --destructive:      4  80% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border:         214  40% 88%;
+    --input:          214  40% 86%;
+    --ring:           211 100% 45%;
+
+    --positive:       155  75% 34%;
+    --negative:         4  80% 56%;
+    --neutral:        218  10% 52%;
+    --grad-start:     215  90% 55%;  /* cool blue → periwinkle hero */
+    --grad-end:       248  75% 64%;
+    --grad-foreground: 0 0% 100%;
+    --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 8px 32px rgb(31 45 80 / 0.10);
+  }
+
   .dark {
     /* Native controls render dark. */
     color-scheme: dark;
@@ -164,6 +202,60 @@ body::before {
 }
 .dark body::before {
   background: radial-gradient(ellipse 80% 120px at 50% -20px, hsl(var(--primary) / 0.07) 0%, transparent 100%);
+}
+
+/* ── Liquid Glass ─────────────────────────────────────────────────────────
+   Wallpaper: glass needs something to refract. The body::before layer becomes
+   a full-viewport soft gradient mesh (fixed) that frosted surfaces blur. */
+[data-theme="liquid-glass"] body::before {
+  height: 100vh;
+  background:
+    radial-gradient(42% 34% at 18% 12%, hsl(211 95% 78% / 0.55) 0%, transparent 100%),
+    radial-gradient(38% 30% at 85% 22%, hsl(258 85% 82% / 0.50) 0%, transparent 100%),
+    radial-gradient(40% 32% at 70% 85%, hsl(160 70% 78% / 0.45) 0%, transparent 100%),
+    radial-gradient(36% 30% at 12% 78%, hsl(211 90% 84% / 0.45) 0%, transparent 100%);
+}
+
+/* Frosted surfaces — one scoped lever restyles every card, modal, chip and
+   the tab bar (they all use the shared bg-card / bg-muted utilities). */
+[data-theme="liquid-glass"] .bg-card {
+  background-color: hsl(var(--card) / 0.55);
+  -webkit-backdrop-filter: blur(22px) saturate(1.7);
+  backdrop-filter: blur(22px) saturate(1.7);
+  border-color: rgb(255 255 255 / 0.45);
+}
+[data-theme="liquid-glass"] .bg-muted {
+  background-color: hsl(var(--muted) / 0.55);
+  -webkit-backdrop-filter: blur(14px) saturate(1.5);
+  backdrop-filter: blur(14px) saturate(1.5);
+}
+/* Tab bar's translucent variants get a stronger frost. */
+[data-theme="liquid-glass"] .bg-card\/75,
+[data-theme="liquid-glass"] .bg-card\/85 {
+  background-color: hsl(var(--card) / 0.45);
+  -webkit-backdrop-filter: blur(26px) saturate(1.8);
+  backdrop-filter: blur(26px) saturate(1.8);
+}
+
+/* Accessibility: iOS Reduce Transparency / Increase Contrast → solid,
+   blur-free surfaces (mirrors how native materials collapse). */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  [data-theme="liquid-glass"] .bg-card,
+  [data-theme="liquid-glass"] .bg-card\/75,
+  [data-theme="liquid-glass"] .bg-card\/85 {
+    background-color: hsl(var(--card));
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-color: hsl(var(--border));
+  }
+  [data-theme="liquid-glass"] .bg-muted {
+    background-color: hsl(var(--muted));
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  [data-theme="liquid-glass"] body::before {
+    background: hsl(var(--background));
+  }
 }
 
 /* ── Design-system utilities ────────────────────────────────────────────── */

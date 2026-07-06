@@ -6,6 +6,7 @@
 // System renders both halves split diagonally. Selection maps onto the
 // existing ThemeProvider modes ('light' = Paper Light, 'dark' = Ledger Dark).
 
+import { useEffect, useState } from 'react'
 import { useTheme } from '@/lib/theme'
 import { impactLight } from './haptics'
 
@@ -30,6 +31,10 @@ const LEDGER: PreviewColors = {
 const COLORFUL: PreviewColors = {
   bg: '#EFF6FF', card: '#FFFFFF', text: '#1A1D2E', sub: '#C9D2F0',
   gradA: '#3D6BF2', gradB: '#8A4DF0', up: '#12AE72',
+}
+const GLASS: PreviewColors = {
+  bg: '#E8EFF9', card: 'rgba(255,255,255,0.60)', text: '#1B2230', sub: 'rgba(140,160,200,0.55)',
+  gradA: '#3E7BF0', gradB: '#7D6BF2', up: '#0F9B62',
 }
 
 // Tiny mock dashboard: hero gradient block with a "number" and delta bar,
@@ -72,15 +77,30 @@ const OPTIONS = [
   { mode: 'dark' as const, name: 'Ledger Dark', preview: <MiniDash c={LEDGER} /> },
   { mode: 'light' as const, name: 'Paper Light', preview: <MiniDash c={PAPER} /> },
   { mode: 'colorful' as const, name: 'Colorful', preview: <MiniDash c={COLORFUL} /> },
+  { mode: 'glass' as const, name: 'Liquid Glass', preview: <MiniDash c={GLASS} /> },
   { mode: 'system' as const, name: 'System', preview: <MiniSystem /> },
 ]
 
 export function ThemePicker() {
   const { mode, setMode } = useTheme()
 
+  // Liquid Glass needs backdrop-filter (every modern WebKit has it; only
+  // ancient engines don't). Hide the option when unsupported — the graceful
+  // fallback per the design brief.
+  const [glassOk, setGlassOk] = useState(true)
+  useEffect(() => {
+    try {
+      setGlassOk(
+        typeof CSS !== 'undefined' &&
+        (CSS.supports('backdrop-filter', 'blur(1px)') || CSS.supports('-webkit-backdrop-filter', 'blur(1px)'))
+      )
+    } catch { setGlassOk(false) }
+  }, [])
+  const options = glassOk ? OPTIONS : OPTIONS.filter(o => o.mode !== 'glass')
+
   return (
     <div className="grid grid-cols-2 gap-2">
-      {OPTIONS.map((o) => {
+      {options.map((o) => {
         const active = mode === o.mode
         return (
           <button

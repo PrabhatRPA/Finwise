@@ -15,13 +15,14 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 // In 'system' mode we follow the OS (prefers-color-scheme) and update live when
 // the OS flips. If the OS reports no preference at all, we fall back to the time
 // of day (day = light, night = dark). An explicit choice is saved and always wins.
-type Mode = 'light' | 'dark' | 'colorful' | 'system'
-type Theme = 'light' | 'dark' | 'colorful'
+type Mode = 'light' | 'dark' | 'colorful' | 'glass' | 'system'
+type Theme = 'light' | 'dark' | 'colorful' | 'glass'
 
 const DATA_THEME: Record<Theme, string> = {
   light: 'paper-light',
   dark: 'ledger-dark',
   colorful: 'colorful',
+  glass: 'liquid-glass',
 }
 
 // Apply the resolved theme to the document + native chrome (status bar).
@@ -86,7 +87,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setMounted(true)
     const stored = localStorage.getItem(STORAGE_KEY)
     const initial: Mode =
-      stored === 'light' || stored === 'dark' || stored === 'colorful' || stored === 'system' ? stored : 'system'
+      stored === 'light' || stored === 'dark' || stored === 'colorful' || stored === 'glass' || stored === 'system' ? stored : 'system'
     setModeState(initial)
     setThemeResolved(resolve(initial))
   }, [])

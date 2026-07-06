@@ -33,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var m=localStorage.getItem('theme');var d=document.documentElement;if(m==='colorful'){d.setAttribute('data-theme','colorful')}else{var dark;if(m==='dark'){dark=true}else if(m==='light'){dark=false}else{if(window.matchMedia('(prefers-color-scheme: dark)').matches){dark=true}else if(window.matchMedia('(prefers-color-scheme: light)').matches){dark=false}else{var h=new Date().getHours();dark=(h<7||h>=19)}}if(dark){d.classList.add('dark')}d.setAttribute('data-theme',dark?'ledger-dark':'paper-light')}}catch(e){}`,
+            __html: `try{var m=localStorage.getItem('theme');var d=document.documentElement;if(m==='colorful'){d.setAttribute('data-theme','colorful')}else if(m==='glass'){d.setAttribute('data-theme','liquid-glass')}else{var dark;if(m==='dark'){dark=true}else if(m==='light'){dark=false}else{if(window.matchMedia('(prefers-color-scheme: dark)').matches){dark=true}else if(window.matchMedia('(prefers-color-scheme: light)').matches){dark=false}else{var h=new Date().getHours();dark=(h<7||h>=19)}}if(dark){d.classList.add('dark')}d.setAttribute('data-theme',dark?'ledger-dark':'paper-light')}}catch(e){}`,
           }}
         />
       </head>
