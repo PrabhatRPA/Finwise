@@ -111,8 +111,8 @@ function PropertyModal({ initial, rentcastConfigured, onSave, onClose }: ModalPr
   }
 
   return (
-    {/* z-[60] keeps the sheet above the z-50 floating tab bar; 80vh cap keeps
-        the Save/Cancel row clear of it. */}
+    // z-[60] keeps the sheet above the z-50 floating tab bar; the 80vh cap
+    // keeps the Save/Cancel row clear of it.
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative bg-card text-card-foreground border border-border rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[80vh] overflow-y-auto">
