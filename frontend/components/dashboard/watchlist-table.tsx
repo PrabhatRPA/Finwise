@@ -225,6 +225,13 @@ export function WatchlistTable() {
     load()
   }, [load])
 
+  // Tab bar ⊕ (only this table is mounted when the Watchlist tab is active).
+  useEffect(() => {
+    const onAdd = () => setShowModal(true)
+    window.addEventListener('nworth:add-item', onAdd)
+    return () => window.removeEventListener('nworth:add-item', onAdd)
+  }, [])
+
   const handleAdd = async (data: Parameters<ModalProps['onSave']>[0]) => {
     await watchlistApi.create(data)
     setShowModal(false)

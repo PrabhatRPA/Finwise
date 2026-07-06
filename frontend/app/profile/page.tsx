@@ -19,6 +19,7 @@ import {
 import { connectAppleId, getAppleUserId, updateFullName } from '@/lib/native/auth'
 import { isAppLockEnabled, setAppLockEnabled } from '@/lib/native/app-lock'
 import { getFloatSide, setFloatSide, type FloatSide } from '@/lib/float-side'
+import { getBarStyle, setBarStyle, type BarStyle } from '@/lib/bar-style'
 import { ThemePicker } from '@/components/ds/theme-picker'
 import {
   getNotificationStatus,
@@ -90,6 +91,7 @@ export default function ProfilePage() {
   const [biometricMsg, setBiometricMsg] = useState('')
   const [appLockOn, setAppLockOn] = useState(true)
   const [floatSide, setFloatSideState] = useState<FloatSide>('right')
+  const [barStyle, setBarStyleState] = useState<BarStyle>('floating')
 
   const [appleLinked, setAppleLinked] = useState<boolean | null>(null)
   const [appleBusy, setAppleBusy] = useState(false)
@@ -105,6 +107,7 @@ export default function ProfilePage() {
     const native = typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.() === true
     setIsNative(native)
     setFloatSideState(getFloatSide())
+    setBarStyleState(getBarStyle())
     Promise.all([getBiometryStatus(), isBiometricEnabled()]).then(([s, e]) => {
       if (cancelled) return
       setBiometryStatus(s)
@@ -254,6 +257,29 @@ export default function ProfilePage() {
             <span className="font-medium">System</span> follows your device&apos;s
             appearance; if the device has no preference it switches by time of day.
           </p>
+
+          {/* Bottom bar placement — floating capsule or attached to the edge */}
+          <div className="mt-4 pt-4 border-t">
+            <p className="text-sm font-medium mb-1">Bottom bar</p>
+            <p className="text-xs text-muted-foreground mb-2">
+              Floating hovers above the home indicator; Attached sits flush with the bottom edge.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {(['floating', 'attached'] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => { setBarStyle(s); setBarStyleState(s) }}
+                  className={`h-10 rounded-md border text-sm font-medium capitalize transition-colors ${
+                    barStyle === s
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'border-border hover:bg-accent'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Floating buttons side — left for left-handed, right for right-handed */}
           <div className="mt-4 pt-4 border-t">

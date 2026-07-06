@@ -10,11 +10,13 @@
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useFloatSide } from '@/lib/float-side'
+import { useBarStyle } from '@/lib/bar-style'
 
 export function FloatingNav() {
   const pathname = usePathname()
   const router = useRouter()
   const side = useFloatSide()
+  const barStyle = useBarStyle()
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
@@ -44,8 +46,9 @@ export function FloatingNav() {
   return (
     <div
       className={`fixed z-40 flex flex-col gap-2 ${sideClass}`}
-      /* Sit above the bottom-attached tab bar (60px bar + 12px gap). */
-      style={{ bottom: 'calc(env(safe-area-inset-bottom) + 72px)' }}
+      /* Sit above the tab bar: attached = 60px bar + 12px gap; floating =
+         12px inset + 60px capsule + 12px gap. */
+      style={{ bottom: `calc(env(safe-area-inset-bottom) + ${barStyle === 'floating' ? '84px' : '72px'})` }}
     >
       {/* Top button — scroll to top */}
       {showTop && (

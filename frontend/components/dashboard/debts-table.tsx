@@ -77,6 +77,14 @@ export function DebtsTable({ onDebtChanged }: Props) {
     setShowForm(true)
   }
 
+  // Tab bar ⊕ (only this table is mounted when the Debts tab is active).
+  useEffect(() => {
+    const onAdd = () => openAdd()
+    window.addEventListener('nworth:add-item', onAdd)
+    return () => window.removeEventListener('nworth:add-item', onAdd)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   function openEdit(loan: Loan) {
     setEditingId(loan.id)
     setForm({

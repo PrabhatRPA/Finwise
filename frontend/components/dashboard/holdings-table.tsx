@@ -138,11 +138,12 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
     return () => { cancelled = true }
   }, [holdings])
 
-  // The floating tab bar's ⊕ button broadcasts this to open the Add modal.
+  // The tab bar's ⊕ broadcasts this; only the ACTIVE tab's table is mounted,
+  // so each table opening its own Add modal on the same event is safe.
   useEffect(() => {
     const onAdd = () => openAdd()
-    window.addEventListener('nworth:add-holding', onAdd)
-    return () => window.removeEventListener('nworth:add-holding', onAdd)
+    window.addEventListener('nworth:add-item', onAdd)
+    return () => window.removeEventListener('nworth:add-item', onAdd)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

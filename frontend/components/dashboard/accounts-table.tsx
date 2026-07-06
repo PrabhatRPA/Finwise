@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -75,6 +75,14 @@ export function AccountsTable({ accounts, onAccountChanged }: AccountsTableProps
     setError('')
     setShowModal(true)
   }
+
+  // Tab bar ⊕ (only this table is mounted when the Accounts tab is active).
+  useEffect(() => {
+    const onAdd = () => openAdd()
+    window.addEventListener('nworth:add-item', onAdd)
+    return () => window.removeEventListener('nworth:add-item', onAdd)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function openEdit(a: AccountLike) {
     setEditingId(a.id)

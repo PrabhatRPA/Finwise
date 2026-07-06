@@ -1,19 +1,27 @@
 'use client'
 
-// Floating bottom navigation — a rounded blur capsule inset from the screen
-// edges (content scrolls and blurs beneath it), NOT an opaque full-width bar.
-// Items: Home · Insights · ⊕ (add holding, raised accent button) · Accounts ·
-// Settings. Home/Insights/Accounts route to dashboard tabs via ?tab=, which
-// app/dashboard/page.tsx reads/writes (two-way, so back-gesture stays sane).
-// The ⊕ broadcasts "nworth:add-holding", which the holdings table listens for.
-// Hidden while signed out. Sits above the home indicator via safe-area inset.
+// Bottom navigation bar. Two user-selectable placements (Settings →
+// Appearance): "floating" — a rounded blur capsule inset above the home
+// indicator — or "attached" — full-width, flush with the bottom edge.
+//
+// Items: Home · Insights · [center] · News · Settings.
+// The CENTER slot is context-aware:
+//   • On dashboard tabs where adding makes sense (holdings / accounts /
+//     watchlist / debts / properties), it's the raised ⊕ button, which
+//     broadcasts "nworth:add-item" — the active table opens its own Add
+//     modal. A compact AI-Insights pill sits beneath the ⊕.
+//   • Everywhere else (news, performance, allocation, AI, other pages),
+//     there is nothing to add, so AI Insights takes the center as a
+//     regular full-size tab item.
+// Hidden while signed out.
 
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
+import { useBarStyle } from '@/lib/bar-style'
 import { impactLight } from './haptics'
 
-type ItemId = 'home' | 'insights' | 'news' | 'settings'
+type ItemId = 'home' | 'insights' | 'news' | 'settings' | 'ai'
 
 const TABS: { id: ItemId; label: string; tab?: string; href?: string; icon: (active: boolean) => React.ReactNode }[] = [
   {
@@ -57,6 +65,27 @@ const TABS: { id: ItemId; label: string; tab?: string; href?: string; icon: (act
   },
 ]
 
+// AI-Insights center item (sparkle icon) — full tab when ⊕ isn't shown.
+const AI_TAB: typeof TABS[number] = {
+  id: 'ai', label: 'AI', tab: 'ai',
+  icon: (a) => (
+    <svg viewBox="0 0 24 24" fill={a ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8"
+      strokeLinecap="round" strokeLinejoin="round" className="h-[22px] w-[22px]">
+      <path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z" />
+      <path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z" />
+    </svg>
+  ),
+}
+
+// Dashboard tabs where the ⊕ can add something (label used for a11y).
+const ADD_TABS: Record<string, string> = {
+  holdings: 'holding',
+  accounts: 'account',
+  watchlist: 'watchlist ticker',
+  debts: 'debt',
+  properties: 'property',
+}
+
 function currentTabParam(): string {
   try { return new URLSearchParams(window.location.search).get('tab') ?? 'holdings' } catch { return 'holdings' }
 }
@@ -65,6 +94,7 @@ export function FloatingTabBar() {
   const pathname = usePathname()
   const router = useRouter()
   const { isAuthenticated, isLoading } = useAuth()
+  const barStyle = useBarStyle()
   const [tabParam, setTabParam] = useState('holdings')
 
   // Re-read ?tab= whenever the route changes (avoids useSearchParams' Suspense
@@ -82,11 +112,15 @@ export function FloatingTabBar() {
   if (isLoading || !isAuthenticated || isAuthRoute) return null
 
   const onDashboard = pathname?.startsWith('/dashboard')
+  const addKind = onDashboard ? ADD_TABS[tabParam] : undefined   // e.g. 'holding' | undefined
 
   const activeId: ItemId | null =
     pathname?.startsWith('/profile') ? 'settings'
     : onDashboard
-      ? (tabParam === 'performance' ? 'insights' : tabParam === 'news' ? 'news' : 'home')
+      ? (tabParam === 'performance' ? 'insights'
+        : tabParam === 'news' ? 'news'
+        : tabParam === 'ai' ? 'ai'
+        : 'home')
       : null
 
   const go = (t: typeof TABS[number]) => {
@@ -102,11 +136,11 @@ export function FloatingTabBar() {
     setTimeout(fire, 300)
   }
 
-  const addHolding = () => {
+  // ⊕ — only rendered on add-capable tabs; the ACTIVE table listens and opens
+  // its own Add modal (inactive tabs are unmounted, so one event suffices).
+  const addItem = () => {
     impactLight()
-    if (!onDashboard) router.push('/dashboard/?tab=holdings')
-    // The holdings table listens and opens its Add modal.
-    setTimeout(() => window.dispatchEvent(new Event('nworth:add-holding')), onDashboard ? 0 : 450)
+    window.dispatchEvent(new Event('nworth:add-item'))
   }
 
   const [left, right] = [TABS.slice(0, 2), TABS.slice(2)]
@@ -129,43 +163,58 @@ export function FloatingTabBar() {
     )
   }
 
+  // Placement variants (user preference, Settings → Appearance).
+  const floating = barStyle === 'floating'
+  const navClass = floating
+    ? 'fixed left-4 right-4 z-50 rounded-ds-lg border border-white/10 bg-card/75 backdrop-blur-xl shadow-card flex items-stretch px-2'
+    : 'fixed inset-x-0 bottom-0 z-50 border-t border-border/60 bg-card/85 backdrop-blur-xl flex items-stretch px-2'
+  const navStyle = floating
+    ? { bottom: 'calc(env(safe-area-inset-bottom) + 12px)' }
+    : { paddingBottom: 'env(safe-area-inset-bottom)' }
+
   return (
-    <nav
-      aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-border/60
-        bg-card/85 backdrop-blur-xl flex items-stretch px-2 h-auto"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-    >
+    <nav aria-label="Primary" className={navClass} style={navStyle}>
       <div className="flex items-stretch flex-1 h-[60px]">
-      {left.map(item)}
+        {left.map(item)}
 
-      {/* Center add button — slightly raised but discreet, brand mark beneath
-          (the Nworth logo moved here from the old top bar). */}
-      <div className="relative flex-1 flex items-center justify-center">
-        <button
-          onClick={addHolding}
-          aria-label="Add holding"
-          className="absolute -top-2.5 h-11 w-11 rounded-full bg-primary/90 text-primary-foreground
-            shadow-md flex items-center justify-center active:scale-95 transition-transform"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-            strokeLinecap="round" className="h-5 w-5">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        </button>
-        <span className="absolute bottom-1 flex items-center gap-0.5 pointer-events-none select-none" aria-hidden="true">
-          <svg width="9" height="9" viewBox="0 0 36 36">
-            <rect width="36" height="36" rx="9" fill="hsl(var(--primary))" opacity="0.9" />
-            <rect x="6" y="24" width="5.5" height="8" rx="1.5" fill="rgba(255,255,255,0.5)" />
-            <rect x="15.25" y="18" width="5.5" height="14" rx="1.5" fill="rgba(255,255,255,0.75)" />
-            <rect x="24.5" y="12" width="5.5" height="20" rx="1.5" fill="#fff" />
-          </svg>
-          <span className="text-[8px] font-bold tracking-[0.08em] text-muted-foreground">NWORTH</span>
-        </span>
-      </div>
+        {/* Context-aware center slot */}
+        {addKind ? (
+          <div className="relative flex-1 flex items-center justify-center">
+            {/* Raised ⊕ — adds whatever the current tab holds */}
+            <button
+              onClick={addItem}
+              aria-label={`Add ${addKind}`}
+              className="absolute -top-2.5 h-11 w-11 rounded-full bg-primary/90 text-primary-foreground
+                shadow-md flex items-center justify-center active:scale-95 transition-transform"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                strokeLinecap="round" className="h-5 w-5">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+            {/* Compact AI pill tucked beneath the ⊕ — still tappable */}
+            <button
+              onClick={() => go(AI_TAB)}
+              aria-label="AI Insights"
+              className={`absolute bottom-0.5 flex items-center gap-1 px-2 py-0.5 rounded-full transition-colors ${
+                activeId === 'ai' ? 'text-primary' : 'text-muted-foreground'
+              }`}
+              style={{ minHeight: 0, minWidth: 0 }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
+                <path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z" />
+              </svg>
+              <span className="text-[8px] font-bold tracking-[0.08em]">AI</span>
+            </button>
+          </div>
+        ) : (
+          // Nothing to add here → AI Insights takes the center as a full item.
+          item(AI_TAB)
+        )}
 
-      {right.map(item)}
+        {right.map(item)}
       </div>
     </nav>
   )

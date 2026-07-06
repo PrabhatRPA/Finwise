@@ -250,6 +250,13 @@ export function PropertiesTable({ onPropertyChanged }: Props) {
 
   useEffect(() => { load() }, [load])
 
+  // Tab bar ⊕ (only this table is mounted when the Properties tab is active).
+  useEffect(() => {
+    const onAdd = () => setShowModal(true)
+    window.addEventListener('nworth:add-item', onAdd)
+    return () => window.removeEventListener('nworth:add-item', onAdd)
+  }, [])
+
   const handleAdd = async (data: any) => {
     await propertiesApi.create(data)
     setShowModal(false)
