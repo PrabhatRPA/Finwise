@@ -175,10 +175,17 @@ export function DebtsTable({ onDebtChanged }: Props) {
       </div>
 
       {/* Add / Edit Form */}
+      {/* Add / Edit modal — popup overlay like every other section's add flow
+          (this was an inline card, which read as the page changing under you). */}
       {showForm && (
-        <Card className="border-primary/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={closeForm} />
+          <Card className="relative w-full max-w-md mx-4 max-h-[85vh] overflow-y-auto border-primary/40 shadow-2xl">
           <CardHeader>
-            <CardTitle className="text-base">{editingId ? 'Edit Debt' : 'Add New Debt'}</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">{editingId ? 'Edit Debt' : 'Add New Debt'}</CardTitle>
+              <button onClick={closeForm} className="text-muted-foreground hover:text-foreground text-2xl leading-none" aria-label="Close">×</button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -276,13 +283,14 @@ export function DebtsTable({ onDebtChanged }: Props) {
             {error && <p className="text-sm text-destructive">{error}</p>}
 
             <div className="flex gap-2">
-              <Button onClick={handleSave} disabled={saving}>
+              <Button onClick={handleSave} disabled={saving} className="flex-1">
                 {saving ? 'Saving…' : (editingId ? 'Update' : 'Add Debt')}
               </Button>
-              <Button variant="outline" onClick={closeForm}>Cancel</Button>
+              <Button variant="outline" onClick={closeForm} className="flex-1">Cancel</Button>
             </div>
           </CardContent>
-        </Card>
+          </Card>
+        </div>
       )}
 
       {/* Debt list */}
