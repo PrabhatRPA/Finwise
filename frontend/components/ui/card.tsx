@@ -1,14 +1,15 @@
-import { ReactNode } from 'react'
+import { CSSProperties, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 export type CardProps = {
   children?: ReactNode
   className?: string
   id?: string   // anchor for deep-link scrolling (Settings → focus areas)
+  style?: CSSProperties   // e.g. safe-area-aware scroll margins on anchors
 }
 
-export const Card = ({ children, className, id }: CardProps) => (
-  <div id={id} className={cn('rounded-lg border border-border bg-card text-card-foreground shadow-sm', className)}>
+export const Card = ({ children, className, id, style }: CardProps) => (
+  <div id={id} style={style} className={cn('rounded-lg border border-border bg-card text-card-foreground shadow-sm', className)}>
     {children}
   </div>
 )

@@ -2,9 +2,11 @@
 
 // Portfolio-wide news feed: pulls recent headlines for every ticker in the
 // user's holdings (free, keyless Yahoo Finance search via marketApi.getNews),
-// merges + dedupes + sorts newest-first, and tags each item with its ticker.
-// Headlines open in the in-app browser. No-op-friendly: shows a clear empty
-// state when there are no holdings or no news.
+// merges + dedupes, and tags each item with its ticker. Default order ("By
+// Value") round-robins across tickers ordered by portfolio value so one
+// chatty ticker can't crowd out the rest; "Most Recent" is a flat
+// newest-first fallback. Headlines open in the in-app browser. No-op-
+// friendly: shows a clear empty state when there are no holdings or no news.
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -43,6 +45,8 @@ async function openLink(url: string) {
   try { window.open(url, '_blank', 'noopener') } catch { /* ignore */ }
 }
 
+type SortMode = 'value' | 'recent'
+
 export function PortfolioNews({ holdings }: { holdings: any[] }) {
   const router = useRouter()
 
@@ -53,15 +57,29 @@ export function PortfolioNews({ holdings }: { holdings: any[] }) {
       const t = (h?.ticker || '').toUpperCase().trim()
       if (t) seen.add(t)
     }
-    return Array.from(seen).slice(0, 30)
+    return Array.from(seen).slice(0, 50)
   }, [holdings])
 
-  const [items, setItems] = useState<FeedItem[]>([])
+  // ticker -> portfolio value, so news can be weighted by how much of the
+  // portfolio it represents (biggest holding's news first, by default).
+  const valueByTicker = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const h of holdings) {
+      const t = (h?.ticker || '').toUpperCase().trim()
+      if (!t) continue
+      const v = Number(h?.current_value) || 0
+      map.set(t, (map.get(t) ?? 0) + v)
+    }
+    return map
+  }, [holdings])
+
+  const [rawItems, setRawItems] = useState<FeedItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [sortMode, setSortMode] = useState<SortMode>('value')
 
   useEffect(() => {
     let cancelled = false
-    if (tickers.length === 0) { setItems([]); setLoading(false); return }
+    if (tickers.length === 0) { setRawItems([]); setLoading(false); return }
     setLoading(true)
 
     Promise.allSettled(tickers.map(t => marketApi.getNews(t)))
@@ -84,21 +102,77 @@ export function PortfolioNews({ holdings }: { holdings: any[] }) {
             })
           }
         })
-        merged.sort((a, b) => (b.published ?? 0) - (a.published ?? 0))
-        setItems(merged.slice(0, 60))
+        setRawItems(merged)
       })
       .finally(() => { if (!cancelled) setLoading(false) })
 
     return () => { cancelled = true }
   }, [tickers])
 
+  // "Most recent": flat newest-first, same as before.
+  // "By Value": round-robin across tickers (ordered by portfolio value,
+  // biggest first) so one chatty ticker can't bury the others — each
+  // ticker gets a turn, cycling, contributing its own newest-first queue.
+  const items = useMemo(() => {
+    if (sortMode === 'recent') {
+      return [...rawItems].sort((a, b) => (b.published ?? 0) - (a.published ?? 0)).slice(0, 60)
+    }
+    const byTicker = new Map<string, FeedItem[]>()
+    for (const item of rawItems) {
+      const list = byTicker.get(item.ticker) ?? []
+      list.push(item)
+      byTicker.set(item.ticker, list)
+    }
+    Array.from(byTicker.values()).forEach(list => list.sort((a, b) => (b.published ?? 0) - (a.published ?? 0)))
+
+    const tickerOrder = Array.from(byTicker.keys()).sort(
+      (a, b) => (valueByTicker.get(b) ?? 0) - (valueByTicker.get(a) ?? 0)
+    )
+
+    const merged: FeedItem[] = []
+    let remaining = true
+    while (remaining) {
+      remaining = false
+      for (const t of tickerOrder) {
+        const list = byTicker.get(t)
+        if (list && list.length > 0) {
+          merged.push(list.shift()!)
+          remaining = true
+        }
+      }
+    }
+    return merged.slice(0, 60)
+  }, [rawItems, sortMode, valueByTicker])
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Portfolio News</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Latest headlines across your holdings. Tap to read the full article.
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-base">Portfolio News</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Latest headlines across your holdings. Tap to read the full article.
+            </p>
+          </div>
+          <div className="flex shrink-0 rounded-full border border-border p-0.5 text-[11px] font-medium">
+            <button
+              onClick={() => setSortMode('value')}
+              className={`px-2.5 py-1 rounded-full transition-colors ${
+                sortMode === 'value' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+              }`}
+            >
+              By Value
+            </button>
+            <button
+              onClick={() => setSortMode('recent')}
+              className={`px-2.5 py-1 rounded-full transition-colors ${
+                sortMode === 'recent' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+              }`}
+            >
+              Most Recent
+            </button>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-2">
         {holdings.length === 0 ? (

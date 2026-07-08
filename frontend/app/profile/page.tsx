@@ -20,6 +20,7 @@ import { connectAppleId, getAppleUserId, updateFullName } from '@/lib/native/aut
 import { isAppLockEnabled, setAppLockEnabled } from '@/lib/native/app-lock'
 import { getFloatSide, setFloatSide, type FloatSide } from '@/lib/float-side'
 import { getBarStyle, setBarStyle, type BarStyle } from '@/lib/bar-style'
+import { getAddButtonPref, setAddButtonPref, type AddButtonPref } from '@/lib/add-button'
 import { ThemePicker } from '@/components/ds/theme-picker'
 import {
   getNotificationStatus,
@@ -92,6 +93,7 @@ export default function ProfilePage() {
   const [appLockOn, setAppLockOn] = useState(true)
   const [floatSide, setFloatSideState] = useState<FloatSide>('right')
   const [barStyle, setBarStyleState] = useState<BarStyle>('floating')
+  const [addButton, setAddButtonState] = useState<AddButtonPref>('show')
 
   const [appleLinked, setAppleLinked] = useState<boolean | null>(null)
   const [appleBusy, setAppleBusy] = useState(false)
@@ -108,6 +110,7 @@ export default function ProfilePage() {
     setIsNative(native)
     setFloatSideState(getFloatSide())
     setBarStyleState(getBarStyle())
+    setAddButtonState(getAddButtonPref())
     Promise.all([getBiometryStatus(), isBiometricEnabled()]).then(([s, e]) => {
       if (cancelled) return
       setBiometryStatus(s)
@@ -295,6 +298,30 @@ export default function ProfilePage() {
                   onClick={() => { setFloatSide(s); setFloatSideState(s) }}
                   className={`h-10 rounded-md border text-sm font-medium capitalize transition-colors ${
                     floatSide === s
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'border-border hover:bg-accent'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick-add “+” bubble on the bottom bar — show or hide */}
+          <div className="mt-4 pt-4 border-t">
+            <p className="text-sm font-medium mb-1">Quick-add “+” button</p>
+            <p className="text-xs text-muted-foreground mb-2">
+              The small “+” above the bottom bar for adding holdings, accounts, and more.
+              Hide it if you prefer the “+ Add” buttons inside each view.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {(['show', 'hide'] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => { setAddButtonPref(s); setAddButtonState(s) }}
+                  className={`h-10 rounded-md border text-sm font-medium capitalize transition-colors ${
+                    addButton === s
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'border-border hover:bg-accent'
                   }`}
@@ -503,7 +530,7 @@ export default function ProfilePage() {
             onClick={() => router.push('/help')}
           />
           <Row
-            label="Import data"
+            label="Auto import tickers"
             sub="Upload a photo/PDF of a statement — AI extracts your holdings."
             onClick={() => router.push('/documents?focus=upload')}
           />
@@ -519,8 +546,8 @@ export default function ProfilePage() {
           />
           <Row
             label="Data management"
-            sub="iCloud sync, imports, backups."
-            onClick={() => router.push('/documents?focus=manage')}
+            sub="Import your data from JSON or CSV files."
+            onClick={() => router.push('/documents?focus=import')}
           />
           <Row
             label="Automatic backups"
@@ -528,8 +555,8 @@ export default function ProfilePage() {
             onClick={() => router.push('/documents?focus=backups')}
           />
           <Row
-            label="Remove demo / all data"
-            sub="Clear the sample portfolio (or everything) and start fresh."
+            label="Add / remove demo or all data"
+            sub="Load the sample portfolio to explore, or clear everything and start fresh."
             onClick={() => router.push('/documents?focus=demo')}
           />
           <Row

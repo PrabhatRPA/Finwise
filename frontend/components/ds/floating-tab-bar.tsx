@@ -4,7 +4,7 @@
 // Appearance): "floating" — a rounded blur capsule inset above the home
 // indicator — or "attached" — full-width, flush with the bottom edge.
 //
-// Items: Home · Insights · [center] · News · Settings.
+// Items: Home · Performance · [center] · News · Settings.
 // The CENTER slot is context-aware:
 //   • On dashboard tabs where adding makes sense (holdings / accounts /
 //     watchlist / debts / properties), it's the raised ⊕ button, which
@@ -19,6 +19,7 @@ import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import { useBarStyle } from '@/lib/bar-style'
+import { useAddButtonPref } from '@/lib/add-button'
 import { impactLight } from './haptics'
 
 type ItemId = 'home' | 'insights' | 'news' | 'settings' | 'ai'
@@ -34,7 +35,7 @@ const TABS: { id: ItemId; label: string; tab?: string; href?: string; icon: (act
     ),
   },
   {
-    id: 'insights', label: 'Insights', tab: 'performance',
+    id: 'insights', label: 'Performance', tab: 'performance',
     icon: (a) => (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={a ? 2.4 : 1.8}
         strokeLinecap="round" strokeLinejoin="round" className="h-[22px] w-[22px]">
@@ -95,6 +96,7 @@ export function FloatingTabBar() {
   const router = useRouter()
   const { isAuthenticated, isLoading } = useAuth()
   const barStyle = useBarStyle()
+  const addButtonPref = useAddButtonPref()
   const [tabParam, setTabParam] = useState('holdings')
 
   // Re-read ?tab= whenever the route changes (avoids useSearchParams' Suspense
@@ -112,7 +114,9 @@ export function FloatingTabBar() {
   if (isLoading || !isAuthenticated || isAuthRoute) return null
 
   const onDashboard = pathname?.startsWith('/dashboard')
-  const addKind = onDashboard ? ADD_TABS[tabParam] : undefined   // e.g. 'holding' | undefined
+  // e.g. 'holding' | undefined — the user can hide the ⊕ entirely (Settings →
+  // Appearance), in which case AI takes the center as a full tab everywhere.
+  const addKind = onDashboard && addButtonPref === 'show' ? ADD_TABS[tabParam] : undefined
 
   const activeId: ItemId | null =
     pathname?.startsWith('/profile') ? 'settings'
@@ -128,10 +132,10 @@ export function FloatingTabBar() {
     if (t.href) { router.push(t.href); return }
     router.push(`/dashboard/?tab=${t.tab}`)
     // router.push commits the URL asynchronously — nudge listeners twice so
-    // both the bar highlight and the dashboard's tab state settle. The scroll
-    // hint lands the user on the section itself (Home returns to the top).
-    const scroll = t.id === 'home' ? 'top' : 'tabs'
-    const fire = () => window.dispatchEvent(new CustomEvent('nworth:tab-change', { detail: { scroll } }))
+    // both the bar highlight and the dashboard's tab state settle. Scrolling
+    // itself is handled by the dashboard as a plain effect on its own
+    // activeTab state, not by this event — see dashboard/page.tsx.
+    const fire = () => window.dispatchEvent(new Event('nworth:tab-change'))
     setTimeout(fire, 50)
     setTimeout(fire, 300)
   }
@@ -158,7 +162,7 @@ export function FloatingTabBar() {
         }`}
       >
         {t.icon(active)}
-        {active && <span className="text-[9px] font-semibold tracking-wide">{t.label}</span>}
+        <span className="text-[9px] font-semibold tracking-wide">{t.label}</span>
       </button>
     )
   }
@@ -179,34 +183,44 @@ export function FloatingTabBar() {
 
         {/* Context-aware center slot */}
         {addKind ? (
-          <div className="relative flex-1 flex items-center justify-center">
-            {/* Raised ⊕ — adds whatever the current tab holds */}
+          <div className="relative flex-1 flex items-stretch justify-center">
+            {/* ⊕ — floats entirely ABOVE the bar so it never crowds the AI
+                item beneath. The painted circle is deliberately small
+                (22px); the button around it is a larger invisible tap zone.
+                minWidth/minHeight:0 opts out of the global 44px
+                touch-target floor in globals.css, which otherwise inflates
+                the visible circle itself. */}
             <button
               onClick={addItem}
               aria-label={`Add ${addKind}`}
-              className="absolute -top-2.5 h-11 w-11 rounded-full bg-primary/90 text-primary-foreground
-                shadow-md flex items-center justify-center active:scale-95 transition-transform"
+              className="absolute left-1/2 -translate-x-1/2 -top-7 h-10 w-10 flex items-center
+                justify-center active:scale-95 transition-transform"
+              style={{ minHeight: 0, minWidth: 0 }}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                strokeLinecap="round" className="h-5 w-5">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
+              <span className="h-7 w-7 rounded-full bg-card/75 backdrop-blur-xl border border-border/60
+                shadow-md text-muted-foreground flex items-center justify-center">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  strokeLinecap="round" className="h-3.5 w-3.5">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </span>
             </button>
-            {/* Compact AI pill tucked beneath the ⊕ — still tappable */}
+            {/* AI — a full-size tab item just like Home/News, occupying the
+                whole center slot now that the ⊕ sits above the bar */}
             <button
               onClick={() => go(AI_TAB)}
               aria-label="AI Insights"
-              className={`absolute bottom-0.5 flex items-center gap-1 px-2 py-0.5 rounded-full transition-colors ${
+              aria-current={activeId === 'ai' ? 'page' : undefined}
+              className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full rounded-ds-md transition-colors ${
                 activeId === 'ai' ? 'text-primary' : 'text-muted-foreground'
               }`}
-              style={{ minHeight: 0, minWidth: 0 }}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
+              <svg viewBox="0 0 24 24" fill={activeId === 'ai' ? 'currentColor' : 'none'} stroke="currentColor"
+                strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-[22px] w-[22px]">
                 <path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z" />
               </svg>
-              <span className="text-[8px] font-bold tracking-[0.08em]">AI</span>
+              <span className="text-[9px] font-semibold tracking-wide">AI</span>
             </button>
           </div>
         ) : (

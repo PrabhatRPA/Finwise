@@ -112,7 +112,7 @@ const FEATURES: Feature[] = [
   {
     kind: 'privacy',
     title: 'Private by design',
-    body: 'No accounts, no cloud sync, no telemetry. The database lives in your app sandbox — nothing leaves the device unless you tap Export.',
+    body: 'No developer servers, no telemetry, no tracking. The database lives in your app sandbox. Optional iCloud sync stores a snapshot in your own private iCloud Drive — visible only to your Apple ID, never to anyone else.',
     status: 'shipping',
   },
 ]
@@ -141,12 +141,13 @@ export default function AboutPage() {
         <p className="text-sm sm:text-base leading-relaxed text-foreground">
           <span className="font-semibold">{APP_NAME}</span> tracks your full
           financial picture &mdash; investments, holdings, debt, and property
-          &mdash; completely offline. Your numbers stay on your device, always.
+          &mdash; with everything stored on your device. Live prices are fetched
+          for your tickers, but your numbers never leave your phone.
         </p>
         <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
           <div className="rounded-md bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
             <p className="font-semibold text-emerald-700 dark:text-emerald-400">Private by design</p>
-            <p className="text-muted-foreground mt-0.5">On-device SQLite. No cloud. No accounts.</p>
+            <p className="text-muted-foreground mt-0.5">On-device SQLite. No developer servers. No tracking.</p>
           </div>
           <div className="rounded-md bg-blue-500/10 border border-blue-500/20 px-3 py-2">
             <p className="font-semibold text-blue-700 dark:text-blue-400">Powerful by nature</p>
@@ -189,6 +190,8 @@ export default function AboutPage() {
         </h2>
         <ul className="mt-3 space-y-2 text-sm text-muted-foreground leading-relaxed">
           <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 mt-0.5">•</span><span>The database lives inside the {APP_NAME} app sandbox. We can&apos;t see it. Nobody can.</span></li>
+          <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 mt-0.5">•</span><span>Your data is never shared, sold, or transmitted to the developer or anyone else. There is no server to send it to.</span></li>
+          <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 mt-0.5">•</span><span>Optional iCloud sync stores a snapshot in <em>your</em> private iCloud Drive, protected by your Apple ID — the developer has no access to it.</span></li>
           <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 mt-0.5">•</span><span>Market prices are fetched from Yahoo Finance / Stooq. Only ticker symbols leave the device.</span></li>
           <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 mt-0.5">•</span><span>AI calls go directly from your device to Claude or OpenAI using <em>your</em> API key. We never see the prompt or the response.</span></li>
           <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 mt-0.5">•</span><span>No analytics, no telemetry, no &ldquo;helpful&rdquo; background pings.</span></li>

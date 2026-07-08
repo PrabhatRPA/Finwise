@@ -369,7 +369,7 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
   return (
     <div className="space-y-6">
       {/* ── iCloud Sync ── */}
-      <Card id="icloud-sync" className="scroll-mt-4">
+      <Card id="icloud-sync" className="scroll-mt-4" style={{ scrollMarginTop: 'calc(env(safe-area-inset-top) + 12px)' }}>
         <CardHeader>
           <CardTitle className="text-base">iCloud Sync</CardTitle>
           <p className="text-sm text-muted-foreground">
@@ -465,7 +465,7 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
       </Card>
 
       {/* ── Export ── */}
-      <Card id="export-data" className="scroll-mt-4">
+      <Card id="export-data" className="scroll-mt-4" style={{ scrollMarginTop: 'calc(env(safe-area-inset-top) + 12px)' }}>
         <CardHeader>
           <CardTitle className="text-base">Export Data</CardTitle>
           <p className="text-sm text-muted-foreground">
@@ -505,7 +505,7 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
       </Card>
 
       {/* ── Import ── */}
-      <Card>
+      <Card id="import-data" className="scroll-mt-4" style={{ scrollMarginTop: 'calc(env(safe-area-inset-top) + 12px)' }}>
         <CardHeader>
           <CardTitle className="text-base">Import Data</CardTitle>
           <p className="text-sm text-muted-foreground">
@@ -571,7 +571,7 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
             </p>
 
             {/* Demo / sample data — one tap, no file picker needed */}
-            <div id="demo-data" className="rounded-md border border-dashed border-border p-3 space-y-2 scroll-mt-20">
+            <div id="demo-data" className="rounded-md border border-dashed border-border p-3 space-y-2 scroll-mt-20" style={{ scrollMarginTop: 'calc(env(safe-area-inset-top) + 12px)' }}>
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-medium">Load demo data</p>
@@ -625,7 +625,7 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
       </Card>
 
       {/* ── Automatic Backups ── */}
-      <Card id="auto-backups" className="scroll-mt-4">
+      <Card id="auto-backups" className="scroll-mt-4" style={{ scrollMarginTop: 'calc(env(safe-area-inset-top) + 12px)' }}>
         <CardHeader className="flex flex-row items-start justify-between gap-4">
           <div>
             <CardTitle className="text-base">Automatic Backups</CardTitle>

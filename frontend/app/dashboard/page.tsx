@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -118,18 +118,10 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    const read = (e?: Event) => {
+    const read = () => {
       try {
         const t = new URLSearchParams(window.location.search).get('tab')
         if (t) setActiveTabState(t)
-        // The floating tab bar attaches a scroll hint so tapping Insights/News
-        // lands the user ON the section instead of leaving them at the hero.
-        const scroll = (e as CustomEvent | undefined)?.detail?.scroll
-        if (scroll === 'top') {
-          window.scrollTo({ top: 0, behavior: 'smooth' })
-        } else if (scroll === 'tabs') {
-          document.getElementById('dashboard-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }
       } catch { /* ignore */ }
     }
     read()
@@ -137,6 +129,27 @@ export default function DashboardPage() {
     window.addEventListener('popstate', read)
     return () => { window.removeEventListener('nworth:tab-change', read); window.removeEventListener('popstate', read) }
   }, [])
+
+  // Scroll to the tabs region whenever activeTab changes — driven by state
+  // (not by guessing when router.push/URL sync has settled), so it's a
+  // single smooth scroll per switch, identical for every tab. Skipped on
+  // the very first render so opening the dashboard doesn't auto-scroll,
+  // and skipped entirely on tablet/desktop (md+) where everything is
+  // already on screen and auto-scrolling just feels like the page jumping.
+  const didMountRef = useRef(false)
+  useEffect(() => {
+    if (!didMountRef.current) { didMountRef.current = true; return }
+    if (window.matchMedia('(min-width: 768px)').matches) return
+    // iPad mini portrait is 744pt — under the md breakpoint — so also
+    // detect iPad directly (iPadOS reports "Macintosh" + multitouch).
+    const ua = navigator.userAgent
+    if (/iPad/.test(ua) || (ua.includes('Macintosh') && navigator.maxTouchPoints > 1)) return
+    if (activeTab === 'holdings') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+    document.getElementById('dashboard-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [activeTab])
 
 
   // First-run onboarding: offer to load the demo dataset. Shown once per user,
@@ -345,7 +358,10 @@ export default function DashboardPage() {
           The 7-button tab bar wraps horribly on a phone. On mobile we show
           a single <select> dropdown bound to the same Tabs state; on md+
           the original 7-col tab bar renders normally. */}
-      <div id="dashboard-tabs" style={{ scrollMarginTop: 'calc(env(safe-area-inset-top) + 8px)' }}>
+      {/* min-h on phones: short tabs (debts / watchlist / properties…) must
+          still leave enough page height for the tab-switch scroll to land
+          fully, matching the taller tabs' behavior. */}
+      <div id="dashboard-tabs" className="min-h-[85vh] md:min-h-0" style={{ scrollMarginTop: 'calc(env(safe-area-inset-top) + 8px)' }}>
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         {/* Mobile: View dropdown + Refresh button side-by-side */}
         <div className="md:hidden mb-3 flex items-end gap-2">
@@ -501,7 +517,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle>Portfolio · Debt · Net Worth Trends</CardTitle>
-              <p className="text-sm text-muted-foreground">Historical snapshots recorded each time the dashboard loads</p>
+              <p className="text-sm text-muted-foreground">A snapshot is saved each day you open the app — open it daily to keep this history complete (missed days can&apos;t be backfilled)</p>
             </CardHeader>
             <CardContent><NetWorthTrendChart /></CardContent>
           </Card>

@@ -22,9 +22,14 @@ const KEY = 'ai_providers_config'
 
 // The built-in (app owner's) API key is a free trial only: it works for this
 // many AI requests, after which the user must supply their own key. The counter
-// lives in device Preferences (not the per-user DB) so it can't be reset by
-// signing out / creating a new local account.
-export const DEFAULT_KEY_LIMIT = 5
+// is written to BOTH the iOS Keychain and device Preferences:
+//   • Keychain survives app deletion + reinstall, so wiping the app doesn't
+//     grant a fresh trial;
+//   • Preferences is the fast path and the web fallback.
+// Reads take the max of the two and heal whichever store is behind. Neither
+// store is tied to the per-user DB, so signing out / creating a new local
+// account doesn't reset it either.
+export const DEFAULT_KEY_LIMIT = 10
 const DEFAULT_KEY_USAGE_KEY = 'ai_default_key_usage'
 
 export type ProviderId = 'claude' | 'openai' | 'ollama' | 'lmstudio'
@@ -36,15 +41,40 @@ export interface ProviderSlot {
   is_default?: boolean // true when api_key is the app owner's built-in trial key
 }
 
+async function readKeychainUsage(): Promise<number> {
+  try {
+    const { SecureStoragePlugin } = await import('capacitor-secure-storage-plugin')
+    const v = (await SecureStoragePlugin.get({ key: DEFAULT_KEY_USAGE_KEY })).value
+    const n = parseInt(v, 10)
+    return Number.isFinite(n) ? n : 0
+  } catch {
+    return 0 // key not set yet, or plugin unavailable (web)
+  }
+}
+
+async function writeKeychainUsage(n: number): Promise<void> {
+  try {
+    const { SecureStoragePlugin } = await import('capacitor-secure-storage-plugin')
+    await SecureStoragePlugin.set({ key: DEFAULT_KEY_USAGE_KEY, value: String(n) })
+  } catch { /* web or keychain unavailable — Preferences still has it */ }
+}
+
 export async function getDefaultKeyUsage(): Promise<number> {
   const v = (await Preferences.get({ key: DEFAULT_KEY_USAGE_KEY })).value
-  const n = v ? parseInt(v, 10) : 0
-  return Number.isFinite(n) ? n : 0
+  const pref = v ? parseInt(v, 10) : 0
+  const prefN = Number.isFinite(pref) ? pref : 0
+  const keychainN = await readKeychainUsage()
+  const n = Math.max(prefN, keychainN)
+  // Heal whichever store is behind (e.g. Preferences wiped by a reinstall).
+  if (n > prefN) { try { await Preferences.set({ key: DEFAULT_KEY_USAGE_KEY, value: String(n) }) } catch { /* ignore */ } }
+  if (n > keychainN) await writeKeychainUsage(n)
+  return n
 }
 
 export async function incrementDefaultKeyUsage(): Promise<number> {
   const n = (await getDefaultKeyUsage()) + 1
   await Preferences.set({ key: DEFAULT_KEY_USAGE_KEY, value: String(n) })
+  await writeKeychainUsage(n)
   return n
 }
 

@@ -43,14 +43,38 @@ export function Disclaimer({ variant = 'market' }: { variant?: 'ai' | 'market' |
           data and is not responsible for third-party content.
         </p>
         <p>
+          Nworth is not a bank, broker-dealer, investment adviser, or fiduciary, and no advisory,
+          fiduciary, or professional relationship of any kind is created by your use of the app.
+          All figures shown are based solely on the information you enter and on third-party
+          market data, and may not reflect the actual value of your assets.
+        </p>
+        <p>
           To the maximum extent permitted by law, the developer shall not be liable for any losses,
-          damages, or decisions of any kind arising from your use of, or reliance on, the app or its
-          data. You use the app entirely at your own risk.
+          damages, or decisions of any kind — including without limitation investment losses, lost
+          profits, data loss or corruption, or incidental, indirect, special, or consequential
+          damages — arising from your use of, inability to use, or reliance on the app or its
+          data, even if advised of the possibility of such damages. You use the app entirely at
+          your own risk, and your sole and exclusive remedy for any dissatisfaction with the app
+          is to stop using it.
+        </p>
+        <p>
+          You are responsible for safeguarding your own data, including keeping backups via the
+          app&apos;s export and backup features. Your data is stored only on your device (and, if
+          you enable iCloud sync, in your private iCloud Drive); the developer holds no copy and
+          cannot recover data that is lost, deleted, or becomes inaccessible for any reason,
+          including device loss, OS updates, or app removal.
+        </p>
+        <p>
+          Optional integrations (iCloud, Yahoo Finance, Stooq, Claude, OpenAI, or other providers
+          you configure) are third-party services governed by their own terms and privacy
+          policies; the developer is not responsible for their availability, accuracy, or conduct.
         </p>
         <p>
           The app is provided &ldquo;as is&rdquo; and &ldquo;as available&rdquo; without warranties
-          of any kind, express or implied. Features may be added, changed, or removed at any time
-          without notice, and continued availability of any feature is not guaranteed.
+          of any kind, express or implied, including merchantability, fitness for a particular
+          purpose, and non-infringement. Features may be added, changed, or removed at any time
+          without notice, and continued availability of any feature is not guaranteed. By using
+          the app you accept these terms in full; if you do not agree, discontinue use.
         </p>
       </div>
     </div>

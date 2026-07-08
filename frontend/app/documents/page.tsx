@@ -111,15 +111,21 @@ export default function DocumentsPage() {
       upload: 'upload-section',
       export: 'export-data',
       manage: 'data-management-section',
+      import: 'import-data',
       backups: 'auto-backups',
       icloud: 'icloud-sync',
       demo: 'demo-data',
     }
     const id = target[focus] ?? 'upload-section'
-    const t = setTimeout(() => {
+    // Scroll twice: once when the page settles, and again after async data
+    // (documents list, backups) has loaded — content above the anchor grows
+    // as it arrives, which would otherwise leave the first scroll landing
+    // above the section it aimed for.
+    const scroll = () =>
       document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 350)
-    return () => clearTimeout(t)
+    const t1 = setTimeout(scroll, 350)
+    const t2 = setTimeout(scroll, 1100)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [])
 
   const fetchAccounts = async () => {
@@ -326,7 +332,7 @@ export default function DocumentsPage() {
       </header>
 
       {/* Upload Card */}
-      <Card id="upload-section" className="scroll-mt-4">
+      <Card id="upload-section" className="scroll-mt-4" style={{ scrollMarginTop: 'calc(env(safe-area-inset-top) + 12px)' }}>
         <CardHeader><CardTitle>Upload a Document</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -661,7 +667,7 @@ export default function DocumentsPage() {
       </Card>
 
       {/* Data Management — export, import, backups */}
-      <div id="data-management-section" className="scroll-mt-4">
+      <div id="data-management-section" className="scroll-mt-4" style={{ scrollMarginTop: 'calc(env(safe-area-inset-top) + 12px)' }}>
         <h2 className="text-xl font-semibold tracking-tight mb-4">Data Management</h2>
         <DataManagement onDataChanged={() => {}} />
       </div>

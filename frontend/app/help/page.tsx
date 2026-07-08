@@ -49,12 +49,13 @@ export default function HelpPage() {
           <Guide
             title="Add a holding"
             steps={[
-              'Open the Dashboard and select the Holdings view (use the View dropdown on phone).',
-              'Tap “+ Add Holding”.',
+              'Tap Home on the bottom bar (or pick Holdings in the View dropdown).',
+              'Tap the round “+” button above the bottom bar, or “+ Add Holding” in the list.',
               'Enter the Ticker (e.g. AAPL, BTC-USD), number of Shares, and your Avg Cost.',
               'Choose a Type, and optionally a Broker/Account — typing a new broker name creates that account automatically.',
               'Tap “Add Holding”. The live price, value, and gain/loss fill in automatically.',
             ]}
+            note="The “+” button adapts to the view you’re on — it also adds accounts, watchlist tickers, debts, and properties."
           />
           <Guide
             title="Edit or remove a holding"
@@ -82,12 +83,12 @@ export default function HelpPage() {
           <Guide
             title="Add an API key for AI"
             steps={[
-              'Go to Profile.',
+              'Tap Settings on the bottom bar.',
               'Find the “AI Provider” section and pick your provider (Claude, OpenAI, or a local one like Ollama / LM Studio).',
               'Paste your API key (for cloud providers) or the host URL (for local providers), then Save.',
-              'Open the AI Insights view on the Dashboard to get portfolio analysis.',
+              'Tap AI on the bottom bar to get portfolio analysis.',
             ]}
-            note="Keys are stored only on your device."
+            note="The app includes 10 free AI requests on a built-in trial key so you can try the AI features right away. After those are used, add your own API key to keep going — the AI Provider section shows how many free requests you have left. Keys are stored only on your device."
           />
         </CardContent>
       </Card>
@@ -98,7 +99,7 @@ export default function HelpPage() {
           <Guide
             title="Export your data"
             steps={[
-              'Go to Profile → “Manage exports & backups”.',
+              'Tap Settings on the bottom bar → “Manage exports & backups”.',
               'Under Export Data, tap “All Data JSON” for a complete snapshot, or a CSV (Holdings, Watchlist, Debts, Trends).',
               'The iOS share sheet opens so you can save to Files, email it, or AirDrop it.',
             ]}
@@ -106,7 +107,7 @@ export default function HelpPage() {
           <Guide
             title="Import data"
             steps={[
-              'Go to Profile → “Manage exports & backups”.',
+              'Tap Settings on the bottom bar → “Manage exports & backups”.',
               'Pick a Conflict mode: “Update existing + add new”, “Add new only”, or “Replace everything”.',
               'Tap “All Data JSON” and choose your .json file — holdings, accounts, debts, properties, watchlist, transactions, and history are restored together.',
               'You can also import Holdings, Watchlist, or Debts individually from CSV.',
@@ -123,12 +124,27 @@ export default function HelpPage() {
       </Card>
 
       <Card>
+        <CardHeader><CardTitle className="text-base">History &amp; charts</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          <Guide
+            title="Keep your history complete — open the app daily"
+            steps={[
+              'For the richest history and the smoothest charts, open the app at least once every day.',
+              'Each visit captures that day’s ticker prices and saves a snapshot of your net worth — portfolio, cash, debts, and properties (one snapshot per day).',
+              'The growth chart and the “Portfolio · Debt · Net Worth Trends” chart are drawn from these daily snapshots, so a quick daily open keeps them accurate and gap-free.',
+            ]}
+            note="Days you don’t open the app have no snapshot and can’t be backfilled later — your cash balances and debts have no public history to look up. The Portfolio Performance chart is the exception: it’s rebuilt from each holding’s market price history, so it fills itself in automatically."
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader><CardTitle className="text-base">Backups</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           <Guide
             title="Save & restore backups"
             steps={[
-              'Go to Profile → “Manage exports & backups” → Automatic Backups.',
+              'Tap Settings on the bottom bar → “Manage exports & backups” → Automatic Backups.',
               'Choose a frequency: Daily, Weekly, Monthly, or Off.',
               'A full snapshot (all data + net-worth history) is saved on your device automatically; the 10 most recent are kept.',
               'Tap “+ Backup now” to make one immediately.',
@@ -145,14 +161,14 @@ export default function HelpPage() {
           <Guide
             title="Turn on Face ID / Touch ID"
             steps={[
-              'Go to Profile → Security and turn on “Face ID sign-in” (you’ll confirm once).',
+              'Tap Settings on the bottom bar → Security and turn on “Face ID sign-in” (you’ll confirm once).',
               'Next time you’re on the login screen, tap “Sign in with Face ID”.',
             ]}
           />
           <Guide
             title="Change the theme"
             steps={[
-              'Go to Profile → Appearance and choose Light, Dark, or System.',
+              'Tap Settings on the bottom bar → Appearance and choose Light, Dark, or System.',
               'System follows your device’s appearance; if your device has no preference it switches automatically by time of day.',
             ]}
           />

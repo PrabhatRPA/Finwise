@@ -1,6 +1,6 @@
 {
   "name": "nworth",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "description": "Nworth — Track Everything. Share Nothing. Privacy-first personal finance dashboard.",
   "author": "Prabhat Kumar",
   "private": true,
@@ -31,6 +31,7 @@
     "@capacitor/status-bar": "^8.0.2",
     "axios": "^1.6.2",
     "bcryptjs": "^3.0.3",
+    "capacitor-secure-storage-plugin": "^0.13.0",
     "clsx": "^2.1.1",
     "date-fns": "^3.0.6",
     "framer-motion": "^10.18.0",
