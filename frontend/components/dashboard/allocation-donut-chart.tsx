@@ -14,6 +14,7 @@ import {
   LineChart,
   Line,
 } from 'recharts'
+import { formatCurrency, formatCurrencyWhole } from '@/lib/utils'
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#A4DE6C', '#D0ED57']
 
@@ -72,7 +73,7 @@ export function AssetAllocationDonutChart({ holdings }: AssetAllocationDonutChar
         </Pie>
         <Tooltip
           formatter={(value) => [
-            new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value as number),
+            formatCurrency(value as number),
             'Value',
           ]}
         />
@@ -122,7 +123,7 @@ export function AssetAllocationChart({ holdings }: AssetAllocationChartProps) {
         <YAxis dataKey="name" type="category" width={100} />
         <Tooltip
           formatter={(value) => [
-            new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value as number),
+            formatCurrency(value as number),
             'Value',
           ]}
         />
@@ -172,7 +173,7 @@ export function PortfolioPerformanceChart({ holdings }: PortfolioPerformanceChar
         <XAxis dataKey="name" />
         <YAxis />
         <Tooltip
-          formatter={(value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value as number)}
+          formatter={(value) => formatCurrency(value as number)}
         />
         <Bar dataKey="value" name="Value" fill="#8884d8" />
         <Bar dataKey="gain" name="Gain/Loss" fill="#82ca9d" />
@@ -206,10 +207,10 @@ export function NetWorthTrendChart({}: NetWorthTrendChartProps) {
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="month" />
         <YAxis
-          tickFormatter={(value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value)}
+          tickFormatter={(value) => formatCurrencyWhole(value)}
         />
         <Tooltip
-          formatter={(value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value as number)}
+          formatter={(value) => formatCurrency(value as number)}
         />
         <Line type="monotone" dataKey="netWorth" name="Net Worth" stroke="#8884d8" strokeWidth={2} />
         <Line type="monotone" dataKey="assets" name="Assets" stroke="#82ca9d" strokeWidth={1} strokeDasharray="3 3" />

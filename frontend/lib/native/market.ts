@@ -4,8 +4,10 @@
 
 import { CapacitorHttp } from '@capacitor/core'
 import { get as dbGet, run as dbRun } from './db'
+import { getRegion } from '@/lib/region'
 
 const PRICE_TTL_MS = 5 * 60 * 1000  // 5-minute cache
+const FX_TTL_MS = 60 * 60 * 1000    // FX rates move slowly — 1-hour cache
 
 export interface PriceQuote {
   ticker: string
@@ -14,6 +16,9 @@ export interface PriceQuote {
   day_change: number | null
   day_change_percent: number | null
   source: 'yahoo' | 'stooq' | 'cache'
+  currency?: string | null         // currency of `price` (base currency once converted)
+  native_currency?: string | null  // listing's own trading currency (e.g. INR)
+  native_price?: number | null     // price in the native currency, pre-conversion
 }
 
 export async function fetchPrice(ticker: string, useCache = true): Promise<PriceQuote | null> {
@@ -22,8 +27,9 @@ export async function fetchPrice(ticker: string, useCache = true): Promise<Price
     const cached = await readCache(upper)
     if (cached) return cached
   }
-  const quote = await fetchFromProviders(upper)
+  let quote = await fetchFromProviders(upper)
   if (quote) {
+    quote = await toBaseCurrency(quote)
     await writeCache(quote)
     return quote
   }
@@ -50,6 +56,7 @@ export async function fetchPrices(tickers: string[], useCache = true): Promise<P
   for (const t of need) {
     let q: PriceQuote | null = batch.get(t) ?? null
     if (!q) q = await fetchFromProviders(t)  // batch missed it → full chain
+    if (q) q = await toBaseCurrency(q)
     if (!q) q = await readCache(t, true)     // everything failed → stale value
     if (q) {
       if (q.source !== 'cache') await writeCache(q)
@@ -57,6 +64,67 @@ export async function fetchPrices(tickers: string[], useCache = true): Promise<P
     }
   }
   return out
+}
+
+// ── Currency conversion ────────────────────────────────────────────────
+// Quotes come back in each listing's native currency (INR for .NS, GBp for
+// .L, …). Everything the app stores/aggregates is in the base currency of
+// the market selected in Settings, so convert here — the single choke point
+// through which every price flows. Same-currency portfolios (the default:
+// US market, US tickers) take the `from === to` early exit and never fetch FX.
+
+// Yahoo reports some markets in minor units; normalise to the major currency.
+const MINOR_UNITS: Record<string, string> = { GBp: 'GBP', ZAc: 'ZAR', ILA: 'ILS' }
+
+async function fxRate(from: string, to: string): Promise<number | null> {
+  if (!from || from === to) return 1
+  const pairTicker = `${from}${to}=X`.toUpperCase()
+  // FX rates ride the regular market_prices cache (they're quotes too), with
+  // a longer TTL enforced here.
+  const row = await dbGet<any>(
+    `SELECT price, fetched_at FROM market_prices WHERE ticker = ?`, [pairTicker],
+  )
+  if (row && row.price > 0 && cacheAgeMs(row.fetched_at) < FX_TTL_MS) return row.price
+  for (const host of YAHOO_HOSTS) {
+    const q = await yahooChart(pairTicker, host)
+    if (q && isFinite(q.price) && q.price > 0) {
+      await writeCache({ ...q, ticker: pairTicker, source: 'yahoo', currency: to })
+      return q.price
+    }
+  }
+  // Live FX down — serve the stale cached rate if we ever had one.
+  return row && row.price > 0 ? row.price : null
+}
+
+async function toBaseCurrency(q: PriceQuote): Promise<PriceQuote> {
+  const base = getRegion().currency
+  const native = q.currency ?? null
+  let cur = native
+  if (!cur || cur === base) return { ...q, currency: cur ?? base, native_currency: cur ?? base }
+
+  // Minor units (pence, cents): scale to the major currency first.
+  let scale = 1
+  if (MINOR_UNITS[cur]) { scale = 1 / 100; cur = MINOR_UNITS[cur] }
+
+  if (cur === base) {
+    return scaleQuote(q, scale, base, native)
+  }
+  const rate = await fxRate(cur, base)
+  if (rate == null) return { ...q, native_currency: native }  // FX unavailable — leave native, flagged by currency field
+  return scaleQuote(q, scale * rate, base, native)
+}
+
+function scaleQuote(q: PriceQuote, k: number, base: string, native: string | null): PriceQuote {
+  return {
+    ...q,
+    native_currency: native,
+    native_price: q.price,
+    price: q.price * k,
+    previous_close: q.previous_close != null ? q.previous_close * k : null,
+    day_change: q.day_change != null ? q.day_change * k : null,
+    // percent change is unit-free — unchanged
+    currency: base,
+  }
 }
 
 // ── Provider chain ─────────────────────────────────────────────────────
@@ -114,6 +182,8 @@ function quoteFromMeta(ticker: string, meta: any): PriceQuote | null {
     day_change: change,
     day_change_percent: changePct,
     source: 'yahoo',
+    // Native trading currency (e.g. "INR", "GBp"); toBaseCurrency() converts.
+    currency: typeof meta?.currency === 'string' ? meta.currency : null,
   }
 }
 
@@ -309,6 +379,8 @@ async function stooq(ticker: string): Promise<PriceQuote | null> {
       day_change: isFinite(open) ? close - open : null,
       day_change_percent: isFinite(open) && open !== 0 ? ((close - open) / open) * 100 : null,
       source: 'stooq',
+      // Suffixless symbols were queried as ".us" → USD. Suffixed ones: unknown.
+      currency: ticker.includes('.') ? null : 'USD',
     }
   } catch {
     return null
@@ -331,7 +403,9 @@ export interface HistoryPoint {
 
 async function fetchHistory(ticker: string, period = '1y'): Promise<HistoryPoint[]> {
   const range = PERIOD_RANGE[period] ?? '1y'
-  const interval = range === '1d' ? '5m' : range === '5d' ? '60m' : '1d'
+  // Weekly candles at 5y keep the payload/chart-point count ~5× smaller —
+  // same visual shape, no jank on older phones.
+  const interval = range === '1d' ? '5m' : range === '5d' ? '60m' : range === '5y' || range === 'max' ? '1wk' : '1d'
   for (const host of YAHOO_HOSTS) {
     try {
       const res = await CapacitorHttp.get({
@@ -344,16 +418,80 @@ async function fetchHistory(ticker: string, period = '1y'): Promise<HistoryPoint
       const stamps: number[] | undefined = result?.timestamp
       const closes: (number | null)[] | undefined = result?.indicators?.quote?.[0]?.close
       if (!stamps || !closes) continue
+      // Convert non-base-currency series with TODAY's FX rate. Approximation:
+      // past points ignore historical FX movement — fine for shape/levels; a
+      // rate-accurate series would need per-day FX history (out of scope).
+      let k = 1
+      let cur: string | null = typeof result?.meta?.currency === 'string' ? result.meta.currency : null
+      const base = getRegion().currency
+      if (cur && cur !== base) {
+        if (MINOR_UNITS[cur]) { k = 1 / 100; cur = MINOR_UNITS[cur] }
+        if (cur !== base) {
+          const rate = await fxRate(cur, base)
+          k = rate != null ? k * rate : 1  // FX down → leave native rather than blank
+        }
+      }
       const out: HistoryPoint[] = []
       for (let i = 0; i < stamps.length; i++) {
         const ts = stamps[i]
         out.push({
           timestamp: ts,
           date: new Date(ts * 1000).toISOString().slice(0, 10),
-          close: closes[i] != null ? Number(closes[i]) : null,
+          close: closes[i] != null ? Number(closes[i]) * k : null,
         })
       }
       return out
+    } catch {
+      // Try next host.
+    }
+  }
+  return []
+}
+
+// ── Symbol search (Yahoo v1 search, keyless) ───────────────────────────
+// Powers ticker autocomplete in Add Holding / Watchlist and bare-ticker
+// resolution (TCS → TCS.NS). Results ranked with the selected market's
+// exchange suffixes first so local users see their home listing on top.
+export interface SymbolMatch {
+  symbol: string
+  name: string
+  exchange: string
+  quoteType: string
+}
+
+const SEARCH_TYPES = new Set(['EQUITY', 'ETF', 'MUTUALFUND', 'CRYPTOCURRENCY', 'INDEX'])
+
+export async function searchSymbols(query: string): Promise<SymbolMatch[]> {
+  const q = query.trim()
+  if (q.length < 1) return []
+  for (const host of YAHOO_HOSTS) {
+    try {
+      const res = await CapacitorHttp.get({
+        url: `https://${host}.finance.yahoo.com/v1/finance/search`,
+        params: { q, quotesCount: '8', newsCount: '0', enableFuzzyQuery: 'false' },
+        headers: { 'User-Agent': 'Mozilla/5.0 Nworth/1.0' },
+      })
+      if (res.status !== 200) continue
+      const quotes: any[] = res.data?.quotes ?? []
+      if (!Array.isArray(quotes)) continue
+      const out: SymbolMatch[] = quotes
+        .filter((it) => it?.symbol && SEARCH_TYPES.has(String(it?.quoteType ?? '').toUpperCase()))
+        .map((it) => ({
+          symbol: String(it.symbol).toUpperCase(),
+          name: String(it.shortname ?? it.longname ?? ''),
+          exchange: String(it.exchDisp ?? it.exchange ?? ''),
+          quoteType: String(it.quoteType ?? '').toUpperCase(),
+        }))
+      // Home-market listings first, then Yahoo's own relevance order.
+      const suffixes = getRegion().suffixes.filter(Boolean)
+      if (suffixes.length > 0) {
+        out.sort((a, b) => {
+          const ai = suffixes.some((s) => a.symbol.endsWith(s)) ? 0 : 1
+          const bi = suffixes.some((s) => b.symbol.endsWith(s)) ? 0 : 1
+          return ai - bi
+        })
+      }
+      if (out.length > 0) return out
     } catch {
       // Try next host.
     }
@@ -468,27 +606,36 @@ async function fetchNewsMerged(ticker: string): Promise<NewsItem[]> {
 }
 
 // ── Cache (SQLite) ─────────────────────────────────────────────────────
+// SQLite's CURRENT_TIMESTAMP is "YYYY-MM-DD HH:MM:SS" (UTC, space-separated,
+// no zone). iOS JavaScriptCore won't parse that space form, returning NaN —
+// and `Date.now() - NaN > TTL` is false, which would mark every cached row
+// as permanently fresh and freeze prices after the first fetch. Normalise to
+// ISO 8601 ("…THH:MM:SSZ") so TTL checks actually work. Unparseable → Infinity
+// (treated as maximally stale) so we re-fetch rather than serve old data.
+function cacheAgeMs(fetchedAt: unknown): number {
+  const raw = String(fetchedAt ?? '')
+  const iso = (raw.includes('T') ? raw : raw.replace(' ', 'T')).replace(/Z?$/, 'Z')
+  const fetchedMs = Date.parse(iso)
+  return isFinite(fetchedMs) ? Date.now() - fetchedMs : Infinity
+}
+
 async function readCache(ticker: string, ignoreTtl = false): Promise<PriceQuote | null> {
   const row = await dbGet<any>(
-    `SELECT ticker, price, previous_close, day_change, day_change_percent, fetched_at
+    `SELECT ticker, price, previous_close, day_change, day_change_percent, currency, fetched_at
      FROM market_prices WHERE ticker = ?`,
     [ticker],
   )
   if (!row) return null
+  // Cached prices are stored converted to the base currency in effect when
+  // written. If the user changed markets since, the row is in the WRONG
+  // currency — treat as a miss so it's re-fetched and re-converted. (Legacy
+  // rows with NULL currency predate conversion: they're USD-era values,
+  // acceptable for the ignoreTtl last-resort path only.)
+  const base = getRegion().currency
+  if (row.currency != null && row.currency !== base) return null
   // `ignoreTtl` is the "every live source is down, serve whatever we have"
-  // path. Otherwise enforce the freshness window below.
-  if (!ignoreTtl) {
-    // SQLite's CURRENT_TIMESTAMP is "YYYY-MM-DD HH:MM:SS" (UTC, space-separated,
-    // no zone). iOS JavaScriptCore won't parse that space form, returning NaN —
-    // and `Date.now() - NaN > TTL` is false, which would mark every cached row
-    // as permanently fresh and freeze prices after the first fetch. Normalise to
-    // ISO 8601 ("…THH:MM:SSZ") so the TTL check actually works. If parsing still
-    // fails, treat the row as stale so we re-fetch rather than serve old data.
-    const raw = String(row.fetched_at ?? '')
-    const iso = (raw.includes('T') ? raw : raw.replace(' ', 'T')).replace(/Z?$/, 'Z')
-    const fetchedMs = Date.parse(iso)
-    if (!isFinite(fetchedMs) || Date.now() - fetchedMs > PRICE_TTL_MS) return null
-  }
+  // path. Otherwise enforce the freshness window.
+  if (!ignoreTtl && cacheAgeMs(row.fetched_at) > PRICE_TTL_MS) return null
   return {
     ticker,
     price: row.price,
@@ -496,21 +643,23 @@ async function readCache(ticker: string, ignoreTtl = false): Promise<PriceQuote 
     day_change: row.day_change,
     day_change_percent: row.day_change_percent,
     source: 'cache',
+    currency: row.currency ?? null,
   }
 }
 
 async function writeCache(q: PriceQuote): Promise<void> {
   await dbRun(
-    `INSERT INTO market_prices (ticker, price, previous_close, day_change, day_change_percent, source, fetched_at)
-     VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `INSERT INTO market_prices (ticker, price, previous_close, day_change, day_change_percent, source, currency, fetched_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
      ON CONFLICT(ticker) DO UPDATE SET
        price = excluded.price,
        previous_close = excluded.previous_close,
        day_change = excluded.day_change,
        day_change_percent = excluded.day_change_percent,
        source = excluded.source,
+       currency = excluded.currency,
        fetched_at = CURRENT_TIMESTAMP`,
-    [q.ticker, q.price, q.previous_close, q.day_change, q.day_change_percent, q.source],
+    [q.ticker, q.price, q.previous_close, q.day_change, q.day_change_percent, q.source, q.currency ?? null],
   )
 }
 
@@ -539,6 +688,12 @@ export const nativeMarketApi = {
     const news = await fetchNewsMerged(ticker)
     return { data: { ticker, news } }
   },
-  search: async (_query: string) => ({ data: [] }),
-  suggestions: async (_query: string) => ({ data: [] }),
+  search: async (query: string) => {
+    const results = await searchSymbols(query)
+    return { data: results }
+  },
+  suggestions: async (query: string) => {
+    const results = await searchSymbols(query)
+    return { data: results }
+  },
 }

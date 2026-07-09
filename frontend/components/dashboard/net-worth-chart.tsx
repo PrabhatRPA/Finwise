@@ -8,18 +8,26 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { netWorthApi, dataApi } from '@/lib/api'
+import { getRegion } from '@/lib/region'
+import { formatCurrencyWhole } from '@/lib/utils'
 
 type ChartType = 'line' | 'area' | 'bar'
-type TimeRange = 7 | 30 | 90 | 365
+type TimeRange = 7 | 30 | 90 | 365 | 730 | 1825
 
 const fmt = (v: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v)
+  formatCurrencyWhole(v)
 
+// Compact axis labels in the selected market's currency (₹1.2M, $340K, …).
 const fmtK = (v: number) => {
-  const abs = Math.abs(v)
-  if (abs >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`
-  if (abs >= 1_000) return `$${(v / 1_000).toFixed(0)}K`
-  return fmt(v)
+  const r = getRegion()
+  try {
+    return new Intl.NumberFormat(r.locale, {
+      style: 'currency', currency: r.currency,
+      notation: 'compact', maximumFractionDigits: 1,
+    }).format(v)
+  } catch {
+    return fmt(v)
+  }
 }
 
 const fmtDate = (iso: string) => {
@@ -154,7 +162,10 @@ export function NetWorthTrendChart() {
   const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
-    netWorthApi.getTrends(365)
+    // Fetch the full 5-year window once; range pills slice client-side.
+    // Snapshots only exist for days the app was opened, so long ranges
+    // simply show whatever history is available — no error states.
+    netWorthApi.getTrends(1825)
       .then(r => {
         const raw = r.data?.points ?? []
         setAllPoints(raw.map((p: any) => ({ ...p, date: fmtDate(p.date) })))
@@ -186,6 +197,8 @@ export function NetWorthTrendChart() {
     { id: 30, label: '1M' },
     { id: 90, label: '3M' },
     { id: 365, label: '1Y' },
+    { id: 730, label: '2Y' },
+    { id: 1825, label: '5Y' },
   ]
 
   const CHART_TYPES: { id: ChartType; label: string }[] = [

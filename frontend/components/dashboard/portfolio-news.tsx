@@ -47,6 +47,14 @@ async function openLink(url: string) {
 
 type SortMode = 'value' | 'recent'
 
+// Session cache: the Tabs implementation unmounts inactive tabs, so this
+// component remounts (and used to re-fetch ~50 tickers × 2 sources) on every
+// visit to the News tab. Cache the merged feed at module scope keyed by the
+// ticker set: fresh cache renders instantly with no fetch; stale cache still
+// renders instantly while a silent background refresh replaces it.
+const NEWS_TTL_MS = 10 * 60 * 1000
+let _newsCache: { key: string; at: number; items: FeedItem[] } | null = null
+
 export function PortfolioNews({ holdings }: { holdings: any[] }) {
   const router = useRouter()
 
@@ -73,14 +81,22 @@ export function PortfolioNews({ holdings }: { holdings: any[] }) {
     return map
   }, [holdings])
 
-  const [rawItems, setRawItems] = useState<FeedItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const cacheKey = useMemo(() => tickers.slice().sort().join(','), [tickers])
+  const cached = _newsCache && _newsCache.key === cacheKey ? _newsCache : null
+
+  const [rawItems, setRawItems] = useState<FeedItem[]>(cached?.items ?? [])
+  const [loading, setLoading] = useState(!cached)
   const [sortMode, setSortMode] = useState<SortMode>('value')
 
   useEffect(() => {
     let cancelled = false
     if (tickers.length === 0) { setRawItems([]); setLoading(false); return }
-    setLoading(true)
+
+    // Fresh cache → nothing to do; the initial state already rendered it.
+    const hit = _newsCache && _newsCache.key === cacheKey ? _newsCache : null
+    if (hit && Date.now() - hit.at < NEWS_TTL_MS) { setLoading(false); return }
+    // Stale cache still shows instantly; only a cold start shows the loader.
+    if (!hit) setLoading(true)
 
     Promise.allSettled(tickers.map(t => marketApi.getNews(t)))
       .then(results => {
@@ -102,12 +118,17 @@ export function PortfolioNews({ holdings }: { holdings: any[] }) {
             })
           }
         })
-        setRawItems(merged)
+        // A refresh that comes back empty (offline, sources down) shouldn't
+        // wipe a feed the user can already read.
+        if (merged.length > 0 || !hit) {
+          _newsCache = { key: cacheKey, at: Date.now(), items: merged }
+          setRawItems(merged)
+        }
       })
       .finally(() => { if (!cancelled) setLoading(false) })
 
     return () => { cancelled = true }
-  }, [tickers])
+  }, [tickers, cacheKey])
 
   // "Most recent": flat newest-first, same as before.
   // "By Value": round-robin across tickers (ordered by portfolio value,

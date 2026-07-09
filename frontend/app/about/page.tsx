@@ -82,7 +82,7 @@ const FEATURES: Feature[] = [
   {
     kind: 'invest',
     title: 'Investments',
-    body: 'Holdings across stocks, ETFs, mutual funds, and crypto. Live prices from Yahoo Finance with Stooq as backup. Sector + type allocations, gain/loss, today’s P&L.',
+    body: 'Holdings across stocks, ETFs, mutual funds, and crypto — US and international markets. Live prices with automatic fallback sources. Sector + type allocations, gain/loss, today’s P&L.',
     status: 'shipping',
   },
   {
@@ -192,7 +192,7 @@ export default function AboutPage() {
           <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 mt-0.5">•</span><span>The database lives inside the {APP_NAME} app sandbox. We can&apos;t see it. Nobody can.</span></li>
           <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 mt-0.5">•</span><span>Your data is never shared, sold, or transmitted to the developer or anyone else. There is no server to send it to.</span></li>
           <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 mt-0.5">•</span><span>Optional iCloud sync stores a snapshot in <em>your</em> private iCloud Drive, protected by your Apple ID — the developer has no access to it.</span></li>
-          <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 mt-0.5">•</span><span>Market prices are fetched from Yahoo Finance / Stooq. Only ticker symbols leave the device.</span></li>
+          <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 mt-0.5">•</span><span>Market prices come from trusted third-party market data sources. Only ticker symbols leave the device.</span></li>
           <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 mt-0.5">•</span><span>AI calls go directly from your device to Claude or OpenAI using <em>your</em> API key. We never see the prompt or the response.</span></li>
           <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 mt-0.5">•</span><span>No analytics, no telemetry, no &ldquo;helpful&rdquo; background pings.</span></li>
           <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 mt-0.5">•</span><span>Export your data any time as JSON or CSV — you own it.</span></li>

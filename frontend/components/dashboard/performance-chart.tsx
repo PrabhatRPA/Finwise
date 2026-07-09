@@ -5,6 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, Legend,
 } from 'recharts'
+import { formatCurrencyWhole } from '@/lib/utils'
 
 interface PortfolioPerformanceChartProps {
   holdings: any[]
@@ -14,7 +15,7 @@ type View = 'by-type' | 'by-ticker'
 type Variant = 'grouped' | 'stacked'
 
 const fmt = (v: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v)
+  formatCurrencyWhole(v)
 
 const fmtK = (v: number) => {
   const abs = Math.abs(v)

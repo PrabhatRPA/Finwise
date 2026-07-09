@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { loansApi, type Loan, type LoanCreate } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
+import { currencySymbol, useRegion } from '@/lib/region'
 
 const LOAN_TYPE_LABELS: Record<string, string> = {
   mortgage: 'Home Loan / Mortgage',
@@ -46,6 +47,7 @@ interface Props {
 }
 
 export function DebtsTable({ onDebtChanged }: Props) {
+  useRegion()  // re-render currency symbols when the market setting changes
   const [loans, setLoans] = useState<Loan[]>([])
   const [totalDebt, setTotalDebt] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -214,7 +216,7 @@ export function DebtsTable({ onDebtChanged }: Props) {
               <div>
                 <label className="text-sm font-medium block mb-1">Current Balance *</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{currencySymbol()}</span>
                   <input
                     type="number"
                     min="0"
@@ -229,7 +231,7 @@ export function DebtsTable({ onDebtChanged }: Props) {
               <div>
                 <label className="text-sm font-medium block mb-1">Original Balance</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{currencySymbol()}</span>
                   <input
                     type="number"
                     min="0"
@@ -256,7 +258,7 @@ export function DebtsTable({ onDebtChanged }: Props) {
               <div>
                 <label className="text-sm font-medium block mb-1">Monthly Payment</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{currencySymbol()}</span>
                   <input
                     type="number"
                     min="0"

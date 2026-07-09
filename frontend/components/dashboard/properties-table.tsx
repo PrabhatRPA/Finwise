@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { propertiesApi, PropertyItem } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
+import { currencySymbol, useRegion } from '@/lib/region'
 
 const PROPERTY_TYPES = [
   { value: 'single_family', label: 'Single-Family Home' },
@@ -53,6 +54,7 @@ interface ModalProps {
 }
 
 function PropertyModal({ initial, rentcastConfigured, onSave, onClose }: ModalProps) {
+  useRegion()  // re-render currency symbols when the market setting changes
   const isEdit = !!initial
   const [form, setForm] = useState({
     property_type: initial?.property_type ?? 'single_family',
@@ -170,7 +172,7 @@ function PropertyModal({ initial, rentcastConfigured, onSave, onClose }: ModalPr
             <div>
               <label className="block text-sm font-medium mb-1">Current value</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{currencySymbol()}</span>
                 <Input type="number" min="0" step="1000" value={form.manual_value}
                   onChange={set('manual_value')} placeholder="e.g. 450000" className="pl-6" />
               </div>
@@ -178,7 +180,7 @@ function PropertyModal({ initial, rentcastConfigured, onSave, onClose }: ModalPr
             <div>
               <label className="block text-sm font-medium mb-1">Purchase price</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{currencySymbol()}</span>
                 <Input type="number" min="0" step="1000" value={form.purchase_price}
                   onChange={set('purchase_price')} placeholder="0" className="pl-6" />
               </div>

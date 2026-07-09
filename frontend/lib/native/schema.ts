@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS holdings (
   dividend_yield REAL,
   sector TEXT,
   industry TEXT,
+  currency TEXT,
   is_active INTEGER DEFAULT 1,
   last_updated TEXT DEFAULT CURRENT_TIMESTAMP,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -199,6 +200,7 @@ CREATE TABLE IF NOT EXISTS market_prices (
   day_change REAL,
   day_change_percent REAL,
   source TEXT,
+  currency TEXT,
   fetched_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 

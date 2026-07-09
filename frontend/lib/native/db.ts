@@ -51,6 +51,9 @@ async function init(): Promise<SQLiteDBConnection> {
   const migrations = [
     `ALTER TABLE users ADD COLUMN apple_user_id TEXT`,
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_apple_user_id ON users(apple_user_id) WHERE apple_user_id IS NOT NULL`,
+    // International markets: native trading currency per holding + per cached quote.
+    `ALTER TABLE holdings ADD COLUMN currency TEXT`,
+    `ALTER TABLE market_prices ADD COLUMN currency TEXT`,
   ]
   for (const sql of migrations) {
     try { await conn.run(sql, []) } catch { /* already applied — skip */ }

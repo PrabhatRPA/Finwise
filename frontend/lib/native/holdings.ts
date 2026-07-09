@@ -5,7 +5,8 @@
 
 import { all, get, run } from './db'
 import { requireSessionUserId } from './session'
-import { fetchPrices } from './market'
+import { fetchPrices, searchSymbols } from './market'
+import { getRegion } from '@/lib/region'
 
 interface HoldingRow {
   id: number
@@ -24,6 +25,7 @@ interface HoldingRow {
   day_change_percent: number | null
   sector: string | null
   industry: string | null
+  currency: string | null
   is_active: number
   purchase_date: string | null
   last_updated: string | null
@@ -48,31 +50,79 @@ function withTodayFields<T extends HoldingRow>(rows: T[]): (T & {
   }))
 }
 
+// Bare-ticker resolution: a symbol with no price on Yahoo (e.g. `TCS`, a
+// delisted US retailer) often means the user wanted a foreign listing of the
+// same root (`TCS.NS`, Tata Consultancy). Search Yahoo and accept ONLY a
+// same-root candidate (`<bare>.<suffix>`), preferring the selected market's
+// exchanges — never a fuzzy different-company match. Tried at most once per
+// symbol per session so unknown/delisted tickers don't re-search every load.
+const _resolveTried = new Set<string>()
+
+async function resolveBareTicker(bare: string): Promise<{ symbol: string; name: string } | null> {
+  if (bare.includes('.') || bare.startsWith('^') || _resolveTried.has(bare)) return null
+  _resolveTried.add(bare)
+  try {
+    const matches = await searchSymbols(bare)
+    const candidates = matches.filter((m) => m.symbol.startsWith(`${bare}.`))
+    if (candidates.length === 0) return null
+    const suffixes = getRegion().suffixes.filter(Boolean)
+    const preferred =
+      candidates.find((m) => suffixes.includes(m.symbol.slice(bare.length))) ?? candidates[0]
+    return { symbol: preferred.symbol, name: preferred.name }
+  } catch {
+    return null
+  }
+}
+
 async function refreshPricesFor(holdings: HoldingRow[]): Promise<HoldingRow[]> {
   const tickers = Array.from(new Set(holdings.map((h) => h.ticker).filter(Boolean)))
   if (tickers.length === 0) return holdings
   const quotes = await fetchPrices(tickers)
   const byTicker = new Map(quotes.map((q) => [q.ticker.toUpperCase(), q]))
   const updated: HoldingRow[] = []
-  for (const h of holdings) {
-    const q = byTicker.get(h.ticker.toUpperCase())
+  for (let h of holdings) {
+    let q = byTicker.get(h.ticker.toUpperCase())
+
+    // Never-priced holding with no quote → try the exchange-resolution
+    // safety net (TCS → TCS.NS), then fetch the resolved symbol.
+    if (!q && h.current_price == null) {
+      const resolved = await resolveBareTicker(h.ticker.toUpperCase())
+      if (resolved) {
+        await run(
+          `UPDATE holdings SET ticker = ?,
+             security_name = COALESCE(NULLIF(security_name, ''), ?)
+           WHERE id = ?`,
+          [resolved.symbol, resolved.name || null, h.id],
+        )
+        h = { ...h, ticker: resolved.symbol, security_name: h.security_name || resolved.name }
+        q = (await fetchPrices([resolved.symbol]))[0]
+      }
+    }
+
     if (!q) {
       updated.push(h)
       continue
     }
-    const price = q.price
+    const price = q.price  // already in the base display currency
+    // average_cost is in the holding's NATIVE currency (what the user actually
+    // paid on that exchange). Convert it with the same factor as the price so
+    // gain% is exact; absolute gain uses today's FX for both sides.
+    const fxFactor =
+      q.native_price != null && q.native_price > 0 ? q.price / q.native_price : 1
     const value = (h.shares ?? 0) * price
-    const cost = (h.shares ?? 0) * (h.average_cost ?? 0)
+    const cost = (h.shares ?? 0) * (h.average_cost ?? 0) * fxFactor
     const gain = value - cost
     const gainPct = cost > 0 ? (gain / cost) * 100 : 0
+    const nativeCurrency = q.native_currency ?? q.currency ?? null
     await run(
       `UPDATE holdings SET
          current_price = ?, current_value = ?,
          total_gain_loss = ?, total_gain_loss_percent = ?,
          day_change = ?, day_change_percent = ?,
+         currency = ?,
          last_updated = CURRENT_TIMESTAMP
        WHERE id = ?`,
-      [price, value, gain, gainPct, q.day_change, q.day_change_percent, h.id],
+      [price, value, gain, gainPct, q.day_change, q.day_change_percent, nativeCurrency, h.id],
     )
     updated.push({
       ...h,
@@ -82,6 +132,7 @@ async function refreshPricesFor(holdings: HoldingRow[]): Promise<HoldingRow[]> {
       total_gain_loss_percent: gainPct,
       day_change: q.day_change,
       day_change_percent: q.day_change_percent,
+      currency: nativeCurrency,
     })
   }
   return updated

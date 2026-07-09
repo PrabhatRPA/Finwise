@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { watchlistApi, WatchlistItem } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
+import { TickerSearchInput } from '@/components/ds/ticker-search'
+import { currencySymbol, useRegion } from '@/lib/region'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -44,6 +46,7 @@ interface ModalProps {
 }
 
 function WatchlistModal({ initial, onSave, onClose }: ModalProps) {
+  useRegion()  // re-render currency symbols when the market setting changes
   const isEdit = !!initial
   const [ticker, setTicker] = useState(initial?.ticker ?? '')
   const [companyName, setCompanyName] = useState(initial?.company_name ?? '')
@@ -96,13 +99,16 @@ function WatchlistModal({ initial, onSave, onClose }: ModalProps) {
           {/* Ticker */}
           <div>
             <label className="block text-sm font-medium mb-1">Ticker symbol <span className="text-destructive">*</span></label>
-            <Input
-              value={ticker}
-              onChange={e => setTicker(e.target.value.toUpperCase())}
-              placeholder="e.g. AAPL"
-              disabled={isEdit}
-              required
-            />
+            {isEdit ? (
+              <Input value={ticker} disabled required />
+            ) : (
+              <TickerSearchInput
+                value={ticker}
+                onChange={setTicker}
+                onSelect={(m) => { if (m.name) setCompanyName(m.name) }}
+                placeholder="e.g. AAPL, TCS.NS"
+              />
+            )}
           </div>
 
           {/* Company name */}
@@ -120,7 +126,7 @@ function WatchlistModal({ initial, onSave, onClose }: ModalProps) {
             <label className="block text-sm font-medium mb-1">Target price <span className="text-muted-foreground font-normal">(optional)</span></label>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{currencySymbol()}</span>
                 <Input
                   type="number"
                   min="0"

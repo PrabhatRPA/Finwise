@@ -12,6 +12,8 @@ import { usePortfolioStore } from '@/lib/store'
 import { HoldingRow, TickerLogo, typeGlyph } from '@/components/ds/holding-row'
 import { Sparkline } from '@/components/ds/sparkline'
 import { notifySuccess } from '@/components/ds/haptics'
+import { TickerSearchInput } from '@/components/ds/ticker-search'
+import { currencyForTicker, useRegion } from '@/lib/region'
 import { fetchSparkSeries } from '@/lib/native/market'
 
 // ── Customizable columns ────────────────────────────────────────────────────
@@ -114,6 +116,7 @@ const EMPTY_FORM = {
 type FormState = typeof EMPTY_FORM
 
 export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: HoldingsTableProps) {
+  useRegion()  // re-render currency labels when the market setting changes
   const { accounts, totalValue } = usePortfolioStore()
   const router = useRouter()
 
@@ -342,7 +345,7 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
     const avgCost = Number(form.average_cost)
 
     if (!ticker) return setError('Ticker symbol is required.')
-    if (!/^[A-Z0-9.\-]{1,10}$/.test(ticker)) return setError('Enter a valid ticker (e.g. AAPL, BTC-USD).')
+    if (!/^[A-Z0-9.\-^=]{1,15}$/.test(ticker)) return setError('Enter a valid ticker (e.g. AAPL, TCS.NS, BTC-USD).')
     if (!shares || shares <= 0) return setError('Shares must be greater than 0.')
     if (isNaN(avgCost) || avgCost < 0) return setError('Average cost must be 0 or more.')
 
@@ -443,14 +446,10 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Ticker Symbol <span className="text-red-500">*</span></label>
-                <Input
-                  placeholder="e.g. AAPL, MSFT, BTC-USD"
+                <TickerSearchInput
+                  placeholder="e.g. AAPL, TCS.NS, BTC-USD"
                   value={form.ticker}
-                  onChange={setField('ticker')}
-                  className="uppercase"
-                  autoCapitalize="characters"
-                  autoCorrect="off"
-                  spellCheck={false}
+                  onChange={(v) => setForm(f => ({ ...f, ticker: v }))}
                 />
                 {editingId !== null && (
                   <p className="text-xs text-muted-foreground mt-1">
@@ -472,7 +471,10 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Avg Cost (USD)</label>
+                  {/* Cost basis is entered in the LISTING's trading currency
+                      (what the user actually paid on that exchange) — the
+                      gain/loss math converts it to the display currency. */}
+                  <label className="block text-sm font-medium mb-1">Avg Cost ({currencyForTicker(form.ticker)})</label>
                   <Input
                     type="number"
                     placeholder="e.g. 150.00"

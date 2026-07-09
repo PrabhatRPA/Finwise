@@ -9,6 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
+import { formatCurrency } from '@/lib/utils'
 
 interface AssetAllocationChartProps {
   holdings: any[]
@@ -51,7 +52,7 @@ export function AssetAllocationChart({ holdings }: AssetAllocationChartProps) {
         <YAxis dataKey="name" type="category" width={100} />
         <Tooltip
           formatter={(value) => [
-            new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value as number),
+            formatCurrency(value as number),
             'Value',
           ]}
         />

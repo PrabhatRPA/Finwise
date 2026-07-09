@@ -38,7 +38,7 @@ export function Disclaimer({ variant = 'market' }: { variant?: 'ai' | 'market' |
         </p>
         <p>
           Market prices, charts, news, and AI-generated insights are sourced from third parties
-          (such as Yahoo Finance and your chosen AI provider) and may be delayed, inaccurate, or
+          (market data providers and your chosen AI provider) and may be delayed, inaccurate, or
           incomplete. Nworth does not guarantee the accuracy, completeness, or timeliness of any
           data and is not responsible for third-party content.
         </p>
@@ -65,7 +65,7 @@ export function Disclaimer({ variant = 'market' }: { variant?: 'ai' | 'market' |
           including device loss, OS updates, or app removal.
         </p>
         <p>
-          Optional integrations (iCloud, Yahoo Finance, Stooq, Claude, OpenAI, or other providers
+          Optional integrations (iCloud, market data providers, Claude, OpenAI, or other providers
           you configure) are third-party services governed by their own terms and privacy
           policies; the developer is not responsible for their availability, accuracy, or conduct.
         </p>

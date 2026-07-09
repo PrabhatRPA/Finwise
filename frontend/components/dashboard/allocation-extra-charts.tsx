@@ -4,9 +4,10 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, PieChart, Pie, Legend,
 } from 'recharts'
+import { formatCurrencyWhole } from '@/lib/utils'
 
 const fmt = (v: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v)
+  formatCurrencyWhole(v)
 
 const fmtK = (v: number) => {
   const abs = Math.abs(v)

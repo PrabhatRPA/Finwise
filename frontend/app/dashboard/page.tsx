@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatCurrency } from '@/lib/utils'
+import { getRegion, useRegion } from '@/lib/region'
 import { usePortfolioStore } from '@/lib/store'
 import { holdingsApi, accountsApi, netWorthApi, systemApi, dataApi } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -56,17 +57,19 @@ function saveNetWorthCache(data: any) {
 
 // Compact currency: 7221.5 → "$7.2K", 936558 → "$936.6K", 1500000 → "$1.5M".
 // Keeps the summary row readable on a narrow phone (5 cells across).
+// Currency/locale follow the market selected in Settings.
 function formatCompactCurrency(n: number): string {
-  if (!isFinite(n)) return '$0'
+  const r = getRegion()
+  if (!isFinite(n)) n = 0
   try {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(r.locale, {
       style: 'currency',
-      currency: 'USD',
+      currency: r.currency,
       notation: 'compact',
       maximumFractionDigits: 1,
     }).format(n)
   } catch {
-    return `$${Math.round(n).toLocaleString()}`
+    return `${Math.round(n).toLocaleString()}`
   }
 }
 
@@ -95,6 +98,9 @@ export default function DashboardPage() {
   // handles full CRUD (name / type / institution / balance).
   // Controlled tab state so the mobile <select> and the desktop TabsList stay in sync.
   const [activeTab, setActiveTabState] = useState('holdings')
+  // Subscribe to the market/currency setting so all money on screen reformats
+  // live when the user changes it (formatters read the region themselves).
+  useRegion()
 
   // Two-way ?tab= sync with the floating tab bar: URL param is the source of
   // truth. In-page tab changes write it back (replaceState — no history spam)

@@ -20,18 +20,20 @@ export type InputProps = {
   autoCorrect?: 'on' | 'off'
   spellCheck?: boolean
   inputMode?: 'none' | 'text' | 'decimal' | 'numeric' | 'tel' | 'search' | 'email' | 'url'
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
   ref?: React.Ref<HTMLInputElement>
 }
 
 export const Input = ({
   value, onChange, placeholder, className, type = 'text',
   min, max, step, disabled, required, minLength, maxLength, autoComplete,
-  autoCapitalize, autoCorrect, spellCheck, inputMode, ref,
+  autoCapitalize, autoCorrect, spellCheck, inputMode, onBlur, ref,
 }: InputProps) => (
   <input
     type={type}
     value={value}
     onChange={onChange}
+    onBlur={onBlur}
     placeholder={placeholder}
     min={min}
     max={max}

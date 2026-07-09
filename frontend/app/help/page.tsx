@@ -41,6 +41,11 @@ export default function HelpPage() {
         <p className="text-sm text-muted-foreground mt-1">
           Quick how-tos for the things you&apos;ll do most in {APP_NAME}. Tap a topic to expand.
         </p>
+        <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+          <span className="font-medium">Tip:</span> the more complete the information you enter,
+          the more the app can do for you — optional fields like a loan&apos;s interest rate or a
+          property&apos;s purchase price unlock charts and projections that stay hidden otherwise.
+        </p>
       </header>
 
       <Card>
@@ -51,7 +56,8 @@ export default function HelpPage() {
             steps={[
               'Tap Home on the bottom bar (or pick Holdings in the View dropdown).',
               'Tap the round “+” button above the bottom bar, or “+ Add Holding” in the list.',
-              'Enter the Ticker (e.g. AAPL, BTC-USD), number of Shares, and your Avg Cost.',
+              'Start typing the Ticker and pick from the suggestions — international stocks work too (e.g. typing TCS offers TCS.NS on India’s NSE). Prices in other currencies convert automatically.',
+              'Enter the number of Shares and your Avg Cost (in the currency shown on the label — what you actually paid on that exchange).',
               'Choose a Type, and optionally a Broker/Account — typing a new broker name creates that account automatically.',
               'Tap “Add Holding”. The live price, value, and gain/loss fill in automatically.',
             ]}
@@ -73,6 +79,101 @@ export default function HelpPage() {
               'Tap any column header to sort by it. Your layout is saved on this device.',
             ]}
             note="On a phone in portrait, holdings show as compact cards instead of the full table."
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Cash &amp; Accounts</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          <Guide
+            title="Add a bank or investment account"
+            steps={[
+              'Pick “Cash & Accounts” in the View dropdown (or tap the Cash tile under the big chart).',
+              'Tap the “+” button and give the account a name (e.g. Chase Checking, Fidelity Brokerage).',
+              'Choose the Type carefully — Checking / Savings / Money Market count as Cash; Brokerage, IRAs, 401(k), HSA and Pension count toward your Portfolio.',
+              'Enter the current Balance and save. The Cash and Net Worth tiles update immediately.',
+            ]}
+            note="Keep balances roughly current — they feed your net worth directly. Editing an account any time updates everything downstream."
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Watchlist</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          <Guide
+            title="Watch a ticker and set a price alert"
+            steps={[
+              'Pick “Watchlist” in the View dropdown and tap “+”.',
+              'Start typing the ticker and pick from the suggestions — the company name fills in automatically.',
+              'Optionally set a Target price and a direction (alert when above ↑ or below ↓).',
+              'Choose how to be notified: in-app, push notification, or both.',
+            ]}
+            note="Setting a target price is what unlocks alerts — without it the row just tracks the live price. Enable notifications in Settings → Notifications for push alerts."
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Debts</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          <Guide
+            title="Add a loan, mortgage, or credit card"
+            steps={[
+              'Pick “Debts” in the View dropdown and tap “+”.',
+              'Enter a Name, the Type, and the Current Balance (required).',
+              'Strongly recommended: also fill in the Interest Rate (%) and Monthly Payment — the app uses them to run real amortization math.',
+              'Optionally add the Original Balance and Lender for a complete record.',
+            ]}
+            note="With interest rate + monthly payment filled in, the Debt-Free Countdown chart can project your payoff date, per-loan payoff order, and how your balance declines month by month. Without them the app can only show today’s balance."
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Properties</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          <Guide
+            title="Add real estate"
+            steps={[
+              'Pick “Properties” in the View dropdown and tap “+”.',
+              'Choose the Property type and enter the address.',
+              'Enter the Current value — this is what rolls into your net worth.',
+              'Recommended: add the Purchase price and Purchase date too, so the app can show your equity gain since you bought.',
+            ]}
+            note="Update the current value whenever you have a fresh estimate — property values only change when you change them."
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">News &amp; markets</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          <Guide
+            title="Portfolio news"
+            steps={[
+              'Tap News on the bottom bar — headlines are gathered for every ticker you hold.',
+              'Sort “By Value” (your biggest holdings’ news first, every ticker gets a turn) or “Most Recent”.',
+              'Tap a headline to read the article; tap the ticker chip to open that ticker’s detail page.',
+            ]}
+          />
+          <Guide
+            title="Compare against market benchmarks"
+            steps={[
+              'Tap Performance on the bottom bar and scroll to “Portfolio vs Market Benchmarks”.',
+              'Tap “Edit” to add or remove benchmark tickers or indexes (up to 7) — search anything, e.g. SPY or ^NSEI.',
+              'Use the range pills (1M to 5Y) to change the comparison window.',
+            ]}
+            note="Defaults follow your market: US benchmarks by default, Nifty/Sensex if your market is India, and so on. “Reset to defaults” restores them."
+          />
+          <Guide
+            title="Choose your home market & currency"
+            steps={[
+              'Tap Settings on the bottom bar → “Market & Currency”.',
+              'Pick your market (US, India, UK, …) — the whole app displays in that currency, and foreign holdings convert automatically at live exchange rates.',
+            ]}
+            note="Amounts you typed in yourself (cash balances, debts, property values) are not converted when you switch markets — they’re your numbers, in your currency."
           />
         </CardContent>
       </Card>

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { accountsApi } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
+import { useRegion } from '@/lib/region'
 
 // Minimal shape we actually use here. The Zustand store has a slimmer
 // Account type than `lib/api.ts` exports — both are valid for our purposes
@@ -53,6 +54,7 @@ type FormState = typeof EMPTY_FORM
 const CASH_ACCOUNT_TYPES = new Set(['checking', 'savings', 'cash_management'])
 
 export function AccountsTable({ accounts, onAccountChanged }: AccountsTableProps) {
+  const region = useRegion()
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
@@ -192,7 +194,7 @@ export function AccountsTable({ accounts, onAccountChanged }: AccountsTableProps
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Balance (USD)</label>
+                  <label className="block text-sm font-medium mb-1">Balance ({region.currency})</label>
                   <Input
                     type="number"
                     placeholder="0.00"

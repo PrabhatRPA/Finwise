@@ -21,6 +21,7 @@ import { isAppLockEnabled, setAppLockEnabled } from '@/lib/native/app-lock'
 import { getFloatSide, setFloatSide, type FloatSide } from '@/lib/float-side'
 import { getBarStyle, setBarStyle, type BarStyle } from '@/lib/bar-style'
 import { getAddButtonPref, setAddButtonPref, type AddButtonPref } from '@/lib/add-button'
+import { MARKETS, getRegion, setRegion } from '@/lib/region'
 import { ThemePicker } from '@/components/ds/theme-picker'
 import {
   getNotificationStatus,
@@ -94,6 +95,7 @@ export default function ProfilePage() {
   const [floatSide, setFloatSideState] = useState<FloatSide>('right')
   const [barStyle, setBarStyleState] = useState<BarStyle>('floating')
   const [addButton, setAddButtonState] = useState<AddButtonPref>('show')
+  const [regionId, setRegionIdState] = useState('us')
 
   const [appleLinked, setAppleLinked] = useState<boolean | null>(null)
   const [appleBusy, setAppleBusy] = useState(false)
@@ -111,6 +113,7 @@ export default function ProfilePage() {
     setFloatSideState(getFloatSide())
     setBarStyleState(getBarStyle())
     setAddButtonState(getAddButtonPref())
+    setRegionIdState(getRegion().id)
     Promise.all([getBiometryStatus(), isBiometricEnabled()]).then(([s, e]) => {
       if (cancelled) return
       setBiometryStatus(s)
@@ -514,6 +517,35 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Market & Currency — home market drives the app-wide display currency,
+          default benchmarks, and ticker-search preference. */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Market &amp; Currency</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground mb-2">
+            Your home market sets the currency the whole app displays, the default
+            benchmarks, and which exchange tickers resolve to first.
+          </p>
+          <select
+            value={regionId}
+            onChange={(e) => { setRegion(e.target.value); setRegionIdState(e.target.value) }}
+            className="w-full h-10 rounded-md border border-input bg-background text-foreground px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            {MARKETS.map(m => (
+              <option key={m.id} value={m.id}>{m.label} ({m.currency})</option>
+            ))}
+          </select>
+          <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+            Holdings priced in other currencies are converted automatically using live
+            exchange rates. Amounts you entered by hand (cash balances, debts, property
+            values, average costs) are <span className="font-medium">not</span> converted
+            when you switch markets.
+          </p>
+        </CardContent>
+      </Card>
 
       {/* AI Provider — full settings, moved here from the AI Insights tab */}
       <AIProviderSettings />
