@@ -9,7 +9,7 @@ import { netWorthApi, marketApi } from '@/lib/api'
 import { useRegion } from '@/lib/region'
 import { TickerSearchInput } from '@/components/ds/ticker-search'
 
-type TimeRange = 30 | 90 | 180 | 365 | 730 | 1825
+type TimeRange = 7 | 30 | 90 | 180 | 365 | 730 | 1825
 
 // The benchmark set is user-editable (max 7): defaults come from the selected
 // market (Settings → Market & Currency); customizations persist locally.
@@ -75,7 +75,7 @@ function fmtAxisDate(dateStr: string) {
 }
 
 const RANGE_LABEL: Record<TimeRange, string> = {
-  30: '30D', 90: '90D', 180: '6M', 365: '1Y', 730: '2Y', 1825: '5Y',
+  7: '1W', 30: '30D', 90: '90D', 180: '6M', 365: '1Y', 730: '2Y', 1825: '5Y',
 }
 
 // ── Stat card shown above the chart ──────────────────────────────────────────
@@ -178,7 +178,7 @@ export function BenchmarkChart() {
     setNoHistory(false)
 
     const period =
-      days <= 30 ? '1mo' : days <= 90 ? '3mo' : days <= 180 ? '6mo'
+      days <= 7 ? '5d' : days <= 30 ? '1mo' : days <= 90 ? '3mo' : days <= 180 ? '6mo'
       : days <= 365 ? '1y' : days <= 730 ? '2y' : '5y'
 
     // Use Promise.allSettled so individual benchmark failures don't crash the chart
@@ -279,6 +279,7 @@ export function BenchmarkChart() {
   }, [days, benchmarks])
 
   const TIME_RANGES: { id: TimeRange; label: string }[] = [
+    { id: 7,    label: '1W' },
     { id: 30,   label: '1M' },
     { id: 90,   label: '3M' },
     { id: 180,  label: '6M' },

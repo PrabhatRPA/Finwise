@@ -205,6 +205,16 @@ export async function connectAppleId(): Promise<void> {
   await run('UPDATE users SET apple_user_id = ? WHERE id = ?', [appleUserId, userId])
 }
 
+// Unlink the Apple ID from the current account (Settings toggle → off).
+// Local data is untouched; only the cross-device identity link is removed,
+// so future iCloud snapshots no longer carry this Apple ID and other devices
+// can't match this account by it. Sign-in with password still works.
+export async function disconnectAppleId(): Promise<void> {
+  const userId = await getSessionUserId()
+  if (!userId) throw new Error('Not logged in.')
+  await run('UPDATE users SET apple_user_id = NULL WHERE id = ?', [userId])
+}
+
 // Construct an axios-shaped error so existing catch blocks (which check
 // err.response?.status) keep working unchanged.
 function withStatus(status: number, message: string) {

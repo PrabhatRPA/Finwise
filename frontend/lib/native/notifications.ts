@@ -61,11 +61,35 @@ function fireWeb(args: AlertArgs): void {
 }
 
 export async function firePriceAlert(args: AlertArgs): Promise<void> {
+  // App-level kill switch (Settings → Notifications). iOS permission can't
+  // be revoked programmatically, so "off" is enforced here: alerts are
+  // simply never scheduled while disabled.
+  if (!(await getNotificationsEnabled())) return
   if (isNative()) {
     await fireNative(args)
   } else {
     fireWeb(args)
   }
+}
+
+// ── App-level enable/disable (independent of the OS permission) ────────────
+const ENABLED_KEY = 'notifications_enabled'
+
+export async function getNotificationsEnabled(): Promise<boolean> {
+  try {
+    const { Preferences } = await import('@capacitor/preferences')
+    const v = (await Preferences.get({ key: ENABLED_KEY })).value
+    return v !== 'false'   // default ON
+  } catch {
+    return true
+  }
+}
+
+export async function setNotificationsEnabled(enabled: boolean): Promise<void> {
+  try {
+    const { Preferences } = await import('@capacitor/preferences')
+    await Preferences.set({ key: ENABLED_KEY, value: enabled ? 'true' : 'false' })
+  } catch { /* ignore */ }
 }
 
 // ── Settings-page helpers ────────────────────────────────────────────────────

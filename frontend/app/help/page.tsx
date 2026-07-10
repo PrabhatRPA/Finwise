@@ -163,7 +163,7 @@ export default function HelpPage() {
             steps={[
               'Tap Performance on the bottom bar and scroll to “Portfolio vs Market Benchmarks”.',
               'Tap “Edit” to add or remove benchmark tickers or indexes (up to 7) — search anything, e.g. SPY or ^NSEI.',
-              'Use the range pills (1M to 5Y) to change the comparison window.',
+              'Use the range pills (1W to 5Y) to change the comparison window.',
             ]}
             note="Defaults follow your market: US benchmarks by default, Nifty/Sensex if your market is India, and so on. “Reset to defaults” restores them."
           />
@@ -185,8 +185,8 @@ export default function HelpPage() {
             title="Add an API key for AI"
             steps={[
               'Tap Settings on the bottom bar.',
-              'Find the “AI Provider” section and pick your provider (Claude, OpenAI, or a local one like Ollama / LM Studio).',
-              'Paste your API key (for cloud providers) or the host URL (for local providers), then Save.',
+              'Find the “AI Provider” section and pick your provider — Claude, OpenAI, or Other (any OpenAI-compatible service like Groq, OpenRouter, Together or DeepSeek).',
+              'Paste your API key (and for Other, the service’s endpoint URL and model name), then Save.',
               'Tap AI on the bottom bar to get portfolio analysis.',
             ]}
             note="The app includes 10 free AI requests on a built-in trial key so you can try the AI features right away. After those are used, add your own API key to keep going — the AI Provider section shows how many free requests you have left. Keys are stored only on your device."

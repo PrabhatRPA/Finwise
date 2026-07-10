@@ -32,7 +32,11 @@ const KEY = 'ai_providers_config'
 export const DEFAULT_KEY_LIMIT = 10
 const DEFAULT_KEY_USAGE_KEY = 'ai_default_key_usage'
 
-export type ProviderId = 'claude' | 'openai' | 'ollama' | 'lmstudio'
+// 'other' = any OpenAI-compatible endpoint the user configures (Groq,
+// OpenRouter, Together, DeepSeek, Mistral, …). 'ollama'/'lmstudio' remain
+// only so configs saved by older versions still parse; the UI no longer
+// offers them (localhost isn't reachable from the iOS WebView anyway).
+export type ProviderId = 'claude' | 'openai' | 'other' | 'ollama' | 'lmstudio'
 
 export interface ProviderSlot {
   api_key?: string     // cloud providers only
@@ -86,6 +90,7 @@ export interface AiProvidersConfig {
   active: ProviderId
   claude: ProviderSlot
   openai: ProviderSlot
+  other: ProviderSlot
   ollama: ProviderSlot
   lmstudio: ProviderSlot
 }
@@ -94,6 +99,7 @@ const DEFAULT_CONFIG: AiProvidersConfig = {
   active: 'openai',
   claude: {},
   openai: {},
+  other: {},
   ollama: { host: 'http://localhost:11434' },
   lmstudio: { host: 'http://localhost:1234' },
 }
@@ -161,6 +167,9 @@ export async function getAiSettingsForUI() {
     claude_model: c.claude.model ?? '',
     openai_api_key_set: !!c.openai.api_key,
     openai_model: c.openai.model ?? '',
+    other_api_key_set: !!c.other?.api_key,
+    other_model: c.other?.model ?? '',
+    other_host: c.other?.host ?? '',
     ollama_host: c.ollama.host ?? '',
     ollama_model: c.ollama.model ?? '',
     lmstudio_host: c.lmstudio.host ?? '',
@@ -202,7 +211,10 @@ export async function getActiveProviderCredentials(): Promise<
   const c = await getAiConfig()
   const slot = c[c.active]
   const cloudConfigured = (c.active === 'claude' || c.active === 'openai') && !!slot.api_key
+  // 'other' needs at least the endpoint URL; the key is optional (some
+  // gateways/proxies authenticate differently or not at all).
+  const otherConfigured = c.active === 'other' && !!slot.host
   const localConfigured = (c.active === 'ollama' || c.active === 'lmstudio') && !!slot.host
-  if (!cloudConfigured && !localConfigured) return null
+  if (!cloudConfigured && !otherConfigured && !localConfigured) return null
   return { provider: c.active, slot, isDefaultKey: !!slot.is_default }
 }

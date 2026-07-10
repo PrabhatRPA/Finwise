@@ -54,6 +54,29 @@ async function callOpenAi(content: MessageContent, apiKey: string, model: string
   return { text: res.data?.choices?.[0]?.message?.content ?? '', model: res.data?.model ?? model }
 }
 
+// "Other" provider: any OpenAI-compatible endpoint (Groq, OpenRouter,
+// Together, DeepSeek, Mistral, xAI, self-hosted gateways…). The user gives a
+// base URL; we normalise it to the standard chat-completions path unless they
+// already pasted the full path themselves.
+function otherEndpointUrl(host: string): string {
+  const base = host.trim().replace(/\/+$/, '')
+  if (/\/chat\/completions$/.test(base)) return base
+  if (/\/v\d+$/.test(base)) return `${base}/chat/completions`   // e.g. …/openai/v1
+  return `${base}/v1/chat/completions`
+}
+
+async function callOther(content: MessageContent, host: string, apiKey: string | undefined, model: string): Promise<ChatResult> {
+  const headers: Record<string, string> = { 'content-type': 'application/json' }
+  if (apiKey) headers['authorization'] = `Bearer ${apiKey}`
+  const res = await CapacitorHttp.post({
+    url: otherEndpointUrl(host),
+    headers,
+    data: { model, max_tokens: MAX_TOKENS, messages: [{ role: 'user', content }] },
+  })
+  if (res.status >= 400) throw new Error(res.data?.error?.message || `AI endpoint ${res.status}`)
+  return { text: res.data?.choices?.[0]?.message?.content ?? '', model: res.data?.model ?? model }
+}
+
 async function chat(prompt: string): Promise<ChatResult> {
   const creds = await getActiveProviderCredentials()
   if (!creds) {
@@ -78,12 +101,17 @@ async function chat(prompt: string): Promise<ChatResult> {
     result = await callClaude(prompt, slot.api_key!, slot.model || 'claude-opus-4-7')
   } else if (provider === 'openai') {
     result = await callOpenAi(prompt, slot.api_key!, slot.model || 'gpt-4o')
+  } else if (provider === 'other') {
+    if (!slot.model) {
+      throw withDetail('Enter the model name for your custom AI endpoint in AI Provider settings (e.g. llama-3.3-70b-versatile).')
+    }
+    result = await callOther(prompt, slot.host!, slot.api_key, slot.model)
   } else {
-    // Ollama / LM Studio aren't reachable from inside the iOS WebView (no
-    // localhost on the device). Surface a clear error so the user picks a
-    // cloud provider instead.
+    // Legacy Ollama / LM Studio configs from older versions — localhost isn't
+    // reachable from inside the iOS WebView. Point the user at the current
+    // options instead.
     throw withDetail(
-      'Local providers (Ollama, LM Studio) only work on the desktop app. Switch to Claude or OpenAI in AI Provider settings.',
+      'This provider is no longer supported on iOS. Switch to Claude, OpenAI, or Other (any OpenAI-compatible endpoint) in AI Provider settings.',
     )
   }
 
@@ -148,8 +176,8 @@ export async function extractHoldingsFromDocument(doc: DocInput): Promise<{ inve
   }
   const { provider, slot, isDefaultKey } = creds
 
-  if (provider !== 'claude' && provider !== 'openai') {
-    throw withDetail('Local AI providers (Ollama, LM Studio) only work on the desktop app. Switch to Claude or OpenAI in AI Provider settings.')
+  if (provider !== 'claude' && provider !== 'openai' && provider !== 'other') {
+    throw withDetail('This provider is no longer supported on iOS. Switch to Claude, OpenAI, or Other in AI Provider settings.')
   }
   if (doc.kind === 'pdf' && provider !== 'claude') {
     throw withDetail('Your current AI provider can read images only. To extract from PDFs, switch to Claude in Profile → AI Provider — or upload a photo/screenshot of the statement instead.')
@@ -177,14 +205,17 @@ export async function extractHoldingsFromDocument(doc: DocInput): Promise<{ inve
     }
     raw = (await callClaude(content, slot.api_key!, slot.model || 'claude-opus-4-7')).text
   } else {
-    // openai — images + text only (PDF guarded above)
+    // openai / other — images + text only (PDF guarded above), both speak
+    // the OpenAI content format.
     const content: any[] = [{ type: 'text', text: prompt }]
     if (doc.kind === 'image' && doc.base64) {
       content.push({ type: 'image_url', image_url: { url: `data:${doc.mediaType || 'image/jpeg'};base64,${doc.base64}` } })
     } else if (doc.kind === 'text') {
       content.push({ type: 'text', text: `Document contents:\n\n${doc.text ?? ''}` })
     }
-    raw = (await callOpenAi(content, slot.api_key!, slot.model || 'gpt-4o')).text
+    raw = provider === 'other'
+      ? (await callOther(content, slot.host!, slot.api_key, slot.model || '')).text
+      : (await callOpenAi(content, slot.api_key!, slot.model || 'gpt-4o')).text
   }
 
   if (isDefaultKey) await incrementDefaultKeyUsage()

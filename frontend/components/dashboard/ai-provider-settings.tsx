@@ -38,11 +38,12 @@ function Field({
   )
 }
 
+// "Other" covers any OpenAI-compatible endpoint (Groq, OpenRouter, Together,
+// DeepSeek, Mistral, …) — the user supplies the endpoint URL, key, and model.
 const PROVIDERS = [
-  { id: 'claude',    label: 'Claude',    kind: 'cloud', placeholder: 'claude-opus-4-7' },
-  { id: 'openai',   label: 'OpenAI',    kind: 'cloud', placeholder: 'gpt-4o' },
-  { id: 'ollama',   label: 'Ollama',    kind: 'local', placeholder: 'qwen3:4b' },
-  { id: 'lmstudio', label: 'LM Studio', kind: 'local', placeholder: 'local-model' },
+  { id: 'claude', label: 'Claude', kind: 'cloud',  placeholder: 'claude-opus-4-7' },
+  { id: 'openai', label: 'OpenAI', kind: 'cloud',  placeholder: 'gpt-4o' },
+  { id: 'other',  label: 'Other',  kind: 'custom', placeholder: 'e.g. llama-3.3-70b-versatile' },
 ] as const
 
 type ProviderId = typeof PROVIDERS[number]['id']
@@ -62,8 +63,11 @@ export function AIProviderSettings() {
       .then(r => {
         const s = r.data
         setSettings(s)
-        setSelected(s.provider as ProviderId)
-        prefillForm(s, s.provider as ProviderId)
+        // Configs saved by older versions may still point at Ollama/LM Studio,
+        // which the UI no longer offers — show Claude selected instead.
+        const p = (['claude', 'openai', 'other'].includes(s.provider) ? s.provider : 'claude') as ProviderId
+        setSelected(p)
+        prefillForm(s, p)
       })
       .catch(() => {})
   }, [])
@@ -77,13 +81,9 @@ export function AIProviderSettings() {
       setModel(s.openai_model ?? '')
       setApiKey('')
       setHost('')
-    } else if (provider === 'ollama') {
-      setHost(s.ollama_host ?? '')
-      setModel(s.ollama_model ?? '')
-      setApiKey('')
-    } else if (provider === 'lmstudio') {
-      setHost(s.lmstudio_host ?? '')
-      setModel(s.lmstudio_model ?? '')
+    } else if (provider === 'other') {
+      setHost(s.other_host ?? '')
+      setModel(s.other_model ?? '')
       setApiKey('')
     }
     setStatus(null)
@@ -100,11 +100,8 @@ export function AIProviderSettings() {
     try {
       const meta = PROVIDERS.find(p => p.id === selected)!
       const payload: any = { provider: selected, model: model || undefined }
-      if (meta.kind === 'cloud') {
-        if (apiKey) payload.api_key = apiKey
-      } else {
-        if (host) payload.host = host
-      }
+      if (apiKey) payload.api_key = apiKey
+      if (meta.kind === 'custom' && host) payload.host = host
       const r = await aiApi.saveSettings(payload)
       setSettings(r.data)
       setStatus({ ok: true, msg: 'Settings saved and applied.' })
@@ -136,9 +133,11 @@ export function AIProviderSettings() {
   }
 
   const meta = PROVIDERS.find(p => p.id === selected)!
-  const isCloud = meta.kind === 'cloud'
+  const isCustom = meta.kind === 'custom'
   const keySet = settings
-    ? (selected === 'claude' ? settings.claude_api_key_set : settings.openai_api_key_set)
+    ? (selected === 'claude' ? settings.claude_api_key_set
+       : selected === 'openai' ? settings.openai_api_key_set
+       : settings.other_api_key_set)
     : false
 
   return (
@@ -192,23 +191,29 @@ export function AIProviderSettings() {
           ))}
         </div>
 
+        {isCustom && (
+          <p className="text-xs text-muted-foreground -mt-1">
+            Any OpenAI-compatible service works — Groq, OpenRouter, Together, DeepSeek,
+            Mistral and more. Paste the service&apos;s API base URL, your key, and the model name
+            from its documentation.
+          </p>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
-          {isCloud ? (
+          {isCustom && (
             <Field
-              label="API Key"
-              type="password"
-              value={apiKey}
-              onChange={setApiKey}
-              placeholder={keySet ? '••••••••  (already set)' : 'sk-…'}
-            />
-          ) : (
-            <Field
-              label="Host URL"
+              label="Endpoint URL"
               value={host}
               onChange={setHost}
-              placeholder={selected === 'ollama' ? 'http://localhost:11434' : 'http://localhost:1234'}
+              placeholder="https://api.x.ai/v1"
             />
           )}
+          <Field
+            label={isCustom ? 'API Key (if required)' : 'API Key'}
+            type="password"
+            value={apiKey}
+            onChange={setApiKey}
+            placeholder={keySet ? '••••••••  (already set)' : 'Paste your API key'}
+          />
           <Field
             label="Model"
             value={model}

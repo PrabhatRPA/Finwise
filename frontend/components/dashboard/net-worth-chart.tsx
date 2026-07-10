@@ -193,7 +193,7 @@ export function NetWorthTrendChart() {
   }
 
   const TIME_RANGES: { id: TimeRange; label: string }[] = [
-    { id: 7, label: '7D' },
+    { id: 7, label: '1W' },
     { id: 30, label: '1M' },
     { id: 90, label: '3M' },
     { id: 365, label: '1Y' },

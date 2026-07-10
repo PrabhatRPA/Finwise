@@ -82,12 +82,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeResolved] = useState<Theme>('light')
   const [mounted, setMounted] = useState(false)
 
-  // Load the saved preference once on mount.
+  // Load the saved preference once on mount. New installs (nothing stored)
+  // default to Liquid Glass, falling back to System on the rare engine
+  // without backdrop-filter support (glass would render without its blur).
   useEffect(() => {
     setMounted(true)
     const stored = localStorage.getItem(STORAGE_KEY)
+    let fallback: Mode = 'system'
+    try {
+      if (typeof CSS !== 'undefined' &&
+          (CSS.supports('backdrop-filter', 'blur(1px)') || CSS.supports('-webkit-backdrop-filter', 'blur(1px)'))) {
+        fallback = 'glass'
+      }
+    } catch { /* keep 'system' */ }
     const initial: Mode =
-      stored === 'light' || stored === 'dark' || stored === 'colorful' || stored === 'glass' || stored === 'system' ? stored : 'system'
+      stored === 'light' || stored === 'dark' || stored === 'colorful' || stored === 'glass' || stored === 'system' ? stored : fallback
     setModeState(initial)
     setThemeResolved(resolve(initial))
   }, [])
