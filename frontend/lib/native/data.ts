@@ -899,6 +899,24 @@ async function pruneOldBackups() {
   } catch { /* readdir fails if dir missing — harmless */ }
 }
 
+// Remove every backup file — part of account deletion. Backup snapshots hold
+// the user's full financial data, so leaving them behind would fail Apple's
+// "complete deletion" requirement. Filenames aren't tagged per-user, so on the
+// rare device with a second account its backups go too — acceptable for an app
+// designed as single-user-per-device.
+export async function deleteAllBackups(): Promise<void> {
+  try {
+    const { Filesystem, Directory } = await import('@capacitor/filesystem')
+    const result = await Filesystem.readdir({ path: BACKUPS_DIR, directory: Directory.Data })
+    for (const f of result.files) {
+      await Filesystem.deleteFile({
+        path: `${BACKUPS_DIR}/${f.name}`,
+        directory: Directory.Data,
+      }).catch(() => {})
+    }
+  } catch { /* readdir fails if dir missing — harmless */ }
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 function parseCsv(text: string): { header: string[]; rows: string[][] } {

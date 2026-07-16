@@ -137,3 +137,19 @@ async def get_me(current_user: models.User = Depends(get_current_user)):
         "email": current_user.email,
         "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
     }
+
+
+@router.delete("/auth/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_me(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Permanently delete the authenticated user's account and all associated data
+    (App Store Guideline 5.1.1(v)). The User relationships all declare
+    cascade="all, delete-orphan", so this removes accounts, holdings,
+    transactions, documents, settings, and every other child row. Outstanding
+    JWTs are effectively revoked: get_current_user can no longer resolve the
+    user id and returns 401.
+    """
+    db.delete(current_user)
+    db.commit()

@@ -240,6 +240,59 @@ export async function restoreFromICloud(): Promise<{ message: string }> {
   return { message: out.data?.message ?? 'Restored from iCloud.' }
 }
 
+// Clear the iCloud snapshot as part of account deletion. Writes a tombstone
+// via IcloudSync.write directly — syncToICloud can't be used here because its
+// empty-guard refuses to overwrite a non-empty remote with empty data, which
+// is exactly what deletion needs to do. The tombstone carries the next
+// monotonic revision so other devices see it as an ordered update; because
+// isSnapshotEmpty() treats it as empty, a device that still holds real local
+// data will re-seed iCloud from its own copy (reconcile's repair branch) —
+// deleting the account on one device must not destroy another device's data.
+// Best-effort: never throws, never blocks the rest of the deletion flow.
+export async function clearICloudSnapshot(): Promise<void> {
+  try {
+    if (!Capacitor.isNativePlatform()) return
+    const { available } = await IcloudSync.isAvailable()
+    if (!available) return
+
+    const remote = await readRemote()
+    const nextRevision = Math.max(await getSyncedRevision(), remote.revision) + 1
+    const tombstone = {
+      deleted: true,
+      revision: nextRevision,
+      sync_modified_at: new Date().toISOString(),
+      device_id: await getDeviceId(),
+    }
+    const res = await IcloudSync.write({
+      fileName: SNAPSHOT_FILE,
+      contents: JSON.stringify(tombstone),
+    })
+    if (res.success) {
+      try {
+        await IcloudSync.kvSet({
+          key: BEACON_KEY,
+          value: JSON.stringify({
+            rev: nextRevision,
+            mtime: res.modifiedAt ?? Date.now(),
+            device: await getDeviceId(),
+          }),
+        })
+      } catch { /* beacon is best-effort */ }
+    }
+
+    // Reset this device's sync state. DEVICE_ID_KEY stays — it's a stable
+    // per-install identifier, not account data.
+    for (const key of [
+      LAST_SYNC_KEY, SYNCED_REV_KEY, REMOTE_MTIME_KEY,
+      DIRTY_KEY, LOCAL_MODIFIED_KEY, AUTO_SYNC_KEY,
+    ]) {
+      try { await Preferences.remove({ key }) } catch { /* best-effort */ }
+    }
+  } catch {
+    // best-effort — account deletion proceeds regardless
+  }
+}
+
 // ── Auto-sync preference ────────────────────────────────────────────────────
 
 export async function isAutoSyncEnabled(): Promise<boolean> {

@@ -34,7 +34,7 @@ import {
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { user, isLoading, logout, refreshUser } = useAuth()
+  const { user, isLoading, logout, deleteAccount, refreshUser } = useAuth()
 
   // Inline display-name editing (Apple accounts especially — their username is
   // a cryptic stable id; the visible name is user-editable).
@@ -113,6 +113,25 @@ export default function ProfilePage() {
   const [appleMsg, setAppleMsg] = useState('')
   const [isNative, setIsNative] = useState(false)
 
+  // Permanent account deletion (App Store 5.1.1(v)): type-to-confirm panel
+  // in the Data & Privacy card. The account record + live data always go;
+  // the user chooses what else to erase — everything checked by default.
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteText, setDeleteText] = useState('')
+  const [deleteBusy, setDeleteBusy] = useState(false)
+  const [deleteMsg, setDeleteMsg] = useState('')
+  const [deleteBackupsOpt, setDeleteBackupsOpt] = useState(true)
+  const [deleteICloudOpt, setDeleteICloudOpt] = useState(true)
+
+  const toggleDeletePanel = () => {
+    if (deleteOpen) { setDeleteOpen(false); return }
+    setDeleteOpen(true)
+    setDeleteText('')
+    setDeleteMsg('')
+    setDeleteBackupsOpt(true)
+    setDeleteICloudOpt(true)
+  }
+
   useEffect(() => {
     if (!isLoading && !user) router.replace('/login')
   }, [isLoading, user, router])
@@ -172,6 +191,21 @@ export default function ProfilePage() {
       setBiometricMsg(err?.message ?? 'Could not change biometric settings.')
     } finally {
       setBiometricBusy(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (deleteText.trim() !== 'DELETE') return
+    // One last gate on top of type-to-confirm — deletion is irreversible.
+    if (!window.confirm('Delete your account and all data? This cannot be undone.')) return
+    setDeleteBusy(true)
+    setDeleteMsg('')
+    try {
+      await deleteAccount({ backups: deleteBackupsOpt, icloud: deleteICloudOpt })
+      // deleteAccount navigates away on success; nothing to do here.
+    } catch (e: any) {
+      setDeleteMsg(e?.response?.data?.detail ?? e?.message ?? 'Could not delete the account. Please try again.')
+      setDeleteBusy(false)
     }
   }
 
@@ -641,6 +675,103 @@ export default function ProfilePage() {
             sub={APP_TAGLINE}
             onClick={() => router.push('/about')}
           />
+
+          {/* Delete account — App Store 5.1.1(v). Same layout as Row, danger-colored. */}
+          <button
+            id="delete-account"
+            onClick={toggleDeletePanel}
+            className="w-full text-left flex items-center justify-between gap-3 rounded-md px-2 py-2 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-red-600">Delete account</p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                Permanently erase your account. Choose what else to remove.
+              </p>
+            </div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round"
+              className={`h-4 w-4 text-red-400 shrink-0 transition-transform ${deleteOpen ? 'rotate-90' : ''}`}>
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+
+          {deleteOpen && (
+            <div className="rounded-md border border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/30 px-3 py-3 space-y-3">
+              <p className="text-xs font-semibold text-red-800 dark:text-red-300">
+                This cannot be undone
+              </p>
+              <p className="text-[11px] text-red-700/90 dark:text-red-300/80 leading-relaxed">
+                If you might need your data again, export or back it up first
+                (Manage exports &amp; backups above) before deleting.
+              </p>
+
+              <div className="space-y-2">
+                <label className="flex items-start gap-2">
+                  <input type="checkbox" checked disabled className="mt-0.5 accent-red-600" />
+                  <span className="text-[11px] text-red-700/90 dark:text-red-300/80 leading-relaxed">
+                    <span className="font-semibold">Account &amp; all app data</span> (always removed) —
+                    holdings, accounts, transactions, watchlist, loans, properties, net-worth
+                    history, imported documents, settings, and your saved AI keys.
+                  </span>
+                </label>
+                {isNative && (
+                  <>
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={deleteBackupsOpt}
+                        onChange={e => setDeleteBackupsOpt(e.target.checked)}
+                        className="mt-0.5 accent-red-600"
+                      />
+                      <span className="text-[11px] text-red-700/90 dark:text-red-300/80 leading-relaxed">
+                        <span className="font-semibold">Local backup files</span> — snapshots saved on
+                        this device. Uncheck to keep them for a later re-import.
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={deleteICloudOpt}
+                        onChange={e => setDeleteICloudOpt(e.target.checked)}
+                        className="mt-0.5 accent-red-600"
+                      />
+                      <span className="text-[11px] text-red-700/90 dark:text-red-300/80 leading-relaxed">
+                        <span className="font-semibold">iCloud snapshot</span> — the synced copy of this
+                        account. Data already on your other devices is not modified.
+                      </span>
+                    </label>
+                  </>
+                )}
+              </div>
+
+              {appleLinked && (
+                <p className="text-[11px] text-red-700/90 dark:text-red-300/80 leading-relaxed">
+                  Your Sign in with Apple link is removed too. You can also stop using
+                  Apple ID with {APP_NAME} in{' '}
+                  <span className="font-mono">iOS Settings → Sign-In &amp; Security</span>.
+                </p>
+              )}
+              <input
+                value={deleteText}
+                onChange={e => setDeleteText(e.target.value)}
+                placeholder="Type DELETE to confirm"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                className="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground
+                  text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <Button
+                className="w-full bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+                disabled={deleteText.trim() !== 'DELETE' || deleteBusy}
+                onClick={handleDeleteAccount}
+              >
+                {deleteBusy ? 'Deleting…' : 'Permanently delete my account'}
+              </Button>
+              {deleteMsg && (
+                <p className="text-xs text-red-700 dark:text-red-300">{deleteMsg}</p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

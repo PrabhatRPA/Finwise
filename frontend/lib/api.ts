@@ -71,6 +71,9 @@ const remoteAuthApi = {
   login: (username: string, password: string) =>
     api.post('/auth/login', { username, password }),
   me: () => api.get('/auth/me'),
+  // opts (keep backups / iCloud snapshot) only apply on-device; the remote
+  // backend holds neither, so they're accepted for signature parity and ignored.
+  deleteAccount: (_opts?: { backups?: boolean; icloud?: boolean }) => api.delete('/auth/me'),
 }
 
 const remoteHoldingsApi = {

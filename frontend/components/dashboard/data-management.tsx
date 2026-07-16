@@ -227,7 +227,8 @@ export function DataManagement({ onDataChanged }: { onDataChanged?: () => void }
     if (typeof window !== 'undefined' && !window.confirm(
       'Remove ALL data and start fresh?\n\nThis deletes every holding, account, ' +
       'transaction, watchlist entry, loan, property, and all trend history. ' +
-      'Your user account and login are preserved. This cannot be undone.'
+      'If you might need this data again, back it up or export it first. ' +
+      'This cannot be undone.'
     )) return
     setClearBusy(true)
     setDemoMsg('')

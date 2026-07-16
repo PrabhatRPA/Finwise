@@ -3,8 +3,9 @@
 
 import bcrypt from 'bcryptjs'
 import { Capacitor } from '@capacitor/core'
-import { all, get, run } from './db'
-import { getSessionUserId, setSessionUserId, clearSession } from './session'
+import { Preferences } from '@capacitor/preferences'
+import { all, get, run, beginTransaction, commitTransaction, rollbackTransaction } from './db'
+import { getSessionUserId, setSessionUserId, clearSession, requireSessionUserId } from './session'
 import { saveToken, clearToken } from '../token'
 import { isPasswordValid, PASSWORD_POLICY_TEXT } from '../password'
 
@@ -113,6 +114,104 @@ export const nativeAuthApi = {
       throw withStatus(401, 'Session user no longer exists')
     }
     return { data: userToPublic(u) }
+  },
+
+  // Permanent account deletion (App Store Guideline 5.1.1(v)). Hard-deletes
+  // the users row and every piece of data tied to it — this is deletion, not
+  // deactivation. Steps that touch iCloud / the filesystem are best-effort;
+  // the DB wipe is transactional. Scoped to the signed-in user so a second
+  // account on the same device is untouched (backups are the documented
+  // exception — see deleteAllBackups).
+  //
+  // opts let the user keep artifacts that exist beyond the account itself
+  // (both default to deleted): local backup files and the iCloud snapshot.
+  // The account record and all live app data are always removed — that part
+  // is what Apple's "complete deletion" requires and is not optional.
+  deleteAccount: async (opts?: { backups?: boolean; icloud?: boolean }) => {
+    const wipeBackups = opts?.backups !== false
+    const wipeICloud = opts?.icloud !== false
+    const userId = await requireSessionUserId()
+
+    // Stop iCloud auto-sync BEFORE wiping: the DELETEs below fire the DB
+    // write listener, which would otherwise schedule a push mid-deletion.
+    const icloud = await import('./icloud')
+    const prevAutoSync = await icloud.isAutoSyncEnabled().catch(() => true)
+    try { await icloud.setAutoSync(false) } catch { /* best-effort */ }
+
+    // Remove persisted document files (uploaded statements/1099s). Paths are
+    // stored per-row; files may already be gone — ignore failures.
+    try {
+      const docs = await all<{ document_path: string | null }>(
+        `SELECT document_path FROM documents WHERE user_id = ? AND document_path IS NOT NULL`,
+        [userId],
+      )
+      if (docs.length > 0) {
+        const { Filesystem, Directory } = await import('@capacitor/filesystem')
+        for (const d of docs) {
+          if (!d.document_path) continue
+          await Filesystem.deleteFile({ path: d.document_path, directory: Directory.Data })
+            .catch(() => {})
+        }
+      }
+    } catch { /* file cleanup is best-effort */ }
+
+    // The actual deletion — all rows for this user plus the users row itself,
+    // atomically. settings includes ai_providers_config (saved API keys).
+    // market_prices is a shared cache, cleared to match clearAllData.
+    await beginTransaction()
+    try {
+      await run(`DELETE FROM holdings WHERE user_id = ?`, [userId])
+      await run(`DELETE FROM transactions WHERE user_id = ?`, [userId])
+      await run(`DELETE FROM watchlist WHERE user_id = ?`, [userId])
+      await run(`DELETE FROM accounts WHERE user_id = ?`, [userId])
+      await run(`DELETE FROM loans WHERE user_id = ?`, [userId])
+      await run(`DELETE FROM properties WHERE user_id = ?`, [userId])
+      await run(`DELETE FROM portfolio_history WHERE user_id = ?`, [userId])
+      await run(`DELETE FROM documents WHERE user_id = ?`, [userId])
+      await run(`DELETE FROM settings WHERE user_id = ?`, [userId])
+      await run(`DELETE FROM market_prices`, [])
+      await run(`DELETE FROM users WHERE id = ?`, [userId])
+      await commitTransaction()
+    } catch (e) {
+      await rollbackTransaction().catch(() => {})
+      throw e
+    }
+
+    // Local backup files hold full data snapshots — remove them all (unless
+    // the user chose to keep them for a later re-import).
+    if (wipeBackups) {
+      try { await (await import('./data')).deleteAllBackups() } catch { /* best-effort */ }
+    }
+
+    // Clear the iCloud snapshot regardless of Apple link — a password-only
+    // user may still have synced. Tombstone semantics: other devices with
+    // real local data re-seed iCloud from their own copy. When the user keeps
+    // the snapshot (e.g. to restore on another device later), restore the
+    // auto-sync preference we disabled above — safe now: the session is gone
+    // by the time any timer fires, so a stray push can't build a payload, and
+    // the empty-over-non-empty guard protects the kept snapshot regardless.
+    if (wipeICloud) {
+      await icloud.clearICloudSnapshot()
+    } else {
+      try { await icloud.setAutoSync(prevAutoSync) } catch { /* best-effort */ }
+    }
+
+    // Forget biometric enrollment so the login screen never offers Face ID
+    // for a user id that no longer exists, and drop the App Lock preference.
+    try { await (await import('./biometric')).disableBiometric() } catch { /* best-effort */ }
+    try { await Preferences.remove({ key: 'app_lock_enabled' }) } catch { /* best-effort */ }
+
+    await clearSession()
+    await clearToken()
+
+    // Cached UI state keyed to this user.
+    try { window.localStorage.removeItem('last_net_worth_snapshot') } catch {}
+    try { window.localStorage.removeItem(`onboarding_seen_${userId}`) } catch {}
+    // NOTE: the ai_default_key_usage trial counter (Preferences/Keychain) is
+    // intentionally kept — it's device-scoped anti-abuse state, not personal
+    // data, and resetting it would grant fresh trials via delete/re-create.
+
+    return { data: { success: true } }
   },
 }
 

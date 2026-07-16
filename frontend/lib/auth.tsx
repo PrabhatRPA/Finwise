@@ -18,6 +18,10 @@ interface AuthContextValue {
   login: (username: string, password: string) => Promise<void>
   register: (username: string, password: string, fullName?: string) => Promise<void>
   logout: () => Promise<void>
+  // Permanently deletes the signed-in account and all its data, then reloads
+  // to the entry route (register if it was the last account, login otherwise).
+  // opts choose whether local backups / the iCloud snapshot go too (default yes).
+  deleteAccount: (opts?: { backups?: boolean; icloud?: boolean }) => Promise<void>
   // Re-reads the current on-device session (used after Face ID / Touch ID
   // sign-in, which establishes the session outside the password flow).
   refreshUser: () => Promise<boolean>
@@ -142,6 +146,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = '/login'
   }
 
+  const deleteAccount = async (opts?: { backups?: boolean; icloud?: boolean }) => {
+    await authApi.deleteAccount(opts)
+    await clearToken()
+    setUser(null)
+    // Full navigation (not router.push): unmounts the iCloud poll/listeners
+    // and aborts in-flight fetches against the now-wiped database. The root
+    // route re-runs checkSetup and lands on register (no users left) or login.
+    window.location.href = '/'
+  }
+
   // Pull the active session into state without a full reload. Returns false if
   // there's no valid session (so callers can show an error instead of bouncing).
   const refreshUser = async (): Promise<boolean> => {
@@ -155,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, logout, deleteAccount, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )
