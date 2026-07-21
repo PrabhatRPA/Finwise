@@ -26,32 +26,20 @@ type MessageContent = string | any[]
 // analysis especially). 4K was truncating output mid-section.
 const MAX_TOKENS = 8000
 
-async function callClaude(content: MessageContent, apiKey: string, model: string): Promise<ChatResult> {
-  const res = await CapacitorHttp.post({
-    url: 'https://api.anthropic.com/v1/messages',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-      'content-type': 'application/json',
-    },
-    data: { model, max_tokens: MAX_TOKENS, messages: [{ role: 'user', content }] },
-  })
-  if (res.status >= 400) throw new Error(res.data?.error?.message || `Claude API ${res.status}`)
-  return { text: res.data?.content?.[0]?.text ?? '', model: res.data?.model ?? model }
-}
+// Opus-class models routinely take well over a minute to produce an 8K-token
+// report. CapacitorHttp's default timeout (~60s on iOS) would abort those
+// mid-flight and surface as an opaque failure — give every provider a generous
+// ceiling instead so long analyses complete.
+const REQUEST_TIMEOUT_MS = 180000  // 3 minutes
 
-async function callOpenAi(content: MessageContent, apiKey: string, model: string): Promise<ChatResult> {
-  const res = await CapacitorHttp.post({
-    url: 'https://api.openai.com/v1/chat/completions',
-    headers: {
-      'authorization': `Bearer ${apiKey}`,
-      'content-type': 'application/json',
-    },
-    data: { model, max_tokens: MAX_TOKENS, messages: [{ role: 'user', content }] },
-  })
-  if (res.status >= 400) throw new Error(res.data?.error?.message || `OpenAI API ${res.status}`)
-  return { text: res.data?.choices?.[0]?.message?.content ?? '', model: res.data?.model ?? model }
+type ProviderId = 'claude' | 'openai' | 'other'
+interface ProviderSlot { api_key?: string | null; model?: string | null; host?: string | null }
+interface ProviderRequest {
+  url: string
+  headers: Record<string, string>
+  data: any
+  pickText: (d: any) => string
+  label: string
 }
 
 // "Other" provider: any OpenAI-compatible endpoint (Groq, OpenRouter,
@@ -65,16 +53,68 @@ function otherEndpointUrl(host: string): string {
   return `${base}/v1/chat/completions`
 }
 
-async function callOther(content: MessageContent, host: string, apiKey: string | undefined, model: string): Promise<ChatResult> {
+// Describe the HTTP request for a provider. Every provider is defined here so
+// they all run through the identical execRequest() path — same timeout, same
+// error surfacing, same response shaping — regardless of which one the user
+// picked. Only the URL, auth header, and response-text location differ.
+function buildProviderRequest(provider: ProviderId, slot: ProviderSlot, content: MessageContent, maxTokens: number): ProviderRequest {
+  if (provider === 'claude') {
+    return {
+      url: 'https://api.anthropic.com/v1/messages',
+      headers: {
+        'x-api-key': slot.api_key ?? '',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'content-type': 'application/json',
+      },
+      data: { model: slot.model || 'claude-opus-4-7', max_tokens: maxTokens, messages: [{ role: 'user', content }] },
+      pickText: (d) => d?.content?.[0]?.text ?? '',
+      label: 'Claude',
+    }
+  }
+  if (provider === 'openai') {
+    return {
+      url: 'https://api.openai.com/v1/chat/completions',
+      headers: { 'authorization': `Bearer ${slot.api_key ?? ''}`, 'content-type': 'application/json' },
+      data: { model: slot.model || 'gpt-4o', max_tokens: maxTokens, messages: [{ role: 'user', content }] },
+      pickText: (d) => d?.choices?.[0]?.message?.content ?? '',
+      label: 'OpenAI',
+    }
+  }
+  // 'other' — custom OpenAI-compatible endpoint
   const headers: Record<string, string> = { 'content-type': 'application/json' }
-  if (apiKey) headers['authorization'] = `Bearer ${apiKey}`
-  const res = await CapacitorHttp.post({
-    url: otherEndpointUrl(host),
+  if (slot.api_key) headers['authorization'] = `Bearer ${slot.api_key}`
+  return {
+    url: otherEndpointUrl(slot.host ?? ''),
     headers,
-    data: { model, max_tokens: MAX_TOKENS, messages: [{ role: 'user', content }] },
-  })
-  if (res.status >= 400) throw new Error(res.data?.error?.message || `AI endpoint ${res.status}`)
-  return { text: res.data?.choices?.[0]?.message?.content ?? '', model: res.data?.model ?? model }
+    data: { model: slot.model, max_tokens: maxTokens, messages: [{ role: 'user', content }] },
+    pickText: (d) => d?.choices?.[0]?.message?.content ?? '',
+    label: 'AI endpoint',
+  }
+}
+
+// Single execution path for every provider: applies the timeout, then converts
+// a transport failure (no connection / timeout) and an API error (4xx/5xx) into
+// a withDetail() error carrying the REAL reason — so the UI shows "model not
+// found" / "invalid api key" / "timed out" instead of a generic message.
+async function execRequest(req: ProviderRequest): Promise<ChatResult> {
+  let res: { status: number; data: any }
+  try {
+    res = await CapacitorHttp.post({
+      url: req.url,
+      headers: req.headers,
+      data: req.data,
+      connectTimeout: REQUEST_TIMEOUT_MS,
+      readTimeout: REQUEST_TIMEOUT_MS,
+    })
+  } catch (e: any) {
+    throw withDetail(`Couldn't reach ${req.label}. Check your internet connection and try again${e?.message ? ` (${e.message})` : ''}.`)
+  }
+  if (res.status >= 400) {
+    const apiMsg = res.data?.error?.message || (typeof res.data === 'string' ? res.data : '')
+    throw withDetail(`${req.label} request failed (${res.status})${apiMsg ? `: ${apiMsg}` : ''}.`)
+  }
+  return { text: req.pickText(res.data) ?? '', model: res.data?.model ?? req.data.model }
 }
 
 async function chat(prompt: string): Promise<ChatResult> {
@@ -96,17 +136,7 @@ async function chat(prompt: string): Promise<ChatResult> {
     )
   }
 
-  let result: ChatResult
-  if (provider === 'claude') {
-    result = await callClaude(prompt, slot.api_key!, slot.model || 'claude-opus-4-7')
-  } else if (provider === 'openai') {
-    result = await callOpenAi(prompt, slot.api_key!, slot.model || 'gpt-4o')
-  } else if (provider === 'other') {
-    if (!slot.model) {
-      throw withDetail('Enter the model name for your custom AI endpoint in AI Provider settings (e.g. llama-3.3-70b-versatile).')
-    }
-    result = await callOther(prompt, slot.host!, slot.api_key, slot.model)
-  } else {
+  if (provider !== 'claude' && provider !== 'openai' && provider !== 'other') {
     // Legacy Ollama / LM Studio configs from older versions — localhost isn't
     // reachable from inside the iOS WebView. Point the user at the current
     // options instead.
@@ -114,6 +144,12 @@ async function chat(prompt: string): Promise<ChatResult> {
       'This provider is no longer supported on iOS. Switch to Claude, OpenAI, or Other (any OpenAI-compatible endpoint) in AI Provider settings.',
     )
   }
+  if (provider === 'other' && !slot.model) {
+    throw withDetail('Enter the model name for your custom AI endpoint in AI Provider settings (e.g. llama-3.3-70b-versatile).')
+  }
+
+  // Same prompt, same execution path for every provider.
+  const result = await execRequest(buildProviderRequest(provider, slot, prompt, MAX_TOKENS))
 
   // Only count successful calls that actually used the owner's trial key.
   if (isDefaultKey) await incrementDefaultKeyUsage()
@@ -203,7 +239,7 @@ export async function extractHoldingsFromDocument(doc: DocInput): Promise<{ inve
     } else if (doc.kind === 'text') {
       content.push({ type: 'text', text: `Document contents:\n\n${doc.text ?? ''}` })
     }
-    raw = (await callClaude(content, slot.api_key!, slot.model || 'claude-opus-4-7')).text
+    raw = (await execRequest(buildProviderRequest('claude', slot, content, MAX_TOKENS))).text
   } else {
     // openai / other — images + text only (PDF guarded above), both speak
     // the OpenAI content format.
@@ -213,9 +249,7 @@ export async function extractHoldingsFromDocument(doc: DocInput): Promise<{ inve
     } else if (doc.kind === 'text') {
       content.push({ type: 'text', text: `Document contents:\n\n${doc.text ?? ''}` })
     }
-    raw = provider === 'other'
-      ? (await callOther(content, slot.host!, slot.api_key, slot.model || '')).text
-      : (await callOpenAi(content, slot.api_key!, slot.model || 'gpt-4o')).text
+    raw = (await execRequest(buildProviderRequest(provider, slot, content, MAX_TOKENS))).text
   }
 
   if (isDefaultKey) await incrementDefaultKeyUsage()
@@ -228,12 +262,26 @@ export const nativeAiApi = {
   check: async () => {
     const cfg = await getAiConfig()
     const creds = await getActiveProviderCredentials()
-    return {
-      data: {
-        available: !!creds,
-        provider: cfg.active,
-        model: cfg[cfg.active].model ?? null,
-      },
+    const model = cfg[cfg.active]?.model ?? null
+    if (!creds) {
+      return { data: { available: false, provider: cfg.active, model, error: 'No API key saved for this provider yet. Paste a key and tap Save first.' } }
+    }
+    const { provider, slot } = creds
+    if (provider !== 'claude' && provider !== 'openai' && provider !== 'other') {
+      return { data: { available: false, provider, model, error: 'This provider is no longer supported on iOS. Choose Claude, OpenAI, or Other.' } }
+    }
+    if (provider === 'other' && !slot.model) {
+      return { data: { available: false, provider, model, error: 'Enter the model name for your custom endpoint before testing.' } }
+    }
+    // Real connectivity test: a minimal 1-token round-trip validates the key,
+    // model, and endpoint for whichever provider is active — the exact path a
+    // real analysis uses, so "Connected" actually means it will work. Runs only
+    // when the user taps Test (check() is not used to gate any UI).
+    try {
+      await execRequest(buildProviderRequest(provider, slot, 'ping', 1))
+      return { data: { available: true, provider, model: slot.model ?? model } }
+    } catch (e: any) {
+      return { data: { available: false, provider, model: slot.model ?? model, error: e?.response?.data?.detail ?? e?.message ?? 'Connection test failed.' } }
     }
   },
 

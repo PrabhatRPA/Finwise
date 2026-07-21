@@ -118,15 +118,15 @@ export function AIProviderSettings() {
     setStatus(null)
     try {
       const r = await aiApi.check()
-      const { available, provider, model: m } = r.data
+      const { available, provider, model: m, error } = r.data as { available: boolean; provider: string; model?: string; error?: string }
       setStatus({
         ok: available,
         msg: available
           ? `Connected — ${provider} / ${m}`
-          : `Provider not reachable (${provider}).`,
+          : (error || `Provider not reachable (${provider}).`),
       })
-    } catch {
-      setStatus({ ok: false, msg: 'Could not reach the backend.' })
+    } catch (e: any) {
+      setStatus({ ok: false, msg: e?.response?.data?.detail ?? e?.message ?? 'Connection test failed.' })
     } finally {
       setTesting(false)
     }

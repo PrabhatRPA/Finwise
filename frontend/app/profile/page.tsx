@@ -160,6 +160,19 @@ export default function ProfilePage() {
     return () => { cancelled = true }
   }, [])
 
+  // Deep-link support: /profile#ai-provider (the "Configure →" link in AI
+  // Insights) scrolls straight to the AI Provider section once the page is
+  // ready. The static-export hash isn't reliably honored on first paint, so we
+  // scroll it into view ourselves after the content mounts.
+  useEffect(() => {
+    if (isLoading || !user) return
+    if (typeof window === 'undefined' || window.location.hash !== '#ai-provider') return
+    const t = setTimeout(() => {
+      document.getElementById('ai-provider')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 120)
+    return () => clearTimeout(t)
+  }, [isLoading, user])
+
   const handleToggleAppLock = async () => {
     const next = !appLockOn
     setAppLockOn(next)
@@ -626,8 +639,11 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* AI Provider — full settings, moved here from the AI Insights tab */}
-      <AIProviderSettings />
+      {/* AI Provider — full settings, moved here from the AI Insights tab.
+          #ai-provider is the deep-link target for "Configure →" in AI Insights. */}
+      <div id="ai-provider" style={{ scrollMarginTop: 'calc(env(safe-area-inset-top) + 12px)' }}>
+        <AIProviderSettings />
+      </div>
 
       {/* Data & privacy */}
       <Card>

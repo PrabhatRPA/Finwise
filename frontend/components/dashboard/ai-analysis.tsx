@@ -93,7 +93,7 @@ function ProviderHint() {
         </p>
       </div>
       <Link
-        href="/profile"
+        href="/profile#ai-provider"
         className="shrink-0 text-xs font-medium text-primary hover:underline"
       >
         Configure →
@@ -144,11 +144,11 @@ export function AIAnalysisCard({ holdings }: AIAnalysisCardProps) {
         text ? text : 'AI returned an empty response. Check that your provider has credits or is running.'
       )
     } catch (err: any) {
-      const detail = err?.response?.data?.detail
+      const detail = err?.response?.data?.detail ?? err?.message
       setPortfolioResult(
-        typeof detail === 'string'
+        typeof detail === 'string' && detail
           ? detail
-          : 'Portfolio analysis failed. Check that the backend is running and your AI provider is configured.'
+          : 'Portfolio analysis failed. Open Profile → AI Provider and check your API key, model, and connection.'
       )
     } finally {
       setPortfolioLoading(false)
@@ -168,11 +168,11 @@ export function AIAnalysisCard({ holdings }: AIAnalysisCardProps) {
         text ? text : 'AI returned an empty response. Check that your provider has credits or is running.'
       )
     } catch (err: any) {
-      const detail = err?.response?.data?.detail
+      const detail = err?.response?.data?.detail ?? err?.message
       setStockResult(
-        typeof detail === 'string'
+        typeof detail === 'string' && detail
           ? detail
-          : 'Stock analysis failed. Check that the backend is running and your AI provider is configured.'
+          : 'Stock analysis failed. Open Profile → AI Provider and check your API key, model, and connection.'
       )
     } finally {
       setStockLoading(false)
