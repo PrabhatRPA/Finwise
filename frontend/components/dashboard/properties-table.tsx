@@ -318,7 +318,7 @@ export function PropertiesTable({ onPropertyChanged }: Props) {
           <div>
             <CardTitle>Real Estate</CardTitle>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Total value: <span className="font-semibold text-foreground">{formatCurrency(totalValue)}</span>
+              Total value: <span className="font-semibold text-foreground sensitive-amount">{formatCurrency(totalValue)}</span>
               {rentcastConfigured && (
                 <span className="ml-2 text-xs text-blue-600">· Rentcast AVM enabled</span>
               )}
@@ -386,10 +386,10 @@ export function PropertiesTable({ onPropertyChanged }: Props) {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
                       <div>
                         <p className="text-xs text-muted-foreground">Current Value</p>
-                        <p className="font-semibold">{formatCurrency(p.current_value)}</p>
+                        <p className="font-semibold sensitive-amount">{formatCurrency(p.current_value)}</p>
                         {p.manual_value != null && p.estimated_value != null && (
                           <p className="text-xs text-muted-foreground">
-                            API: {formatCurrency(p.estimated_value)}
+                            API: <span className="sensitive-amount">{formatCurrency(p.estimated_value)}</span>
                           </p>
                         )}
                       </div>
@@ -407,7 +407,7 @@ export function PropertiesTable({ onPropertyChanged }: Props) {
                       {gain != null && (
                         <div>
                           <p className="text-xs text-muted-foreground">Unrealised Gain</p>
-                          <p className={`font-medium ${gain >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                          <p className={`font-medium sensitive-amount ${gain >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                             {gain >= 0 ? '+' : ''}{formatCurrency(gain)}
                           </p>
                           {gainPct != null && (

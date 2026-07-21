@@ -148,7 +148,7 @@ export function TruePerformanceChart({ holdings }: { holdings: any[] }) {
       {/* Compact Δ line, then the full-width range row so all 7 pills always
           fit on one line (same pattern as the ticker page). */}
       <p className={`type-amount text-sm font-semibold ${up ? 'text-positive' : 'text-negative'}`}>
-        {up ? '▲ +' : '▼ −'}{formatCurrency(Math.abs(delta))}
+        {up ? '▲' : '▼'} <span className="sensitive-amount">{up ? '+' : '−'}{formatCurrency(Math.abs(delta))}</span>
         <span className="ml-1">({up ? '+' : ''}{pct.toFixed(2)}%)</span>
         <span className="ml-1.5 text-xs text-muted-foreground font-normal">over {range}</span>
       </p>

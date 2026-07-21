@@ -8,6 +8,10 @@ export interface StatItem {
   value: string
   tone?: 'positive' | 'negative' | 'neutral' | 'accent' | 'default'
   onTap?: () => void   // optional: tile navigates (e.g. to its dashboard tab)
+  // Marks the value as a sensitive figure. The blur itself is driven by an
+  // ancestor `.privacy-blur` (see lib/privacy-blur.ts); this only tags the
+  // element, so the strip stays unaffected wherever privacy blur isn't used.
+  sensitive?: boolean
 }
 
 const TONE_CLASS: Record<NonNullable<StatItem['tone']>, string> = {
@@ -36,7 +40,7 @@ export function StatStrip({ items }: { items: StatItem[] }) {
           } ${s.onTap ? 'cursor-pointer hover:bg-accent/30 active:bg-accent/60 transition-colors' : ''}`}
         >
           <p className={`type-label truncate ${dense ? '!text-[9px] sm:!text-[11px]' : ''}`}>{s.label}</p>
-          <p className={`type-amount font-semibold mt-0.5 truncate ${dense ? 'text-xs sm:text-[15px]' : 'text-[15px]'} ${TONE_CLASS[s.tone ?? 'default']}`}>
+          <p className={`type-amount font-semibold mt-0.5 truncate ${dense ? 'text-xs sm:text-[15px]' : 'text-[15px]'} ${TONE_CLASS[s.tone ?? 'default']} ${s.sensitive ? 'sensitive-amount' : ''}`}>
             {s.value}
           </p>
         </div>

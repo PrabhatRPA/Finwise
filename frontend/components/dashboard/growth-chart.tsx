@@ -109,12 +109,12 @@ export function GrowthChart({ currentNetWorth }: { currentNetWorth: number | nul
         <p className="text-[10px] text-white/45 type-amount">{startLabel} — {endLabel}</p>
       </div>
 
-      <h2 className="type-hero text-[40px] sm:text-5xl leading-tight text-white mt-1">
+      <h2 className="type-hero text-[40px] sm:text-5xl leading-tight text-white mt-1 sensitive-amount">
         {formatCurrency(rolled)}
       </h2>
 
       <p className="text-sm font-semibold mt-0.5 type-amount" style={{ color: tint }}>
-        {positive ? '▲' : '▼'} {positive ? '+' : '−'}{formatCurrency(Math.abs(delta))}
+        {positive ? '▲' : '▼'} <span className="sensitive-amount">{positive ? '+' : '−'}{formatCurrency(Math.abs(delta))}</span>
         {!sparse && start > 0 && (
           <span className="ml-1.5 opacity-90">({positive ? '+' : ''}{deltaPct.toFixed(2)}%)</span>
         )}

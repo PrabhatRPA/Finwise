@@ -171,7 +171,7 @@ export function DebtsTable({ onDebtChanged }: Props) {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">Total outstanding debt</p>
-          <p className="text-2xl font-bold text-destructive">{formatCurrency(totalDebt)}</p>
+          <p className="text-2xl font-bold text-destructive sensitive-amount">{formatCurrency(totalDebt)}</p>
         </div>
         <Button onClick={openAdd}>+ Add Debt</Button>
       </div>
@@ -331,7 +331,7 @@ export function DebtsTable({ onDebtChanged }: Props) {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <div className="font-semibold text-destructive">{formatCurrency(loan.current_balance)}</div>
+                        <div className="font-semibold text-destructive sensitive-amount">{formatCurrency(loan.current_balance)}</div>
                         {(loan as any).next_principal > 0 && (
                           <div className="text-[10px] text-muted-foreground mt-0.5 whitespace-nowrap">
                             next pmt: {formatCurrency((loan as any).next_interest)} int · {formatCurrency((loan as any).next_principal)} prin
@@ -381,7 +381,7 @@ export function DebtsTable({ onDebtChanged }: Props) {
                 <tfoot>
                   <tr className="border-t bg-muted/40 font-semibold">
                     <td className="px-4 py-3" colSpan={2}>Total Debt</td>
-                    <td className="px-4 py-3 text-right text-destructive">{formatCurrency(totalDebt)}</td>
+                    <td className="px-4 py-3 text-right text-destructive sensitive-amount">{formatCurrency(totalDebt)}</td>
                     <td colSpan={4}></td>
                   </tr>
                 </tfoot>

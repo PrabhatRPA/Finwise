@@ -433,6 +433,31 @@ export async function reconcileICloud(): Promise<void> {
     const dirty = await isDirty()
     const remoteEmpty = !remote.payload || isSnapshotEmpty(remote.payload)
 
+    // Never re-import our OWN snapshot echoed back by iCloud. After this device
+    // pushes, iCloud can report the file with a bumped revision/mtime (eventual
+    // consistency), so `remote.revision > syncedRev` stays true and reconcile
+    // would "pull" our own data on every 30s poll — importFullData wipes and
+    // reinserts the DB and fires `nworth:data-synced`, which makes the dashboard
+    // re-fetch live prices and visibly refreshes the today-driven charts
+    // (Today's Movers, Sector Map) every ~30s. Our local data can never be
+    // older than our own snapshot, so: if we have unsynced edits, publish them;
+    // otherwise just catch up the bookkeeping. Either way, don't re-import.
+    // Snapshots written before device_id existed (undefined) skip this guard.
+    if (!remoteEmpty && remote.payload?.device_id) {
+      const myDevice = await getDeviceId()
+      if (remote.payload.device_id === myDevice) {
+        if (dirty && !localEmpty) {
+          await syncToICloud()   // our local edits are newer → publish them
+        } else {
+          if (remote.revision > syncedRev) await setSyncedRevision(remote.revision)
+          if (remote.fileMtime) {
+            await Preferences.set({ key: REMOTE_MTIME_KEY, value: String(remote.fileMtime) })
+          }
+        }
+        return
+      }
+    }
+
     if (remote.revision > syncedRev) {
       // Remote advanced since we last synced.
       if (remoteEmpty && !localEmpty) {

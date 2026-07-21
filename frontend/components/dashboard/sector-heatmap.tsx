@@ -7,6 +7,7 @@
 import { useMemo } from 'react'
 import { ResponsiveContainer, Treemap, Tooltip } from 'recharts'
 import { formatCurrency } from '@/lib/utils'
+import { sectorFor } from '@/lib/sectors'
 
 interface SectorTile {
   name: string
@@ -51,7 +52,9 @@ export function SectorHeatmap({ holdings }: { holdings: any[] }) {
   const tiles: SectorTile[] = useMemo(() => {
     const bySector = new Map<string, { value: number; weighted: number }>()
     for (const h of holdings) {
-      const sector = (h.sector || 'Other').trim() || 'Other'
+      // Prefer a stored sector; otherwise classify from the bundled ticker map
+      // (real holdings rarely store one). Unmapped/custom symbols → "Other".
+      const sector = ((h.sector || sectorFor(h) || 'Other') as string).trim() || 'Other'
       const value = Number(h.current_value ?? 0)
       if (value <= 0) continue
       const pct = Number(h.today_gain_loss_percent ?? 0)

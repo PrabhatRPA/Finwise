@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatCurrency } from '@/lib/utils'
 import { getRegion, useRegion } from '@/lib/region'
+import { usePrivacyBlur, setPrivacyBlur } from '@/lib/privacy-blur'
 import { usePortfolioStore } from '@/lib/store'
 import { holdingsApi, accountsApi, netWorthApi, systemApi, dataApi } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -89,6 +90,10 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(holdings.length === 0)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  // Ref so the clear ("✕") button can return focus to the field after wiping it.
+  const searchRef = useRef<HTMLInputElement>(null)
+  // Privacy blur for sensitive figures (net worth + balances). See lib/privacy-blur.ts.
+  const blurValues = usePrivacyBlur()
   // Seed from the cached snapshot so the first paint shows the previous net
   // worth (not $0). Hydrated on mount to stay SSR-safe.
   const [netWorthData, setNetWorthData] = useState<any>(null)
@@ -313,7 +318,7 @@ export default function DashboardPage() {
     netWorthData?.investments ?? (totalValue || netWorthData?.totalValue || 0)
 
   return (
-    <div className="mx-auto max-w-screen-xl px-3 sm:px-4 pt-1 pb-6 sm:pb-8 space-y-3 sm:space-y-4">
+    <div className={`mx-auto max-w-screen-xl px-3 sm:px-4 pt-1 pb-6 sm:pb-8 space-y-3 sm:space-y-4 ${blurValues ? 'privacy-blur' : ''}`}>
 
       {showOnboarding && (
         <WelcomeDemoModal
@@ -335,28 +340,77 @@ export default function DashboardPage() {
           </svg>
           <h1 className="text-lg sm:text-2xl font-bold tracking-tight leading-tight">Nworth</h1>
         </div>
-        <Input
-          placeholder="Search holdings"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="h-9 text-sm flex-1 min-w-0 max-w-xs ml-auto"
-        />
+        <div className="relative flex-1 min-w-0 max-w-xs ml-auto">
+          <Input
+            ref={searchRef}
+            placeholder="Search holdings"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={`h-9 text-sm w-full ${searchQuery ? 'pr-10' : ''}`}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => { setSearchQuery(''); searchRef.current?.focus() }}
+              className="absolute right-0 top-1/2 -translate-y-1/2 h-11 w-11 flex items-center justify-center
+                text-muted-foreground hover:text-foreground"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
+        </div>
+        {/* Privacy toggle: blur/unblur net worth + balance figures for viewing
+            in public. State persists via lib/privacy-blur.ts. */}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={blurValues}
+          aria-label={blurValues ? 'Show balances' : 'Hide balances'}
+          title={blurValues ? 'Show balances' : 'Hide balances'}
+          onClick={() => setPrivacyBlur(!blurValues)}
+          className="shrink-0 h-9 w-9 flex items-center justify-center rounded-md border border-border
+            text-muted-foreground hover:text-foreground hover:bg-accent"
+        >
+          {blurValues ? (
+            // eye-off
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+              <path d="M6.61 6.61A18.5 18.5 0 0 0 2 12s3 8 10 8a9.12 9.12 0 0 0 5.39-1.61" />
+              <line x1="2" y1="2" x2="22" y2="22" />
+            </svg>
+          ) : (
+            // eye
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+              <path d="M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          )}
+        </button>
       </header>
 
       {/* ── Hero net-worth card ── the top element per the design system:
           oversized rolling numeral + delta + history chart + range pills. */}
-      <GrowthChart currentNetWorth={netWorthData?.net_worth ?? displayTotalValue} />
+      <div className="blur-chart-money">
+        <GrowthChart currentNetWorth={netWorthData?.net_worth ?? displayTotalValue} />
+      </div>
 
       {/* ── Stat strip ── Portfolio / Cash / Debt / Property / Net Worth.
           Each tile jumps to its tab (the holdings count moved onto the
           Holdings tab itself). */}
       <StatStrip
         items={[
-          { label: 'Portfolio', value: formatCompactCurrency(displayTotalValue), tone: 'positive', onTap: () => setActiveTab('holdings') },
-          { label: 'Cash', value: formatCompactCurrency(netWorthData?.cash ?? 0), tone: 'default', onTap: () => setActiveTab('accounts') },
-          { label: 'Debt', value: formatCompactCurrency(netWorthData?.total_liabilities ?? 0), tone: (netWorthData?.total_liabilities ?? 0) > 0 ? 'negative' : 'neutral', onTap: () => setActiveTab('debts') },
-          { label: 'Property', value: formatCompactCurrency(netWorthData?.real_estate ?? 0), tone: 'default', onTap: () => setActiveTab('properties') },
-          { label: 'Net Worth', value: formatCompactCurrency(netWorthData?.net_worth ?? 0), tone: 'accent', onTap: () => setActiveTab('performance') },
+          { label: 'Portfolio', value: formatCompactCurrency(displayTotalValue), tone: 'positive', sensitive: true, onTap: () => setActiveTab('holdings') },
+          { label: 'Cash', value: formatCompactCurrency(netWorthData?.cash ?? 0), tone: 'default', sensitive: true, onTap: () => setActiveTab('accounts') },
+          { label: 'Debt', value: formatCompactCurrency(netWorthData?.total_liabilities ?? 0), tone: (netWorthData?.total_liabilities ?? 0) > 0 ? 'negative' : 'neutral', sensitive: true, onTap: () => setActiveTab('debts') },
+          { label: 'Property', value: formatCompactCurrency(netWorthData?.real_estate ?? 0), tone: 'default', sensitive: true, onTap: () => setActiveTab('properties') },
+          { label: 'Net Worth', value: formatCompactCurrency(netWorthData?.net_worth ?? 0), tone: 'accent', sensitive: true, onTap: () => setActiveTab('performance') },
         ]}
       />
 
@@ -450,7 +504,9 @@ export default function DashboardPage() {
 
         <TabsContent value="debts" className="space-y-4">
           <DebtsTable onDebtChanged={fetchData} />
-          <DebtPayoffChart />
+          <div className="blur-chart-money">
+            <DebtPayoffChart />
+          </div>
         </TabsContent>
 
         <TabsContent value="properties" className="space-y-4">
@@ -461,11 +517,11 @@ export default function DashboardPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader><CardTitle>Asset Allocation</CardTitle></CardHeader>
-              <CardContent><AssetAllocationDonutChart holdings={holdings} /></CardContent>
+              <CardContent className="blur-chart-money"><AssetAllocationDonutChart holdings={holdings} /></CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle>Allocation by Type</CardTitle></CardHeader>
-              <CardContent><AssetAllocationChart holdings={holdings} /></CardContent>
+              <CardHeader><CardTitle>Allocation by Sector</CardTitle></CardHeader>
+              <CardContent className="blur-chart-money"><AssetAllocationChart holdings={holdings} /></CardContent>
             </Card>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
@@ -499,7 +555,7 @@ export default function DashboardPage() {
               <CardTitle>Portfolio Performance</CardTitle>
               <p className="text-sm text-muted-foreground">Your portfolio&apos;s value over time, rebuilt from each holding&apos;s price history</p>
             </CardHeader>
-            <CardContent><TruePerformanceChart holdings={holdings} /></CardContent>
+            <CardContent className="blur-chart-money"><TruePerformanceChart holdings={holdings} /></CardContent>
           </Card>
           <Card>
             <CardHeader><CardTitle>Today&apos;s Movers</CardTitle></CardHeader>
@@ -507,7 +563,7 @@ export default function DashboardPage() {
           </Card>
           <Card>
             <CardHeader><CardTitle>Sector Map</CardTitle></CardHeader>
-            <CardContent><SectorHeatmap holdings={holdings} /></CardContent>
+            <CardContent className="blur-chart-money"><SectorHeatmap holdings={holdings} /></CardContent>
           </Card>
           <Card>
             <CardHeader><CardTitle>Holdings Gain / Loss</CardTitle></CardHeader>
@@ -525,7 +581,7 @@ export default function DashboardPage() {
               <CardTitle>Portfolio · Debt · Net Worth Trends</CardTitle>
               <p className="text-sm text-muted-foreground">A snapshot is saved each day you open the app — open it daily to keep this history complete (missed days can&apos;t be backfilled)</p>
             </CardHeader>
-            <CardContent><NetWorthTrendChart /></CardContent>
+            <CardContent className="blur-chart-money"><NetWorthTrendChart /></CardContent>
           </Card>
         </TabsContent>
 

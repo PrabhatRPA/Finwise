@@ -272,13 +272,13 @@ export function AccountsTable({ accounts, onAccountChanged }: AccountsTableProps
             <CardTitle>Cash &amp; Accounts</CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5">
               Liquid cash:{' '}
-              <span className="font-semibold text-foreground tabular-nums">{formatCurrency(cashTotal)}</span>
+              <span className="font-semibold text-foreground tabular-nums sensitive-amount">{formatCurrency(cashTotal)}</span>
               {investTotal > 0 && (
                 <>
                   {' '}·{' '}Investment accounts:{' '}
-                  <span className="font-semibold text-foreground tabular-nums">{formatCurrency(investTotal)}</span>
+                  <span className="font-semibold text-foreground tabular-nums sensitive-amount">{formatCurrency(investTotal)}</span>
                   {' '}·{' '}Total:{' '}
-                  <span className="font-semibold text-foreground tabular-nums">{formatCurrency(total)}</span>
+                  <span className="font-semibold text-foreground tabular-nums sensitive-amount">{formatCurrency(total)}</span>
                 </>
               )}
             </p>
@@ -309,7 +309,7 @@ export function AccountsTable({ accounts, onAccountChanged }: AccountsTableProps
                     )}
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="font-semibold tabular-nums">{formatCurrency(a.balance ?? 0)}</div>
+                    <div className="font-semibold tabular-nums sensitive-amount">{formatCurrency(a.balance ?? 0)}</div>
                     <div className="flex gap-1 justify-end mt-1.5">
                       <button
                         onClick={() => openEdit(a)}

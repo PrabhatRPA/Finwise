@@ -52,6 +52,36 @@ const DEFAULT_COLS: ColPref[] = DEFAULT_COLUMN_ORDER.map(id => ({ id, visible: t
 // re-defaults saved layouts once; users can still customize afterwards).
 const COLS_STORAGE_KEY = 'holdings_columns_v2'
 
+// Persisted active sort (column + direction), so the user's choice survives a
+// refresh / re-render / app relaunch instead of snapping back to the default.
+const SORT_STORAGE_KEY = 'holdings_sort_v1'
+type SortPref = { field: SortField; order: 'asc' | 'desc' }
+const DEFAULT_SORT: SortPref = { field: 'ticker', order: 'asc' }
+
+function loadSortPref(): SortPref {
+  if (typeof window === 'undefined') return DEFAULT_SORT
+  try {
+    const raw = window.localStorage.getItem(SORT_STORAGE_KEY)
+    if (!raw) return DEFAULT_SORT
+    const parsed = JSON.parse(raw)
+    const field = parsed?.field
+    const order = parsed?.order
+    // Validate against the current column registry — a previously-saved column
+    // that no longer exists (or a malformed value) falls back to the default.
+    if (typeof field === 'string' && field in COLUMN_DEFS && (order === 'asc' || order === 'desc')) {
+      return { field: field as SortField, order }
+    }
+    return DEFAULT_SORT
+  } catch {
+    return DEFAULT_SORT
+  }
+}
+
+function saveSortPref(pref: SortPref) {
+  if (typeof window === 'undefined') return
+  try { window.localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(pref)) } catch {}
+}
+
 // Merge a saved preference with the current registry: keep the saved order &
 // visibility, drop columns that no longer exist, and append any new ones. This
 // keeps the user's layout stable across app updates without losing new columns.
@@ -163,8 +193,15 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
     try { window.localStorage.setItem('holdings_row_display', v) } catch {}
   }
 
-  const [sortBy, setSortBy] = useState<SortField>('ticker')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  // Start from defaults so SSR/first paint match, then hydrate the saved sort on
+  // mount (localStorage is client-only) — same approach as the column layout.
+  const [sortBy, setSortBy] = useState<SortField>(DEFAULT_SORT.field)
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(DEFAULT_SORT.order)
+  useEffect(() => {
+    const s = loadSortPref()
+    setSortBy(s.field)
+    setSortOrder(s.order)
+  }, [])
 
   // Column layout (order + visibility), persisted to localStorage. Start from
   // defaults so server prerender + first paint match, then hydrate the saved
@@ -233,8 +270,13 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
   })
 
   const toggleSort = (field: SortField) => {
-    if (sortBy === field) setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
-    else { setSortBy(field); setSortOrder('asc') }
+    // Same field → flip direction; new field → start ascending. Persist the
+    // resulting choice so it sticks across refresh / relaunch.
+    const nextOrder: 'asc' | 'desc' =
+      sortBy === field ? (sortOrder === 'asc' ? 'desc' : 'asc') : 'asc'
+    setSortBy(field)
+    setSortOrder(nextOrder)
+    saveSortPref({ field, order: nextOrder })
   }
 
   const sortIcon = (field: SortField) =>
@@ -605,7 +647,7 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
             )}>
               <span className="text-muted-foreground font-medium">Today&apos;s Portfolio P&amp;L</span>
               <span className={cn(
-                'text-base font-bold',
+                'text-base font-bold sensitive-amount',
                 todayGainTotal >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
               )}>
                 {todayGainTotal >= 0 ? '+' : ''}{formatCurrency(todayGainTotal)}

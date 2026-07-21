@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { formatCurrency } from '@/lib/utils'
+import { sectorFor } from '@/lib/sectors'
 
 interface AssetAllocationChartProps {
   holdings: any[]
@@ -21,7 +22,9 @@ export function AssetAllocationChart({ holdings }: AssetAllocationChartProps) {
   let totalValue = 0
 
   holdings.forEach((holding) => {
-    const sector = holding.sector || 'Other'
+    // Stored sector wins; otherwise classify from the bundled ticker map so
+    // real holdings (which store no sector) don't all collapse into "Other".
+    const sector = holding.sector || sectorFor(holding) || 'Other'
     const value = holding.current_value || 0
     allocation[sector] = (allocation[sector] || 0) + value
     totalValue += value

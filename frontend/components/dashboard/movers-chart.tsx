@@ -34,7 +34,7 @@ export function MoversChart({ holdings }: { holdings: any[] }) {
   return (
     <div className="space-y-2">
       <p className={`type-amount text-sm font-bold ${up ? 'text-positive' : 'text-negative'}`}>
-        Total today: {up ? '+' : '−'}{formatCurrency(Math.abs(total))}
+        Total today: <span className="sensitive-amount">{up ? '+' : '−'}{formatCurrency(Math.abs(total))}</span>
       </p>
       <ResponsiveContainer width="100%" height={Math.max(180, rows.length * 30 + 24)}>
         <BarChart data={rows} layout="vertical" margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>

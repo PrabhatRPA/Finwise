@@ -332,3 +332,28 @@ select {
   scroll-margin-top: 96px;
   scroll-margin-bottom: 96px;
 }
+
+/* Privacy blur (see lib/privacy-blur.ts): when the ancestor carries
+   `.privacy-blur`, any `.sensitive-amount` figure inside is obscured. The blur
+   radius is in `em` so it scales with the text — the oversized hero net-worth
+   number and the small stat tiles both obscure cleanly, and it reads the same
+   in every theme (blur is colour-independent). Display-only; values are intact.
+   `user-select: none` stops the hidden text being revealed by selecting it. */
+.privacy-blur .sensitive-amount {
+  filter: blur(0.32em);
+  user-select: none;
+  -webkit-user-select: none;
+  transition: filter 0.18s ease-out;
+}
+
+/* Chart money blur: aggregate charts (net worth, allocation, sector map,
+   performance, debt) carry `.blur-chart-money` on their container. When
+   privacy mode is on, their Recharts tooltip values and currency axis ticks
+   are blurred — the "$910,705.07"-style pop-ups and "$340K" axis labels.
+   Per-ticker charts (holdings gain/loss, top holdings, movers bars) omit the
+   marker so security-level figures stay visible. Recharts 2.15.4 renders
+   tooltips in-DOM (no portal) under this root, so the selector reaches them. */
+.privacy-blur .blur-chart-money .recharts-tooltip-item-value,
+.privacy-blur .blur-chart-money .recharts-cartesian-axis-tick-value {
+  filter: blur(0.3em);
+}

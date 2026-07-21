@@ -18,6 +18,37 @@ import { formatCurrency, formatCurrencyWhole } from '@/lib/utils'
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#A4DE6C', '#D0ED57']
 
+// Raw security_type keys → human labels ("mutual_fund" → "Mutual Fund"), so the
+// chart never shows lowercase/underscored keys. Unknown types are title-cased.
+const TYPE_LABELS: Record<string, string> = {
+  stock: 'Stock', etf: 'ETF', bond: 'Bond', crypto: 'Crypto',
+  reit: 'REIT', mutual_fund: 'Mutual Fund', cash: 'Cash', other: 'Other',
+}
+function prettyType(t: string): string {
+  return TYPE_LABELS[t] ?? t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+// Compact slice label: small, theme-aware (default Recharts fill is a dark grey
+// that's invisible in Ledger Dark), no leader line — so on a narrow iPhone the
+// name + % fits instead of clipping at the container edge.
+function renderSliceLabel({ cx, cy, midAngle, outerRadius, payload }: any) {
+  const RAD = Math.PI / 180
+  const r = outerRadius + 12
+  const x = cx + r * Math.cos(-midAngle * RAD)
+  const y = cy + r * Math.sin(-midAngle * RAD)
+  return (
+    <text
+      x={x} y={y}
+      fill="hsl(var(--foreground))"
+      fontSize={11}
+      textAnchor={x >= cx ? 'start' : 'end'}
+      dominantBaseline="central"
+    >
+      {payload.name} {payload.percentage}%
+    </text>
+  )
+}
+
 interface AllocationData {
   name: string
   value: number
@@ -41,7 +72,7 @@ export function AssetAllocationDonutChart({ holdings }: AssetAllocationDonutChar
   })
 
   const data = Object.entries(allocation).map(([name, value]) => ({
-    name,
+    name: prettyType(name),
     value,
     percentage: totalValue > 0 ? ((value / totalValue) * 100).toFixed(1) : 0,
   }))
@@ -56,7 +87,7 @@ export function AssetAllocationDonutChart({ holdings }: AssetAllocationDonutChar
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <PieChart>
+      <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
         <Pie
           data={data}
           cx="50%"
@@ -65,7 +96,8 @@ export function AssetAllocationDonutChart({ holdings }: AssetAllocationDonutChar
           outerRadius={80}
           paddingAngle={5}
           dataKey="value"
-          label={(entry) => `${entry.name} (${entry.percentage}%)`}
+          labelLine={false}
+          label={renderSliceLabel}
         >
           {data.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

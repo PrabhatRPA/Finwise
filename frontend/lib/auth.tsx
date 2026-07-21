@@ -4,6 +4,12 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { authApi } from './api'
 import { loadToken, saveToken, clearToken } from './token'
 
+// Foreground fallback cadence for the iCloud reconcile poll. Deliberately slow:
+// launch/foreground reconcile + the KV beacon handle real-time sync, so this is
+// only a safety net for a device left open. (Was 30s, which visibly refreshed
+// the dashboard's today-driven charts every tick.)
+const ICLOUD_POLL_MS = 5 * 60 * 1000  // 5 minutes
+
 interface AuthUser {
   user_id: number
   username: string
@@ -77,10 +83,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   //   • On launch + every foreground: reconcile — pull the master if another
   //     device has a newer snapshot. This is also what arms auto-push, so seed
   //     writes during startup can't clobber the master.
-  //   • Every 45s while foregrounded: reconcile again, so a device left open
-  //     picks up the other device's edits without waiting for a foreground event
-  //     (this is the "too slow to appear" fix). Cheap when nothing changed —
-  //     reconcileICloud only imports when the remote revision advanced.
+  //   • A slow fallback poll while foregrounded, so a device left open still
+  //     picks up another device's edits without a foreground event. Real-time
+  //     cross-device propagation comes from the KV beacon (seconds), not this
+  //     poll — so it only needs to be a safety net, not frequent. Kept slow (5
+  //     min) on purpose: a local-first app has no reason to reconcile holdings
+  //     every few seconds, and the frequent tick was visibly refreshing the
+  //     dashboard's today-driven charts. Cheap when nothing changed —
+  //     reconcileICloud fast-paths out unless the remote revision advanced.
   //   • On background: push local changes up.
   // Dynamically imported so web/Tauri builds don't pull in the native modules.
   useEffect(() => {
@@ -101,15 +111,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const handle = await App.addListener('appStateChange', ({ isActive }) => {
           if (isActive) {
             reconcileICloud()                 // foreground → pull if remote newer
-            if (!poll) poll = setInterval(() => { reconcileICloud() }, 30_000)
+            if (!poll) poll = setInterval(() => { reconcileICloud() }, ICLOUD_POLL_MS)
           } else {
             autoSyncIfEnabled()               // background → push local changes
             if (poll) { clearInterval(poll); poll = undefined }  // pause polling in background
           }
         })
-        // Start polling immediately for the current (foreground) session.
-        // 30s + the metadata fast-path makes each tick essentially free.
-        poll = setInterval(() => { reconcileICloud() }, 30_000)
+        // Start the slow fallback poll for the current (foreground) session.
+        poll = setInterval(() => { reconcileICloud() }, ICLOUD_POLL_MS)
         remove = () => { handle.remove(); stopBeacon() }
       } catch {
         // native modules unavailable — skip
