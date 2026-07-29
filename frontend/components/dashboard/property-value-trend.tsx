@@ -86,13 +86,29 @@ export function PropertyValueTrend() {
     const m = new Map<number, any[]>()
     for (const s of snaps) {
       if (!m.has(s.property_id)) m.set(s.property_id, [])
-      m.get(s.property_id)!.push(s)
+      m.get(s.property_id)!.push({ as_of_date: s.as_of_date, value: s.value })
+    }
+    // Seed each property with its purchase price at the purchase date, so a
+    // property with one recorded value still shows appreciation (purchase →
+    // now) instead of a flat line. Only when it predates the earliest recorded
+    // value, and only if it differs, so we never override the user's own entry.
+    for (const p of props) {
+      const pd = (p.purchase_date || '').toString().slice(0, 10)
+      const pp = p.purchase_price
+      if (!pd || pp == null || pp === '') continue
+      const arr = m.get(p.id)
+      const firstDate = arr && arr.length ? arr[0].as_of_date : null
+      if (!firstDate || (pd < firstDate && Number(pp) !== arr![0].value)) {
+        const next = arr ? arr.slice() : []
+        next.push({ as_of_date: pd, value: Number(pp) })
+        m.set(p.id, next)
+      }
     }
     m.forEach((arr) => {
-      arr.sort((a: any, b: any) => a.as_of_date.localeCompare(b.as_of_date) || (a.created_at || '').localeCompare(b.created_at || ''))
+      arr.sort((a: any, b: any) => a.as_of_date.localeCompare(b.as_of_date))
     })
     return m
-  }, [snaps])
+  }, [snaps, props])
 
   const inView = useMemo<number[]>(() => {
     if (propId === 'all') return Array.from(byProp.keys())
@@ -149,7 +165,9 @@ export function PropertyValueTrend() {
     let domStart: number
     if (isAll) {
       domStart = toEpoch(earliest)
-      if (todayE - domStart < 182 * DAY) domStart = todayE - 182 * DAY
+      // Modest pad only so a single recent value doesn't collapse the axis —
+      // not months of empty flat line.
+      if (todayE - domStart < 30 * DAY) domStart = todayE - 30 * DAY
     } else {
       domStart = toEpoch(rangeStart)
     }
@@ -225,8 +243,9 @@ export function PropertyValueTrend() {
                   labelFormatter={(t: any) => new Date(Number(t)).toLocaleDateString()}
                   contentStyle={{ fontSize: 12, borderRadius: 10 }}
                 />
-                {/* stepAfter = flat until the next snapshot, then a step. */}
-                <Area type="stepAfter" dataKey="value" stroke="hsl(var(--primary))" fill="url(#prop-fill)" strokeWidth={2} isAnimationActive={false} dot={false} />
+                {/* stepAfter = flat until the next value, then a step. Dots mark
+                    each actual value so a change is always visible. */}
+                <Area type="stepAfter" dataKey="value" stroke="hsl(var(--primary))" fill="url(#prop-fill)" strokeWidth={2} isAnimationActive={false} dot={{ r: 2, strokeWidth: 0, fill: 'hsl(var(--primary))' }} activeDot={{ r: 4 }} />
               </AreaChart>
             </ResponsiveContainer>
             <div className="flex flex-wrap items-center justify-center gap-1">
