@@ -11,8 +11,62 @@
 
 import { all, get, run } from './db'
 import { requireSessionUserId } from './session'
+import { generateAmortizationSchedule, deriveTermMonths, type ScheduleInput } from '../amortization'
 
 const AMORTIZING_TYPES = new Set(['mortgage', 'auto', 'student', 'personal', 'home_equity', 'business'])
+// Property-secured debts — the only ones that carry an escrow (tax + insurance).
+export const ESCROW_TYPES = new Set(['mortgage', 'home_equity'])
+
+const toCents = (dollars: any) => Math.round((Number(dollars) || 0) * 100)
+const isoToday = () => new Date().toISOString().slice(0, 10)
+
+// Map a loan record to the amortization engine's input (integer cents), deriving
+// the remaining term from balance + rate + payment. Returns null when the loan
+// can't be amortized (revolving type, no positive payment, or payment ≤ interest)
+// so callers render what they have rather than a fabricated schedule. Nothing
+// here is required of the user beyond a balance, rate, and payment they already
+// enter; escrow/extras default to 0.
+export function loanScheduleInput(loan: any, opts?: {
+  extraMonthlyPrincipal?: number                       // dollars
+  extraOneTimePayments?: { date: string; amount: number }[]  // amount in dollars
+  startDate?: string
+}): ScheduleInput | null {
+  const balance = toCents(loan.current_balance ?? loan.entered_balance ?? 0)
+  const annualRate = (Number(loan.interest_rate ?? 0) || 0) / 100   // stored as percent
+  const pmt = toCents(loan.monthly_payment ?? 0)
+  const type = String(loan.loan_type || '')
+  if (balance <= 0 || pmt <= 0 || !AMORTIZING_TYPES.has(type)) return null
+  const term = deriveTermMonths(balance, annualRate, pmt)
+  if (term == null) return null
+  return {
+    openingBalance: balance,
+    annualRate,
+    termMonths: term,
+    startDate: opts?.startDate ?? isoToday(),
+    monthlyEscrow: toCents(loan.monthly_escrow ?? 0),
+    escrowAnnualGrowth: Number(loan.escrow_annual_growth ?? 0) || 0,
+    extraMonthlyPrincipal: toCents(opts?.extraMonthlyPrincipal ?? 0),
+    extraOneTimePayments: (opts?.extraOneTimePayments ?? []).map((p) => ({ date: p.date, amount: toCents(p.amount) })),
+  }
+}
+
+// Full schedule for a loan via the shared engine. null when not amortizable.
+export function loanSchedule(loan: any, opts?: Parameters<typeof loanScheduleInput>[1]) {
+  const input = loanScheduleInput(loan, opts)
+  return input ? generateAmortizationSchedule(input) : null
+}
+
+// PITI breakdown (dollars) for display. Escrow defaults to 0, so PITI == P&I for
+// existing and non-property debts — the identical code path, no special-casing.
+export function loanPITI(loan: any): {
+  pi: number; escrow: number; piti: number; nextPrincipal: number; nextInterest: number
+} | null {
+  const pmt = loan.monthly_payment == null || loan.monthly_payment === '' ? null : Number(loan.monthly_payment)
+  if (pmt == null || !(pmt > 0)) return null
+  const escrow = Number(loan.monthly_escrow ?? 0) || 0
+  const a = amortizeLoan(loan)
+  return { pi: pmt, escrow, piti: pmt + escrow, nextPrincipal: a.next_principal, nextInterest: a.next_interest }
+}
 
 // Whole calendar months elapsed from an ISO/SQL datetime to `asOf`.
 function monthsElapsed(fromRaw: string | null | undefined, asOf: Date): number {
@@ -200,8 +254,9 @@ export const nativeLoansApi = {
     const res = await run(
       `INSERT INTO loans (
          user_id, loan_name, loan_type, original_balance, current_balance,
-         interest_rate, monthly_payment, lender_name, due_day, end_date
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         interest_rate, monthly_payment, monthly_escrow, escrow_annual_growth,
+         lender_name, due_day, end_date
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
         data.loan_name,
@@ -210,6 +265,8 @@ export const nativeLoansApi = {
         toNumOrDefault(data.current_balance, original),
         toNumOrNull(data.interest_rate),
         toNumOrNull(data.monthly_payment),
+        toNumOrDefault(data.monthly_escrow, 0),
+        toNumOrDefault(data.escrow_annual_growth, 0),
         data.lender_name ?? null,
         data.due_day ?? null,
         data.end_date ?? null,
@@ -223,7 +280,8 @@ export const nativeLoansApi = {
     const userId = await requireSessionUserId()
     const fields = [
       'loan_name', 'loan_type', 'original_balance', 'current_balance',
-      'interest_rate', 'monthly_payment', 'lender_name', 'due_day', 'end_date', 'status',
+      'interest_rate', 'monthly_payment', 'monthly_escrow', 'escrow_annual_growth',
+      'lender_name', 'due_day', 'end_date', 'status',
     ]
     const sets: string[] = []
     const params: any[] = []

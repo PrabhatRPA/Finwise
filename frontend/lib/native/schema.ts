@@ -106,6 +106,8 @@ CREATE TABLE IF NOT EXISTS loans (
   interest_rate REAL,
   apr REAL,
   monthly_payment REAL,
+  monthly_escrow REAL DEFAULT 0,          -- property-secured debts: tax + insurance pass-through
+  escrow_annual_growth REAL DEFAULT 0,    -- optional annual escrow growth (decimal, e.g. 0.03)
   start_date TEXT,
   end_date TEXT,
   due_day INTEGER,

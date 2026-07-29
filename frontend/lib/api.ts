@@ -388,6 +388,8 @@ export interface LoanCreate {
   current_balance: number
   interest_rate?: number
   monthly_payment?: number
+  monthly_escrow?: number          // property-secured debts: tax + insurance (optional)
+  escrow_annual_growth?: number    // optional annual escrow growth (decimal)
   lender_name?: string
   due_day?: number
   end_date?: string
@@ -399,6 +401,10 @@ export interface Loan extends LoanCreate {
   status: string
   created_at?: string
   updated_at?: string
+  // Enriched by the native layer:
+  entered_balance?: number
+  next_interest?: number
+  next_principal?: number
 }
 
 export interface WatchlistItem {

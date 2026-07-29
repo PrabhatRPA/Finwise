@@ -54,6 +54,23 @@ async function init(): Promise<SQLiteDBConnection> {
     // International markets: native trading currency per holding + per cached quote.
     `ALTER TABLE holdings ADD COLUMN currency TEXT`,
     `ALTER TABLE market_prices ADD COLUMN currency TEXT`,
+    // Property-secured debts: monthly escrow (tax + insurance) + optional growth.
+    // Optional — existing loans default to 0, so PITI == P&I unless the user sets it.
+    `ALTER TABLE loans ADD COLUMN monthly_escrow REAL DEFAULT 0`,
+    `ALTER TABLE loans ADD COLUMN escrow_annual_growth REAL DEFAULT 0`,
+    // Append-only property value history (replaces reliance on a single mutable
+    // value). Existing properties are backfilled to one snapshot in db.ts below.
+    `CREATE TABLE IF NOT EXISTS property_value_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      property_id INTEGER NOT NULL,
+      value REAL NOT NULL,
+      as_of_date TEXT NOT NULL,
+      source TEXT DEFAULT 'manual',
+      note TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_prop_snap_user ON property_value_snapshots(user_id, property_id, as_of_date)`,
   ]
   for (const sql of migrations) {
     try { await conn.run(sql, []) } catch { /* already applied — skip */ }

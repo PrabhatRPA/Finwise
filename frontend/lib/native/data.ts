@@ -127,7 +127,8 @@ async function fetchLoans() {
   const userId = await requireSessionUserId()
   return all<any>(
     `SELECT loan_name, loan_type, original_balance, current_balance, interest_rate,
-            monthly_payment, lender_name, due_day, end_date, status
+            monthly_payment, monthly_escrow, escrow_annual_growth,
+            lender_name, due_day, end_date, status
      FROM loans WHERE user_id = ? ORDER BY id`,
     [userId],
   )
@@ -347,8 +348,9 @@ export const nativeDataApi = {
       await run(
         `INSERT INTO loans (
            user_id, loan_name, loan_type, original_balance, current_balance,
-           interest_rate, monthly_payment, lender_name, due_day, end_date, status
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           interest_rate, monthly_payment, monthly_escrow, escrow_annual_growth,
+           lender_name, due_day, end_date, status
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           userId, name,
           o.loan_type || 'other',
@@ -356,6 +358,8 @@ export const nativeDataApi = {
           toNumOrNull(o.current_balance) ?? original,
           toNumOrNull(o.interest_rate),
           toNumOrNull(o.monthly_payment),
+          toNum(o.monthly_escrow),
+          toNum(o.escrow_annual_growth),
           o.lender_name || null,
           toNumOrNull(o.due_day),
           o.end_date || null,

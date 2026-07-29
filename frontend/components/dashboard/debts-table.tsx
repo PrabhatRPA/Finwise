@@ -39,6 +39,7 @@ const BLANK_FORM: LoanCreate = {
   current_balance: 0,
   interest_rate: undefined,
   monthly_payment: undefined,
+  monthly_escrow: undefined,
   lender_name: '',
 }
 
@@ -96,6 +97,7 @@ export function DebtsTable({ onDebtChanged }: Props) {
       current_balance: loan.current_balance,
       interest_rate: loan.interest_rate ?? undefined,
       monthly_payment: loan.monthly_payment ?? undefined,
+      monthly_escrow: loan.monthly_escrow ?? undefined,
       lender_name: loan.lender_name ?? '',
     })
     setError(null)
@@ -270,6 +272,26 @@ export function DebtsTable({ onDebtChanged }: Props) {
                   />
                 </div>
               </div>
+              {/* Escrow — only for property-secured debts; optional. When set, the
+                  displayed monthly payment becomes PITI (P&I + escrow). */}
+              {(form.loan_type === 'mortgage' || form.loan_type === 'home_equity') && (
+                <div>
+                  <label className="text-sm font-medium block mb-1">Monthly Escrow <span className="text-muted-foreground font-normal">(optional)</span></label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{currencySymbol()}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.monthly_escrow ?? ''}
+                      onChange={e => setField('monthly_escrow', e.target.value ? parseFloat(e.target.value) : undefined)}
+                      placeholder="Property tax + insurance"
+                      className="w-full pl-7 pr-3 py-2 border rounded-md text-sm"
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1">Tax + insurance paid with the loan. Leave blank if none.</p>
+                </div>
+              )}
               <div className="sm:col-span-2">
                 <label className="text-sm font-medium block mb-1">Lender</label>
                 <input
@@ -347,7 +369,14 @@ export function DebtsTable({ onDebtChanged }: Props) {
                         {loan.interest_rate != null ? `${loan.interest_rate}%` : '—'}
                       </td>
                       <td className="px-4 py-3 text-right text-muted-foreground">
-                        {loan.monthly_payment != null ? formatCurrency(loan.monthly_payment) : '—'}
+                        {loan.monthly_payment != null ? (
+                          (loan.monthly_escrow ?? 0) > 0 ? (
+                            <span title={`P&I ${formatCurrency(loan.monthly_payment)} + escrow ${formatCurrency(loan.monthly_escrow ?? 0)}`}>
+                              {formatCurrency(loan.monthly_payment + (loan.monthly_escrow ?? 0))}
+                              <span className="block text-[10px] text-muted-foreground/80 whitespace-nowrap">incl. {formatCurrency(loan.monthly_escrow ?? 0)} escrow</span>
+                            </span>
+                          ) : formatCurrency(loan.monthly_payment)
+                        ) : '—'}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {loan.lender_name || '—'}
