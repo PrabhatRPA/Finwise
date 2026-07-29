@@ -21,15 +21,35 @@ import { formatCurrency } from '@/lib/utils'
 import { currencySymbol, useRegion } from '@/lib/region'
 import { propertiesApi } from '@/lib/api'
 
-const RANGES = [{ id: '1Y', months: 12 }, { id: '5Y', months: 60 }, { id: 'Max', months: 0 }] as const
-type RangeId = typeof RANGES[number]['id']
+interface RangeDef { id: string; days?: number; months?: number; all?: boolean }
+const RANGES: RangeDef[] = [
+  { id: '1D', days: 1 },
+  { id: '1W', days: 7 },
+  { id: '1M', months: 1 },
+  { id: '3M', months: 3 },
+  { id: '6M', months: 6 },
+  { id: '1Y', months: 12 },
+  { id: '2Y', months: 24 },
+  { id: '5Y', months: 60 },
+  { id: 'All', all: true },
+]
+type RangeId = string
 
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const DAY = 86400000
 const toEpoch = (iso: string) => new Date(`${iso}T00:00:00Z`).getTime()
+const isoOf = (epoch: number) => new Date(epoch).toISOString().slice(0, 10)
 const addMonthsIso = (iso: string, k: number) => {
   const d = new Date(`${iso}T00:00:00Z`)
   d.setUTCMonth(d.getUTCMonth() + k)
   return d.toISOString().slice(0, 10)
+}
+// Window start for a range: day-based, month-based, or the earliest snapshot (All).
+function rangeStartIso(range: RangeId, today: string, earliest: string): string {
+  const r = RANGES.find((x) => x.id === range) ?? RANGES[5]
+  if (r.all) return earliest
+  if (r.days) return isoOf(toEpoch(today) - r.days * DAY)
+  return addMonthsIso(today, -(r.months ?? 12))
 }
 
 export function PropertyValueTrend() {
@@ -74,7 +94,10 @@ export function PropertyValueTrend() {
       const first = byProp.get(pid)![0]
       if (first && first.as_of_date < earliest) earliest = first.as_of_date
     }
-    const rangeStart = range === 'Max' ? earliest : addMonthsIso(today, -RANGES.find(r => r.id === range)!.months)
+    const isAll = (RANGES.find((r) => r.id === range) ?? {}).all === true
+    const rangeStart = rangeStartIso(range, today, earliest)
+    // Series starts at whichever is later — the property's first value or the
+    // window start — so we never carry a value backward before it existed.
     const seriesStart = earliest > rangeStart ? earliest : rangeStart
 
     // value of a property carried forward to `date` (null before its first snapshot)
@@ -105,15 +128,24 @@ export function PropertyValueTrend() {
       return { t: toEpoch(date), value: total, contributors }
     })
 
-    // Axis domain padded to at least ~6 months so a single/clustered snapshot
-    // doesn't collapse the axis. The line still begins at the first value.
-    let domStart = toEpoch(seriesStart)
     const todayE = toEpoch(today)
-    if (todayE - domStart < 182 * DAY) domStart = todayE - 182 * DAY
+    // Explicit ranges (1D…5Y) show exactly their window. "All" spans the first
+    // value to today, padded to ~6 months so a single/clustered snapshot doesn't
+    // collapse the axis. The line itself still begins at the first value.
+    let domStart: number
+    if (isAll) {
+      domStart = toEpoch(earliest)
+      if (todayE - domStart < 182 * DAY) domStart = todayE - 182 * DAY
+    } else {
+      domStart = toEpoch(rangeStart)
+    }
 
-    // Degenerate single point (only value dated today): draw a short flat segment
-    // so the card reads as a chart, not a lone dot.
-    if (series.length === 1) series.unshift({ t: domStart, value: series[0].value, contributors: series[0].contributors })
+    // Degenerate single point (e.g. one value dated today): draw a short flat
+    // segment ending at the point so the card reads as a chart, not a lone dot —
+    // kept short so it doesn't imply a value existed long before it was entered.
+    if (series.length === 1) {
+      series.unshift({ t: Math.min(series[0].t - 14 * DAY, domStart), value: series[0].value, contributors: series[0].contributors })
+    }
 
     return { data: series, domain: [domStart, todayE] as [number, number] }
   }, [byProp, inView, range])
@@ -158,7 +190,13 @@ export function PropertyValueTrend() {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis
                   dataKey="t" type="number" domain={domain ?? ['auto', 'auto']} scale="time"
-                  tickFormatter={(t: number) => new Date(t).getUTCFullYear().toString()}
+                  tickFormatter={(t: number) => {
+                    const spanDays = domain ? (domain[1] - domain[0]) / DAY : 365
+                    const d = new Date(t)
+                    if (spanDays <= 31) return `${MON[d.getUTCMonth()]} ${d.getUTCDate()}`
+                    if (spanDays <= 730) return `${MON[d.getUTCMonth()]} '${String(d.getUTCFullYear()).slice(2)}`
+                    return String(d.getUTCFullYear())
+                  }}
                   tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))"
                 />
                 <YAxis
@@ -177,7 +215,7 @@ export function PropertyValueTrend() {
                 <Area type="stepAfter" dataKey="value" stroke="hsl(var(--primary))" fill="url(#prop-fill)" strokeWidth={2} isAnimationActive={false} dot={false} />
               </AreaChart>
             </ResponsiveContainer>
-            <div className="flex items-center justify-center gap-1">
+            <div className="flex flex-wrap items-center justify-center gap-1">
               {RANGES.map((r) => (
                 <button
                   key={r.id}
