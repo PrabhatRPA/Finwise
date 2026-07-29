@@ -14,6 +14,10 @@ function TickerPageInner() {
   const params = useSearchParams()
   const router = useRouter()
   const symbol = (params.get('symbol') || '').trim()
+  // Optional: the specific holding tapped, so the detail page resolves the right
+  // position when the same ticker is held in more than one account.
+  const holdingIdRaw = params.get('holdingId')
+  const holdingId = holdingIdRaw && /^\d+$/.test(holdingIdRaw) ? Number(holdingIdRaw) : undefined
 
   // No symbol → nothing to show; send the user back to the dashboard.
   useEffect(() => {
@@ -21,7 +25,7 @@ function TickerPageInner() {
   }, [symbol, router])
 
   if (!symbol) return null
-  return <TickerDetail symbol={symbol} />
+  return <TickerDetail symbol={symbol} holdingId={holdingId} />
 }
 
 export default function TickerPage() {

@@ -79,7 +79,7 @@ export function typeGlyph(securityType?: string) {
 export interface HoldingRowProps {
   holding: any
   spark?: number[]                 // close series for the sparkline
-  onOpen?: (ticker: string) => void
+  onOpen?: (ticker: string, holdingId?: number) => void
   actions?: React.ReactNode        // Edit/Delete cluster from the parent
   display?: 'value' | 'price'      // trailing figure: position value or share price
 }
@@ -93,7 +93,7 @@ export function HoldingRow({ holding: h, spark, onOpen, actions, display = 'valu
   return (
     <div className="flex items-center gap-3 px-3 py-3">
       <button
-        onClick={() => onOpen?.(h.ticker)}
+        onClick={() => onOpen?.(h.ticker, h.id)}
         className="flex items-center gap-3 flex-1 min-w-0 text-left"
         aria-label={`${h.ticker}, ${formatCurrency(value)}, ${pct >= 0 ? 'up' : 'down'} ${Math.abs(pct).toFixed(2)} percent today`}
       >

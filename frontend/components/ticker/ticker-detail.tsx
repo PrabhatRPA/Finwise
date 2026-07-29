@@ -73,16 +73,22 @@ interface Quote {
 }
 interface NewsItem { title: string; publisher: string; link: string; published: number | null }
 
-export function TickerDetail({ symbol }: { symbol: string }) {
+export function TickerDetail({ symbol, holdingId }: { symbol: string; holdingId?: number }) {
   const ticker = symbol.toUpperCase()
   const { holdings, setHoldings } = usePortfolioStore() as any
 
   // The user's holding for this ticker (if held) — powers the company name
-  // and the COST BASIS / SHARES / TYPE metadata cards.
-  const held: any = useMemo(
-    () => holdings.find((x: any) => (x.ticker || '').toUpperCase() === ticker) as any,
-    [holdings, ticker],
-  )
+  // and the COST BASIS / SHARES / TYPE metadata cards. Resolve by the specific
+  // holding id when provided (the same ticker can be held in several accounts),
+  // and only fall back to ticker when navigated here without an id (e.g. from
+  // watchlist / news, or an id that no longer exists).
+  const held: any = useMemo(() => {
+    if (holdingId != null) {
+      const byId = holdings.find((x: any) => x.id === holdingId)
+      if (byId) return byId
+    }
+    return holdings.find((x: any) => (x.ticker || '').toUpperCase() === ticker) as any
+  }, [holdings, ticker, holdingId])
   const companyName: string | undefined = held?.security_name || held?.company_name || undefined
 
   // Haptic detent when the scrubbed datapoint changes.

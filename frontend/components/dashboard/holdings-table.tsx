@@ -152,9 +152,14 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
 
   // Open the ticker detail page (price chart + news + AI). Static export means
   // we pass the symbol as a query param rather than a dynamic route segment.
-  const openTicker = (t?: string) => {
+  // Pass the specific holding id so the detail page resolves THIS holding, not
+  // just the first row with the same ticker. Multiple accounts can hold the
+  // same ticker; without the id both rows would open the first one's position.
+  const openTicker = (t?: string, holdingId?: number) => {
     const sym = (t || '').trim()
-    if (sym) router.push(`/ticker/?symbol=${encodeURIComponent(sym)}`)
+    if (!sym) return
+    const idPart = holdingId != null ? `&holdingId=${holdingId}` : ''
+    router.push(`/ticker/?symbol=${encodeURIComponent(sym)}${idPart}`)
   }
 
   // Sparkline series for the mobile rows — ONE batched spark call for every
@@ -304,7 +309,7 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
     switch (id) {
       case 'ticker':       return (
         <button
-          onClick={() => openTicker(h.ticker)}
+          onClick={() => openTicker(h.ticker, h.id)}
           className="flex items-center gap-2 font-medium text-primary hover:underline"
           title={`View ${h.ticker} chart & news`}
           style={{ minHeight: 0, minWidth: 0 }}
