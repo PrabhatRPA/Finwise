@@ -32,6 +32,7 @@ import { TruePerformanceChart } from '@/components/dashboard/true-performance-ch
 import { MoversChart } from '@/components/dashboard/movers-chart'
 import { SectorHeatmap } from '@/components/dashboard/sector-heatmap'
 import { DebtPayoffChart } from '@/components/dashboard/debt-payoff-chart'
+import { DebtSimulator } from '@/components/dashboard/debt-simulator'
 
 // (The old 5-up SummaryStat tile row was replaced by the design-system
 // StatStrip — ASSETS / LIABILITIES / NET CHANGE — under the hero card.)
@@ -507,6 +508,7 @@ export default function DashboardPage() {
           <div className="blur-chart-money">
             <DebtPayoffChart />
           </div>
+          <DebtSimulator />
         </TabsContent>
 
         <TabsContent value="properties" className="space-y-4">
