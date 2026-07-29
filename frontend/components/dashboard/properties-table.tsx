@@ -247,6 +247,7 @@ export function PropertiesTable({ onPropertyChanged }: Props) {
     setShowModal(false)
     await load()
     onPropertyChanged?.()
+    try { window.dispatchEvent(new Event('nworth:properties-changed')) } catch {}
   }
 
   const handleEdit = async (data: any) => {
@@ -255,6 +256,7 @@ export function PropertiesTable({ onPropertyChanged }: Props) {
     setEditItem(undefined)
     await load()
     onPropertyChanged?.()
+    try { window.dispatchEvent(new Event('nworth:properties-changed')) } catch {}
   }
 
   const handleDelete = async (id: number) => {
@@ -262,6 +264,7 @@ export function PropertiesTable({ onPropertyChanged }: Props) {
     await propertiesApi.delete(id)
     await load()
     onPropertyChanged?.()
+    try { window.dispatchEvent(new Event('nworth:properties-changed')) } catch {}
   }
 
   const handleAddSnapshot = async (propertyId: number, data: { value: number; as_of_date?: string; note?: string | null }) => {
@@ -269,6 +272,7 @@ export function PropertiesTable({ onPropertyChanged }: Props) {
     setValueItem(undefined)
     await load()
     onPropertyChanged?.()
+    try { window.dispatchEvent(new Event('nworth:properties-changed')) } catch {}
   }
 
   if (loading) return (

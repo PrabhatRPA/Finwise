@@ -59,12 +59,26 @@ export function PropertyValueTrend() {
   const [range, setRange] = useState<RangeId>('1Y')
   const [propId, setPropId] = useState<number | 'all'>('all')
 
+  // Refetch on mount AND whenever a property/value changes elsewhere (the
+  // "Update value" sheet lives in PropertiesTable, a sibling component), so the
+  // trend reflects a new value immediately instead of showing stale data.
   useEffect(() => {
     let cancelled = false
-    Promise.all([propertiesApi.getAllSnapshots(), propertiesApi.getAll()])
-      .then(([s, p]) => { if (!cancelled) { setSnaps(s.data.snapshots ?? []); setProps(p.data.properties ?? []) } })
-      .catch(() => {})
-    return () => { cancelled = true }
+    const load = async () => {
+      try {
+        const [s, p] = await Promise.all([propertiesApi.getAllSnapshots(), propertiesApi.getAll()])
+        if (!cancelled) { setSnaps(s.data.snapshots ?? []); setProps(p.data.properties ?? []) }
+      } catch {}
+    }
+    load()
+    const on = () => load()
+    window.addEventListener('nworth:properties-changed', on)
+    window.addEventListener('nworth:data-synced', on)  // iCloud pulled new data
+    return () => {
+      cancelled = true
+      window.removeEventListener('nworth:properties-changed', on)
+      window.removeEventListener('nworth:data-synced', on)
+    }
   }, [])
 
   // snapshots grouped per property, oldest first
