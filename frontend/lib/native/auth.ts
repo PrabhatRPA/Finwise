@@ -166,6 +166,7 @@ export const nativeAuthApi = {
       await run(`DELETE FROM accounts WHERE user_id = ?`, [userId])
       await run(`DELETE FROM loans WHERE user_id = ?`, [userId])
       await run(`DELETE FROM properties WHERE user_id = ?`, [userId])
+      await run(`DELETE FROM property_value_snapshots WHERE user_id = ?`, [userId])
       await run(`DELETE FROM portfolio_history WHERE user_id = ?`, [userId])
       await run(`DELETE FROM documents WHERE user_id = ?`, [userId])
       await run(`DELETE FROM settings WHERE user_id = ?`, [userId])

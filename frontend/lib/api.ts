@@ -183,7 +183,12 @@ const remotePropertiesApi = {
   create: (data: any) => api.post('/properties', data),
   update: (id: number, data: any) => api.put(`/properties/${id}`, data),
   delete: (id: number) => api.delete(`/properties/${id}`),
-  refreshValue: (id: number) => api.post(`/properties/${id}/refresh-value`),
+  // Append-only value history (drives the value-trend chart).
+  getSnapshots: (propertyId: number) => api.get(`/properties/${propertyId}/snapshots`),
+  getAllSnapshots: () => api.get('/properties/snapshots'),
+  addSnapshot: (propertyId: number, data: { value: number; as_of_date?: string; note?: string | null }) =>
+    api.post(`/properties/${propertyId}/snapshots`, data),
+  deleteSnapshot: (snapshotId: number) => api.delete(`/properties/snapshots/${snapshotId}`),
 }
 
 const remoteDataApi = {

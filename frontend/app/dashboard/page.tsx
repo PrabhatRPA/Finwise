@@ -26,6 +26,7 @@ import { BenchmarkChart } from '@/components/dashboard/benchmark-chart'
 import { DebtsTable } from '@/components/dashboard/debts-table'
 import { WatchlistTable } from '@/components/dashboard/watchlist-table'
 import { PropertiesTable } from '@/components/dashboard/properties-table'
+import { PropertyValueTrend } from '@/components/dashboard/property-value-trend'
 import { PortfolioNews } from '@/components/dashboard/portfolio-news'
 import { StatStrip } from '@/components/ds/stat-strip'
 import { TruePerformanceChart } from '@/components/dashboard/true-performance-chart'
@@ -513,6 +514,7 @@ export default function DashboardPage() {
 
         <TabsContent value="properties" className="space-y-4">
           <PropertiesTable onPropertyChanged={fetchData} />
+          <PropertyValueTrend />
         </TabsContent>
 
         <TabsContent value="allocation" className="space-y-4">

@@ -136,13 +136,24 @@ async function fetchLoans() {
 
 async function fetchProperties() {
   const userId = await requireSessionUserId()
-  return all<any>(
-    `SELECT property_type, nickname, address, city, state, zip_code, country,
+  const rows = await all<any>(
+    `SELECT id, property_type, nickname, address, city, state, zip_code, country,
             manual_value, estimated_value, valuation_source, purchase_price,
             purchase_date, notes
      FROM properties WHERE user_id = ? AND is_active = 1 ORDER BY id`,
     [userId],
   )
+  // Nest each property's value history so import restores it without needing to
+  // remap local ids (imported properties get fresh ids).
+  for (const r of rows) {
+    r.value_snapshots = await all<any>(
+      `SELECT value, as_of_date, source, note FROM property_value_snapshots
+       WHERE user_id = ? AND property_id = ? ORDER BY as_of_date ASC`,
+      [userId, r.id],
+    )
+    delete r.id
+  }
+  return rows
 }
 
 async function fetchPortfolioHistory() {
@@ -399,6 +410,7 @@ export const nativeDataApi = {
       await run(`DELETE FROM accounts WHERE user_id = ?`, [userId])
       await run(`DELETE FROM loans WHERE user_id = ?`, [userId])
       await run(`DELETE FROM properties WHERE user_id = ?`, [userId])
+      await run(`DELETE FROM property_value_snapshots WHERE user_id = ?`, [userId])
       await run(`DELETE FROM portfolio_history WHERE user_id = ?`, [userId])
     }
 
@@ -664,10 +676,11 @@ export const nativeDataApi = {
             existing.id,
           ],
         )
+        await importPropertySnapshots(userId, existing.id, p)
         counts.properties++
         continue
       }
-      await run(
+      const propRes = await run(
         `INSERT INTO properties (
            user_id, property_type, nickname, address, city, state, zip_code, country,
            manual_value, purchase_price, purchase_date, notes, valuation_source
@@ -684,6 +697,7 @@ export const nativeDataApi = {
           p.manual_value != null ? 'manual' : null,
         ],
       )
+      await importPropertySnapshots(userId, propRes.lastId, p)
       counts.properties++
     }
 
@@ -760,6 +774,7 @@ export const nativeDataApi = {
     await run(`DELETE FROM accounts WHERE user_id = ?`, [userId])
     await run(`DELETE FROM loans WHERE user_id = ?`, [userId])
     await run(`DELETE FROM properties WHERE user_id = ?`, [userId])
+    await run(`DELETE FROM property_value_snapshots WHERE user_id = ?`, [userId])
     await run(`DELETE FROM portfolio_history WHERE user_id = ?`, [userId])
     await run(`DELETE FROM market_prices`, [])
     return { data: { success: true, message: 'All data cleared. You can start fresh.' } }
@@ -961,6 +976,47 @@ function rowToObject(header: string[], row: string[]): Record<string, string> {
 function toNum(v: any): number {
   const n = Number(v)
   return isFinite(n) ? n : 0
+}
+
+// Restore a property's value history on import. New backups nest value_snapshots;
+// older backups (pre-feature) have none, so seed one from the current value so
+// the trend chart still has a starting point. Deduped by (property, date).
+async function importPropertySnapshots(userId: number, propertyId: number, p: any) {
+  const snaps = Array.isArray(p?.value_snapshots) ? p.value_snapshots : []
+  if (snaps.length > 0) {
+    for (const s of snaps) {
+      const asOf = (s?.as_of_date || '').toString().slice(0, 10)
+      if (!asOf) continue
+      const dup = await get<{ id: number }>(
+        `SELECT id FROM property_value_snapshots WHERE user_id = ? AND property_id = ? AND as_of_date = ?`,
+        [userId, propertyId, asOf],
+      )
+      if (dup) {
+        await run(`UPDATE property_value_snapshots SET value = ?, note = COALESCE(?, note) WHERE id = ?`, [toNum(s.value), s.note ?? null, dup.id])
+      } else {
+        await run(
+          `INSERT INTO property_value_snapshots (user_id, property_id, value, as_of_date, source, note)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [userId, propertyId, toNum(s.value), asOf, s.source || 'manual', s.note ?? null],
+        )
+      }
+    }
+  } else {
+    const mv = p?.manual_value == null || p?.manual_value === '' ? null : Number(p.manual_value)
+    if (mv != null && isFinite(mv)) {
+      const dup = await get<{ id: number }>(
+        `SELECT id FROM property_value_snapshots WHERE user_id = ? AND property_id = ?`,
+        [userId, propertyId],
+      )
+      if (!dup) {
+        await run(
+          `INSERT INTO property_value_snapshots (user_id, property_id, value, as_of_date, source, note)
+           VALUES (?, ?, ?, date('now'), 'manual', NULL)`,
+          [userId, propertyId, mv],
+        )
+      }
+    }
+  }
 }
 function toNumOrNull(v: any): number | null {
   if (v == null || v === '') return null

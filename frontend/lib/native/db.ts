@@ -76,6 +76,21 @@ async function init(): Promise<SQLiteDBConnection> {
     try { await conn.run(sql, []) } catch { /* already applied — skip */ }
   }
 
+  // One-time backfill: seed each existing property with an opening value snapshot
+  // (dated to its creation) so the value-trend chart has history immediately.
+  // Idempotent — only touches properties that have a value and no snapshot yet.
+  try {
+    await conn.run(
+      `INSERT INTO property_value_snapshots (user_id, property_id, value, as_of_date, source, note)
+       SELECT user_id, id, COALESCE(manual_value, estimated_value),
+              COALESCE(substr(created_at, 1, 10), date('now')), 'manual', NULL
+       FROM properties
+       WHERE COALESCE(manual_value, estimated_value) IS NOT NULL
+         AND id NOT IN (SELECT DISTINCT property_id FROM property_value_snapshots)`,
+      [],
+    )
+  } catch { /* fresh/empty DB — nothing to backfill */ }
+
   db = conn
   return db
 }

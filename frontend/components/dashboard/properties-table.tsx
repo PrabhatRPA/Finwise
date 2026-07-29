@@ -34,11 +34,6 @@ function typeLabel(t: string) {
 
 function sourceChip(src?: string) {
   if (!src) return null
-  if (src === 'rentcast') return (
-    <Badge variant="outline" className="text-xs text-blue-700 border-blue-400 font-normal">
-      Rentcast AVM
-    </Badge>
-  )
   return (
     <Badge variant="outline" className="text-xs font-normal">Manual</Badge>
   )
@@ -48,12 +43,11 @@ function sourceChip(src?: string) {
 
 interface ModalProps {
   initial?: PropertyItem
-  rentcastConfigured: boolean
   onSave: (data: any) => Promise<void>
   onClose: () => void
 }
 
-function PropertyModal({ initial, rentcastConfigured, onSave, onClose }: ModalProps) {
+function PropertyModal({ initial, onSave, onClose }: ModalProps) {
   useRegion()  // re-render currency symbols when the market setting changes
   const isEdit = !!initial
   const [form, setForm] = useState({
@@ -226,19 +220,16 @@ interface Props { onPropertyChanged?: () => void }
 export function PropertiesTable({ onPropertyChanged }: Props) {
   const [properties, setProperties] = useState<PropertyItem[]>([])
   const [totalValue, setTotalValue] = useState(0)
-  const [rentcastConfigured, setRentcastConfigured] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editItem, setEditItem] = useState<PropertyItem | undefined>()
-  const [refreshingId, setRefreshingId] = useState<number | null>(null)
-  const [refreshMsg, setRefreshMsg] = useState<Record<number, string>>({})
+  const [valueItem, setValueItem] = useState<PropertyItem | undefined>()  // "Update value" sheet target
 
   const load = useCallback(async () => {
     try {
       const res = await propertiesApi.getAll()
       setProperties(res.data.properties ?? [])
       setTotalValue(res.data.total_value ?? 0)
-      setRentcastConfigured(res.data.rentcast_configured ?? false)
     } catch {} finally { setLoading(false) }
   }, [])
 
@@ -273,20 +264,11 @@ export function PropertiesTable({ onPropertyChanged }: Props) {
     onPropertyChanged?.()
   }
 
-  const handleRefresh = async (id: number) => {
-    setRefreshingId(id)
-    setRefreshMsg(m => ({ ...m, [id]: '' }))
-    try {
-      const res = await propertiesApi.refreshValue(id)
-      setRefreshMsg(m => ({ ...m, [id]: `Updated: ${formatCurrency(res.data.estimated_value)}` }))
-      await load()
-      onPropertyChanged?.()
-    } catch (err: any) {
-      setRefreshMsg(m => ({
-        ...m,
-        [id]: err?.response?.data?.detail ?? 'Refresh failed',
-      }))
-    } finally { setRefreshingId(null) }
+  const handleAddSnapshot = async (propertyId: number, data: { value: number; as_of_date?: string; note?: string | null }) => {
+    await propertiesApi.addSnapshot(propertyId, data)
+    setValueItem(undefined)
+    await load()
+    onPropertyChanged?.()
   }
 
   if (loading) return (
@@ -299,7 +281,6 @@ export function PropertiesTable({ onPropertyChanged }: Props) {
     <>
       {showModal && (
         <PropertyModal
-          rentcastConfigured={rentcastConfigured}
           onSave={handleAdd}
           onClose={() => setShowModal(false)}
         />
@@ -307,9 +288,15 @@ export function PropertiesTable({ onPropertyChanged }: Props) {
       {editItem && (
         <PropertyModal
           initial={editItem}
-          rentcastConfigured={rentcastConfigured}
           onSave={handleEdit}
           onClose={() => setEditItem(undefined)}
+        />
+      )}
+      {valueItem && (
+        <UpdateValueSheet
+          property={valueItem}
+          onSave={(data) => handleAddSnapshot(valueItem.id, data)}
+          onClose={() => setValueItem(undefined)}
         />
       )}
 
@@ -319,9 +306,6 @@ export function PropertiesTable({ onPropertyChanged }: Props) {
             <CardTitle>Real Estate</CardTitle>
             <p className="text-sm text-muted-foreground mt-0.5">
               Total value: <span className="font-semibold text-foreground sensitive-amount">{formatCurrency(totalValue)}</span>
-              {rentcastConfigured && (
-                <span className="ml-2 text-xs text-blue-600">· Rentcast AVM enabled</span>
-              )}
             </p>
           </div>
           <Button onClick={() => setShowModal(true)}>+ Add property</Button>
@@ -363,17 +347,14 @@ export function PropertiesTable({ onPropertyChanged }: Props) {
 
                       {/* Actions */}
                       <div className="flex gap-1 shrink-0">
-                        {rentcastConfigured && (p.address || p.city) && (
-                          <Button
-                            size="sm" variant="outline"
-                            className="text-xs h-7 px-2"
-                            disabled={refreshingId === p.id}
-                            onClick={() => handleRefresh(p.id)}
-                            title="Refresh Rentcast valuation"
-                          >
-                            {refreshingId === p.id ? '⟳' : '↻ Value'}
-                          </Button>
-                        )}
+                        <Button
+                          size="sm" variant="outline"
+                          className="text-xs h-7 px-2"
+                          onClick={() => setValueItem(p)}
+                          title="Record a new value with a date"
+                        >
+                          Update value
+                        </Button>
                         <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
                           onClick={() => setEditItem(p)}>Edit</Button>
                         <Button size="sm" variant="ghost"
@@ -425,13 +406,6 @@ export function PropertiesTable({ onPropertyChanged }: Props) {
                       )}
                     </div>
 
-                    {/* Refresh message */}
-                    {refreshMsg[p.id] && (
-                      <p className={`text-xs ${refreshMsg[p.id].startsWith('Updated') ? 'text-green-700' : 'text-red-600'}`}>
-                        {refreshMsg[p.id]}
-                      </p>
-                    )}
-
                     {p.notes && (
                       <p className="text-xs text-muted-foreground border-t pt-2 mt-1">{p.notes}</p>
                     )}
@@ -443,5 +417,109 @@ export function PropertiesTable({ onPropertyChanged }: Props) {
         </CardContent>
       </Card>
     </>
+  )
+}
+
+// ─── Update-value sheet: add a dated value + browse/delete history ──────────────
+function UpdateValueSheet({ property, onSave, onClose }: {
+  property: PropertyItem
+  onSave: (data: { value: number; as_of_date?: string; note?: string | null }) => Promise<void>
+  onClose: () => void
+}) {
+  useRegion()
+  const [value, setValue] = useState('')
+  const [asOf, setAsOf] = useState(new Date().toISOString().slice(0, 10))
+  const [note, setNote] = useState('')
+  const [snapshots, setSnapshots] = useState<any[]>([])
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+
+  const loadSnaps = useCallback(async () => {
+    try { const r = await propertiesApi.getSnapshots(property.id); setSnapshots(r.data.snapshots ?? []) } catch {}
+  }, [property.id])
+  useEffect(() => { loadSnaps() }, [loadSnaps])
+
+  const sorted = [...snapshots].sort((a, b) =>
+    (b.as_of_date).localeCompare(a.as_of_date) || (b.created_at || '').localeCompare(a.created_at || ''))
+  const latest = sorted[0]
+  const prev = sorted[1]
+  const change = latest && prev ? latest.value - prev.value : null
+  const changePct = change != null && prev && prev.value ? (change / prev.value) * 100 : null
+
+  const save = async () => {
+    const v = parseFloat(value)
+    if (!isFinite(v) || v < 0) { setErr('Enter a valid value.'); return }
+    setSaving(true); setErr('')
+    try { await onSave({ value: v, as_of_date: asOf, note: note.trim() || null }) }
+    catch (e: any) { setErr(e?.response?.data?.detail ?? e?.message ?? 'Could not save.'); setSaving(false) }
+  }
+  const del = async (id: number) => {
+    setErr('')
+    try { await propertiesApi.deleteSnapshot(id); await loadSnaps() }
+    catch (e: any) { setErr(e?.response?.data?.detail ?? 'Could not delete.') }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="bg-card w-full sm:max-w-md sm:rounded-lg rounded-t-2xl shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-sm">Update value — {property.nickname || property.address || 'Property'}</h3>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-2xl leading-none" aria-label="Close">×</button>
+          </div>
+
+          {latest && (
+            <div>
+              <p className="text-xs text-muted-foreground">Current value</p>
+              <p className="text-2xl font-bold sensitive-amount">{formatCurrency(latest.value)}</p>
+              {change != null && prev && (
+                <p className={`text-xs ${change >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                  {change >= 0 ? '+' : ''}{formatCurrency(change)}{changePct != null ? ` (${change >= 0 ? '+' : ''}${changePct.toFixed(1)}%)` : ''}
+                  {' '}since {new Date(prev.as_of_date).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="text-xs font-medium block mb-1 text-muted-foreground">New value</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{currencySymbol()}</span>
+                <input type="number" min="0" step="1000" value={value} onChange={e => setValue(e.target.value)} placeholder="0" className="w-full h-10 pl-7 pr-3 rounded-md border border-input bg-background text-sm" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1 text-muted-foreground">As of</label>
+              <input type="date" value={asOf} max={new Date().toISOString().slice(0, 10)} onChange={e => setAsOf(e.target.value)} className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1 text-muted-foreground">Note (optional)</label>
+              <input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. appraisal" className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm" />
+            </div>
+          </div>
+          {err && <p className="text-xs text-red-600">{err}</p>}
+          <Button onClick={save} disabled={saving || !value} className="w-full">{saving ? 'Saving…' : 'Save value'}</Button>
+
+          {sorted.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">History</p>
+              <div className="divide-y divide-border rounded-md border max-h-48 overflow-y-auto">
+                {sorted.map(s => (
+                  <div key={s.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                    <div className="min-w-0">
+                      <span className="type-amount sensitive-amount">{formatCurrency(s.value)}</span>
+                      <span className="text-xs text-muted-foreground ml-2">{new Date(s.as_of_date).toLocaleDateString()}</span>
+                      {s.note && <span className="text-xs text-muted-foreground ml-1 truncate">· {s.note}</span>}
+                    </div>
+                    <button onClick={() => del(s.id)} className="text-xs text-destructive/80 hover:text-destructive shrink-0 ml-2">Delete</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
