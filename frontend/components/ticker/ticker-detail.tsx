@@ -101,7 +101,7 @@ export function TickerDetail({ symbol, holdingId }: { symbol: string; holdingId?
     }
   }
 
-  const [range, setRange] = useState<RangeId>('1W')
+  const [range, setRange] = useState<RangeId>('1D')
   const [quote, setQuote] = useState<Quote | null>(null)
   const [series, setSeries] = useState<{ ts: number; close: number }[]>([])
   const [chartLoading, setChartLoading] = useState(true)

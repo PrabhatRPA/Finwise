@@ -182,9 +182,9 @@ export function DebtsTable({ onDebtChanged }: Props) {
       {/* Add / Edit modal — popup overlay like every other section's add flow
           (this was an inline card, which read as the page changing under you). */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={closeForm} />
-          <Card className="relative w-full max-w-md mx-4 max-h-[85vh] overflow-y-auto border-primary/40 shadow-2xl">
+          <Card className="relative w-full max-w-md mx-4 max-h-[85vh] overflow-y-auto overscroll-contain border-primary/40 shadow-2xl">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">{editingId ? 'Edit Debt' : 'Add New Debt'}</CardTitle>

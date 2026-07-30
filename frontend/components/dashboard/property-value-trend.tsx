@@ -56,7 +56,7 @@ export function PropertyValueTrend() {
   useRegion()
   const [snaps, setSnaps] = useState<any[]>([])
   const [props, setProps] = useState<any[]>([])
-  const [range, setRange] = useState<RangeId>('1Y')
+  const [range, setRange] = useState<RangeId>('1M')
   const [propId, setPropId] = useState<number | 'all'>('all')
 
   // Refetch on mount AND whenever a property/value changes elsewhere (the
@@ -248,12 +248,13 @@ export function PropertyValueTrend() {
                 <Area type="stepAfter" dataKey="value" stroke="hsl(var(--primary))" fill="url(#prop-fill)" strokeWidth={2} isAnimationActive={false} dot={{ r: 2, strokeWidth: 0, fill: 'hsl(var(--primary))' }} activeDot={{ r: 4 }} />
               </AreaChart>
             </ResponsiveContainer>
-            <div className="flex flex-wrap items-center justify-center gap-1">
+            {/* Compact equal-width pills so all ranges fit on one line. */}
+            <div className="flex items-center gap-1">
               {RANGES.map((r) => (
                 <button
                   key={r.id}
                   onClick={() => setRange(r.id)}
-                  className={`px-2.5 py-1 rounded-md text-xs type-amount ${range === r.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}
+                  className={`flex-1 min-w-0 px-0 py-1.5 text-[10px] rounded-full type-amount font-semibold transition-colors ${range === r.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
                 >
                   {r.id}
                 </button>
