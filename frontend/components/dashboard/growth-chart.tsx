@@ -37,7 +37,12 @@ interface TrendPoint {
 const UP_TINT = 'hsl(152 73% 66%)'
 const DOWN_TINT = 'hsl(0 100% 76%)'
 
-export function GrowthChart({ currentNetWorth }: { currentNetWorth: number | null | undefined }) {
+export function GrowthChart({ currentNetWorth, todayChange }: {
+  currentNetWorth: number | null | undefined
+  // Sum of holdings' today $ P&L (vs yesterday's close). Used to anchor the 1D
+  // baseline to yesterday's close instead of a mid-day snapshot.
+  todayChange?: number
+}) {
   const [range, setRange] = useState<RangeKey>('1M')
   const [trends, setTrends] = useState<TrendPoint[]>([])
   const reducedMotion = useReducedMotion()
@@ -76,14 +81,34 @@ export function GrowthChart({ currentNetWorth }: { currentNetWorth: number | nul
     return rows
   }, [trends, currentNetWorth])
 
-  const start = data[0]?.net_worth ?? 0
-  const end   = data[data.length - 1]?.net_worth ?? 0
+  // For the 1D window, anchor the baseline to YESTERDAY'S CLOSE rather than the
+  // mid-day snapshot stored yesterday. The portfolio is the only thing that
+  // moves intraday, so start = now − today's portfolio P&L; this makes the hero
+  // 1D change agree with the Holdings "Today's P&L" figure instead of also
+  // absorbing yesterday afternoon's drift baked into the snapshot. Longer ranges
+  // keep the stored daily snapshots unchanged.
+  const chart = useMemo<TrendPoint[]>(() => {
+    if (range === '1D' && todayChange != null && currentNetWorth != null) {
+      const now = new Date()
+      const yst = new Date(now); yst.setDate(now.getDate() - 1)
+      const ymd = (dt: Date) =>
+        `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+      return [
+        { date: ymd(yst), net_worth: currentNetWorth - todayChange },
+        { date: ymd(now), net_worth: currentNetWorth },
+      ]
+    }
+    return data
+  }, [range, todayChange, currentNetWorth, data])
+
+  const start = chart[0]?.net_worth ?? 0
+  const end   = chart[chart.length - 1]?.net_worth ?? 0
   const delta    = end - start
   const deltaPct = start > 0 ? (delta / start) * 100 : 0
-  const sparse = data.length < 2
+  const sparse = chart.length < 2
 
-  const startLabel = data[0] ? formatShortDate(data[0].date) : ''
-  const endLabel   = data[data.length - 1] ? formatShortDate(data[data.length - 1].date) : ''
+  const startLabel = chart[0] ? formatShortDate(chart[0].date) : ''
+  const endLabel   = chart[chart.length - 1] ? formatShortDate(chart[chart.length - 1].date) : ''
 
   const positive = delta >= 0
   const tint = positive ? UP_TINT : DOWN_TINT
@@ -93,7 +118,7 @@ export function GrowthChart({ currentNetWorth }: { currentNetWorth: number | nul
   const rolled = useCountUp(end, 600, reducedMotion)
 
   // Pad Y-axis a touch so the line doesn't sit on the bottom edge.
-  const values = data.map(d => d.net_worth)
+  const values = chart.map(d => d.net_worth)
   const minY = Math.min(...values)
   const maxY = Math.max(...values)
   const pad = (maxY - minY) * 0.15 || Math.max(maxY * 0.05, 100)
@@ -125,7 +150,7 @@ export function GrowthChart({ currentNetWorth }: { currentNetWorth: number | nul
 
       <div className="h-40 sm:h-52 -mx-1 mt-3">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+          <AreaChart data={chart} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
             <defs>
               <linearGradient id="hero-fill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.28} />

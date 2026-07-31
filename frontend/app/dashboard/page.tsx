@@ -404,7 +404,10 @@ export default function DashboardPage() {
       {/* ── Hero net-worth card ── the top element per the design system:
           oversized rolling numeral + delta + history chart + range pills. */}
       <div className="blur-chart-money">
-        <GrowthChart currentNetWorth={netWorthData?.net_worth ?? displayTotalValue} />
+        <GrowthChart
+          currentNetWorth={netWorthData?.net_worth ?? displayTotalValue}
+          todayChange={holdings.reduce((s, h: any) => s + (h.today_gain_loss ?? 0), 0)}
+        />
       </div>
 
       {/* ── Stat strip ── Portfolio / Cash / Debt / Property / Net Worth.
