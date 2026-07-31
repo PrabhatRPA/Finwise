@@ -37,11 +37,14 @@ interface TrendPoint {
 const UP_TINT = 'hsl(152 73% 66%)'
 const DOWN_TINT = 'hsl(0 100% 76%)'
 
-export function GrowthChart({ currentNetWorth, todayChange }: {
+export function GrowthChart({ currentNetWorth, todayChange, todayBreakdown }: {
   currentNetWorth: number | null | undefined
   // Sum of holdings' today $ P&L (vs yesterday's close). Used to anchor the 1D
   // baseline to yesterday's close instead of a mid-day snapshot.
   todayChange?: number
+  // Today's other net-worth contributors, so the 1D delta also reflects
+  // same-day changes to cash / property / debt (not just holdings).
+  todayBreakdown?: { cash: number; realEstate: number; debt: number }
 }) {
   const [range, setRange] = useState<RangeKey>('1M')
   const [trends, setTrends] = useState<TrendPoint[]>([])
@@ -90,16 +93,37 @@ export function GrowthChart({ currentNetWorth, todayChange }: {
   const chart = useMemo<TrendPoint[]>(() => {
     if (range === '1D' && todayChange != null && currentNetWorth != null) {
       const now = new Date()
-      const yst = new Date(now); yst.setDate(now.getDate() - 1)
       const ymd = (dt: Date) =>
         `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+      const todayIso = ymd(now)
+      const yst = new Date(now); yst.setDate(now.getDate() - 1)
+
+      // Holdings are the only intraday market mover, so reprice them to
+      // yesterday's close: baseline = now − today's holdings P&L.
+      let baseline = currentNetWorth - todayChange
+
+      // Net worth also changes when the user edits cash / property / debt today.
+      // Fold those in by comparing today's balances against the most recent
+      // snapshot BEFORE today (its cash/property/debt columns don't suffer the
+      // holdings mid-day mispricing). Net worth = assets − debt, so a rise in
+      // cash/property lowers the baseline while a rise in debt raises it.
+      const prior = (trends as any[]).filter(r => r?.date && r.date < todayIso).pop()
+      if (prior && todayBreakdown) {
+        const cashY = prior.total_cash ?? 0
+        const debtY = prior.total_liabilities ?? 0
+        const reY = (prior.total_assets ?? 0) - (prior.total_investments ?? 0) - (prior.total_cash ?? 0)
+        baseline -= (todayBreakdown.cash - cashY)          // Δ cash
+        baseline -= (todayBreakdown.realEstate - reY)      // Δ property
+        baseline += (todayBreakdown.debt - debtY)          // Δ debt
+      }
+
       return [
-        { date: ymd(yst), net_worth: currentNetWorth - todayChange },
-        { date: ymd(now), net_worth: currentNetWorth },
+        { date: ymd(yst), net_worth: baseline },
+        { date: todayIso, net_worth: currentNetWorth },
       ]
     }
     return data
-  }, [range, todayChange, currentNetWorth, data])
+  }, [range, todayChange, currentNetWorth, todayBreakdown, trends, data])
 
   const start = chart[0]?.net_worth ?? 0
   const end   = chart[chart.length - 1]?.net_worth ?? 0

@@ -407,6 +407,11 @@ export default function DashboardPage() {
         <GrowthChart
           currentNetWorth={netWorthData?.net_worth ?? displayTotalValue}
           todayChange={holdings.reduce((s, h: any) => s + (h.today_gain_loss ?? 0), 0)}
+          todayBreakdown={{
+            cash: netWorthData?.cash ?? 0,
+            realEstate: netWorthData?.real_estate ?? 0,
+            debt: netWorthData?.total_liabilities ?? 0,
+          }}
         />
       </div>
 
