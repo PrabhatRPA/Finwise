@@ -108,8 +108,8 @@ export function HoldingRow({ holding: h, spark, onOpen, actions, display = 'valu
           </span>
         </span>
 
-        {/* Mini sparkline */}
-        <Sparkline data={spark ?? []} />
+        {/* Mini sparkline — tinted by today's % so it agrees with the figure */}
+        <Sparkline data={spark ?? []} trend={pct} />
 
         {/* Value + today % stacked */}
         <span className="text-right shrink-0 w-[92px]">

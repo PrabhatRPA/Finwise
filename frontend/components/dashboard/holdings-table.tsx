@@ -324,7 +324,7 @@ export function HoldingsTable({ holdings, onHoldingAdded, searchQuery = '' }: Ho
         </button>
       )
       case 'chart':        return (
-        <Sparkline data={sparks.get((h.ticker || '').toUpperCase()) ?? []} width={64} height={22} />
+        <Sparkline data={sparks.get((h.ticker || '').toUpperCase()) ?? []} width={64} height={22} trend={h.today_gain_loss_percent ?? 0} />
       )
       case 'type':         return (
         <span className="capitalize text-xs border border-border rounded-full px-2 py-0.5 text-muted-foreground">

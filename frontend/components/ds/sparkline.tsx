@@ -11,17 +11,25 @@ interface SparklineProps {
   data: number[]           // close prices, oldest → newest
   width?: number
   height?: number
+  trend?: number           // signed change (e.g. today's %) — colors the line to
+                           // match the row's figure. Omit to color by first→last.
 }
 
-export function Sparkline({ data, width = 60, height = 24 }: SparklineProps) {
+export function Sparkline({ data, width = 60, height = 24, trend }: SparklineProps) {
   const gradId = useId()
   const points = (data ?? []).filter((v) => v != null && isFinite(v))
   const flat = points.length < 2
 
-  const up = !flat && points[points.length - 1] >= points[0]
-  const stroke = flat
-    ? 'hsl(var(--neutral))'
-    : up ? 'hsl(var(--positive))' : 'hsl(var(--negative))'
+  // Direction drives the colour. Prefer the caller's trend (the same value the
+  // row shows — today's % vs the previous close) so the tint always agrees with
+  // the printed change; on a gap day the intraday shape can rise while the day
+  // is down, so first→last is only a fallback when no trend is provided.
+  const dir = (trend != null && isFinite(trend))
+    ? (trend > 0 ? 1 : trend < 0 ? -1 : 0)
+    : (flat ? 0 : (points[points.length - 1] >= points[0] ? 1 : -1))
+  const stroke = dir > 0 ? 'hsl(var(--positive))'
+    : dir < 0 ? 'hsl(var(--negative))'
+    : 'hsl(var(--neutral))'
 
   let path = `M 0 ${height / 2} L ${width} ${height / 2}` // flat fallback
   let area = ''
