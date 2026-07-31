@@ -19,6 +19,7 @@ import { PortfolioPerformanceChart } from '@/components/dashboard/performance-ch
 import { NetWorthTrendChart } from '@/components/dashboard/net-worth-chart'
 import { AIAnalysisCard } from '@/components/dashboard/ai-analysis'
 import { GrowthChart } from '@/components/dashboard/growth-chart'
+import { maybeRequestReview } from '@/lib/review'
 import { AccountsTable } from '@/components/dashboard/accounts-table'
 import { AssetAllocationDonutChart } from '@/components/dashboard/allocation-donut-chart'
 import { TopHoldingsChart, CostBasisChart, ConcentrationChart } from '@/components/dashboard/allocation-extra-charts'
@@ -238,6 +239,9 @@ export default function DashboardPage() {
       const snapshot = { ...netWorthResp.data, totalValue: usePortfolioStore.getState().totalValue }
       setNetWorthData(snapshot)
       saveNetWorthCache(snapshot)
+      // Happy moment: net worth loaded & positive → maybe ask for a rating
+      // (gated by engagement + 90-day cooldown; iOS decides if it shows).
+      maybeRequestReview((snapshot as any)?.net_worth ?? 0)
 
       netWorthApi.createRecord().catch(() => {})
     } catch (error: any) {

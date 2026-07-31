@@ -687,6 +687,11 @@ export default function ProfilePage() {
             onClick={() => router.push('/documents?focus=demo')}
           />
           <Row
+            label="Rate Nworth"
+            sub="Enjoying the app? Leave a review on the App Store."
+            onClick={() => { import('@/lib/review').then(m => m.openStoreReview()) }}
+          />
+          <Row
             label="About Nworth"
             sub={APP_TAGLINE}
             onClick={() => router.push('/about')}

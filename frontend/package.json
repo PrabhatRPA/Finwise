@@ -29,6 +29,7 @@
     "@capacitor/share": "^8.0.1",
     "@capacitor/splash-screen": "^8.0.1",
     "@capacitor/status-bar": "^8.0.2",
+    "@capawesome/capacitor-app-review": "^8.0.1",
     "axios": "^1.6.2",
     "bcryptjs": "^3.0.3",
     "capacitor-secure-storage-plugin": "^0.13.0",
