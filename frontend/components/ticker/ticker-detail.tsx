@@ -15,17 +15,21 @@ import { StatStrip } from '@/components/ds/stat-strip'
 import { selectionTick } from '@/components/ds/haptics'
 import { useRef } from 'react'
 
-// Time-range buttons → Yahoo period + a tick formatter appropriate to the span.
-// 1D is intraday (5-minute bars) — the closest thing to a live view.
+// Time-range buttons. `period` is the Yahoo fetch window and `days` is the
+// visible calendar span. We deliberately fetch a LONGER window than we show so
+// a real "one period ago" reference bar exists just before the visible window —
+// the range return is anchored to that bar (rolling window), matching how
+// brokers report it. 1D stays intraday (5-minute bars) and is anchored to the
+// previous close instead.
 const RANGES = [
-  { id: '1D', period: '1d' },
-  { id: '1W', period: '5d' },
-  { id: '1M', period: '1mo' },
-  { id: '3M', period: '3mo' },
-  { id: '6M', period: '6mo' },
-  { id: '1Y', period: '1y' },
-  { id: '2Y', period: '2y' },
-  { id: '5Y', period: '5y' },
+  { id: '1D', period: '1d',  days: 1 },
+  { id: '1W', period: '1mo', days: 7 },
+  { id: '1M', period: '3mo', days: 30 },
+  { id: '3M', period: '6mo', days: 91 },
+  { id: '6M', period: '1y',  days: 182 },
+  { id: '1Y', period: '2y',  days: 365 },
+  { id: '2Y', period: '5y',  days: 730 },
+  { id: '5Y', period: '5y',  days: 1825 },
 ] as const
 type RangeId = typeof RANGES[number]['id']
 
@@ -223,13 +227,32 @@ export function TickerDetail({ symbol, holdingId }: { symbol: string; holdingId?
     }
   }
 
-  // Period return (first → last close) drives the line + header colour.
-  const periodChangeDollar = series.length >= 2
-    ? series[series.length - 1].close - series[0].close
-    : 0
-  const periodChangePct = series.length >= 2 && series[0].close > 0
-    ? (periodChangeDollar / series[0].close) * 100
-    : 0
+  // ── Period return: rolling calendar window, broker-style ──────────────
+  // Baseline = the close ONE FULL PERIOD ago (the last session before the
+  // window opens); endpoint = the live quote price. The line is sliced to begin
+  // at that baseline so the drawn move and the "over <range>" % agree. This is
+  // how Robinhood/Google report range returns, and it fixes two prior bugs:
+  //  • 1D read the intraday open → green on a gap-down day (now: previous close).
+  //  • Multi-day ranges read series[0] — the first bar of a fixed *trading-day*
+  //    window, which sat days too late at a local high (1W showed −10% vs −6%).
+  const rangeDays = RANGES.find(r => r.id === range)!.days
+  const cutoffDate = new Date(Date.now() - rangeDays * 86400 * 1000).toISOString().slice(0, 10)
+  // First visible bar = the last one dated BEFORE the cutoff (the reference), so
+  // the line starts at the baseline. Falls back to the earliest bar we fetched.
+  let startIdx = 0
+  for (let i = 0; i < series.length; i++) {
+    if (new Date(series[i].ts * 1000).toISOString().slice(0, 10) < cutoffDate) startIdx = i
+    else break
+  }
+  const view = series.slice(startIdx)
+  const endClose = quote?.price ?? (view.length ? view[view.length - 1].close : 0)
+  // 1D anchors to the previous close (the live quote's day change); every other
+  // range anchors to the reference bar the window starts on.
+  const baseClose = range === '1D'
+    ? (quote ? quote.price - (quote.day_change ?? 0) : (view.length ? view[0].close : 0))
+    : (view.length ? view[0].close : 0)
+  const periodChangeDollar = baseClose > 0 ? endClose - baseClose : 0
+  const periodChangePct = baseClose > 0 ? (periodChangeDollar / baseClose) * 100 : 0
   const up = periodChangePct >= 0
   const lineColor = up ? '#10b981' : '#ef4444'
 
@@ -237,7 +260,12 @@ export function TickerDetail({ symbol, holdingId }: { symbol: string; holdingId?
   const dayPct = quote?.day_change_percent ?? 0
   const dayColor = dayChange >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
 
-  const chartData = series.map((p) => ({ x: fmtTick(p.ts, range), close: p.close }))
+  // Draw the sliced window; pin the final point to the live price so the line,
+  // the "over <range>" delta, and the header price all end on the same number.
+  const chartData = view.map((p, i) => ({
+    x: fmtTick(p.ts, range),
+    close: i === view.length - 1 && quote ? endClose : p.close,
+  }))
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 sm:py-8 space-y-5">
